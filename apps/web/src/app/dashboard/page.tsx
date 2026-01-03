@@ -90,8 +90,8 @@ export default function DashboardPage() {
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-28 bg-zinc-200 dark:bg-zinc-800 rounded-2xl animate-pulse" />
           ))}
-        </Link>
-      </Link>
+        </div>
+      </div>
     );
   }
 
@@ -102,7 +102,7 @@ export default function DashboardPage() {
           <svg className="w-10 h-10 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
           </svg>
-        </Link>
+        </div>
         <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">Welcome to Lelemon</h2>
         <p className="text-zinc-500 dark:text-zinc-400 mb-6 text-center max-w-md">
           Create your first project to start tracing your LLM applications.
@@ -115,7 +115,7 @@ export default function DashboardPage() {
             Create Project
           </Button>
         </Link>
-      </Link>
+      </div>
     );
   }
 
@@ -127,7 +127,7 @@ export default function DashboardPage() {
         <p className="text-zinc-500 dark:text-zinc-400 mt-1">
           Monitor your LLM application performance at a glance.
         </p>
-      </Link>
+      </div>
 
       {/* Stats Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -140,7 +140,7 @@ export default function DashboardPage() {
               {stats?.totalTraces.toLocaleString() ?? '0'}
             </p>
           )}
-        </Link>
+        </div>
 
         <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
           <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Total Tokens</p>
@@ -151,7 +151,7 @@ export default function DashboardPage() {
               {stats?.totalTokens ? `${(stats.totalTokens / 1000).toFixed(1)}k` : '0'}
             </p>
           )}
-        </Link>
+        </div>
 
         <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
           <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Total Cost</p>
@@ -162,7 +162,7 @@ export default function DashboardPage() {
               ${stats?.totalCostUsd?.toFixed(2) ?? '0.00'}
             </p>
           )}
-        </Link>
+        </div>
 
         <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
           <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Error Rate</p>
@@ -177,8 +177,8 @@ export default function DashboardPage() {
               {stats?.errorRate?.toFixed(1) ?? '0'}%
             </p>
           )}
-        </Link>
-      </Link>
+        </div>
+      </div>
 
       {/* Recent Traces */}
       <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
@@ -192,15 +192,15 @@ export default function DashboardPage() {
               </svg>
             </Button>
           </Link>
-        </Link>
+        </div>
         {isLoading ? (
           <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
             {[1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="px-6 py-4">
                 <div className="h-10 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse" />
-              </Link>
+              </div>
             ))}
-          </Link>
+          </div>
         ) : recentTraces.length === 0 ? (
           <div className="p-12 text-center">
             <p className="text-zinc-500 dark:text-zinc-400 mb-4">
@@ -211,7 +211,7 @@ export default function DashboardPage() {
                 Get your API Key
               </Button>
             </Link>
-          </Link>
+          </div>
         ) : (
           <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
             {recentTraces.map((trace) => (
@@ -232,8 +232,8 @@ export default function DashboardPage() {
                     <p className="text-xs text-zinc-400 dark:text-zinc-500 font-mono">
                       {trace.sessionId?.slice(0, 16) || trace.id.slice(0, 8)}
                     </p>
-                  </Link>
-                </Link>
+                  </div>
+                </div>
                 <div className="flex items-center gap-8 text-sm text-zinc-500 dark:text-zinc-400">
                   <span className="w-16 text-right">{formatDuration(trace.totalDurationMs)}</span>
                   <span className="w-20 text-right">{trace.totalTokens.toLocaleString()} tok</span>
@@ -252,12 +252,12 @@ export default function DashboardPage() {
                   >
                     {trace.status}
                   </Badge>
-                </Link>
+                </div>
               </Link>
             ))}
-          </Link>
+          </div>
         )}
-      </Link>
-    </Link>
+      </div>
+    </div>
   );
 }
