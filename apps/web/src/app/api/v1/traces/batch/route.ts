@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/db/client';
 import { traces, spans } from '@/db/schema';
-import { authenticate, unauthorized, badRequest } from '@/lib/auth';
+import { authenticate, unauthorized, badRequest, checkProjectRateLimit } from '@/lib/auth';
 import { calculateCost } from '@/lib/pricing';
 import { eq, and } from 'drizzle-orm';
 
@@ -67,6 +67,10 @@ const batchRequestSchema = z.object({
 export async function POST(request: NextRequest) {
   const auth = await authenticate(request);
   if (!auth) return unauthorized();
+
+  // Rate limit by project (100 req/min)
+  const rateLimited = checkProjectRateLimit(auth.projectId);
+  if (rateLimited) return rateLimited;
 
   try {
     const body = await request.json();

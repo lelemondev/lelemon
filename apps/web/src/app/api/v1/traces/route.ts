@@ -2,13 +2,16 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/db/client';
 import { traces } from '@/db/schema';
-import { authenticate, unauthorized, badRequest } from '@/lib/auth';
+import { authenticate, unauthorized, badRequest, checkProjectRateLimit } from '@/lib/auth';
 import { eq, and, desc, sql } from 'drizzle-orm';
 
 // GET /api/v1/traces - List traces
 export async function GET(request: NextRequest) {
   const auth = await authenticate(request);
   if (!auth) return unauthorized();
+
+  const rateLimited = checkProjectRateLimit(auth.projectId);
+  if (rateLimited) return rateLimited;
 
   const { searchParams } = new URL(request.url);
   const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100);
@@ -65,6 +68,9 @@ const createTraceSchema = z.object({
 export async function POST(request: NextRequest) {
   const auth = await authenticate(request);
   if (!auth) return unauthorized();
+
+  const rateLimited = checkProjectRateLimit(auth.projectId);
+  if (rateLimited) return rateLimited;
 
   try {
     const body = await request.json();

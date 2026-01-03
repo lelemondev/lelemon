@@ -3,6 +3,7 @@ import { projects } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { NextRequest } from 'next/server';
 import { createHash } from 'crypto';
+import { rateLimit, rateLimitResponse } from './rate-limit';
 
 export interface AuthContext {
   projectId: string;
@@ -18,6 +19,44 @@ export interface AuthContext {
  */
 function hashApiKey(apiKey: string): string {
   return createHash('sha256').update(apiKey).digest('hex');
+}
+
+/**
+ * Get client identifier for rate limiting (IP or forwarded IP)
+ */
+function getClientId(request: NextRequest): string {
+  return (
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip') ||
+    'unknown'
+  );
+}
+
+/**
+ * Check rate limit for unauthenticated requests (by IP)
+ * Stricter limit: 20 requests per minute
+ */
+export function checkIpRateLimit(request: NextRequest): Response | null {
+  const clientId = getClientId(request);
+  const result = rateLimit(`ip:${clientId}`, 20, 60000);
+  
+  if (!result.success) {
+    return rateLimitResponse(result);
+  }
+  return null;
+}
+
+/**
+ * Check rate limit for authenticated requests (by project)
+ * Higher limit: 100 requests per minute
+ */
+export function checkProjectRateLimit(projectId: string): Response | null {
+  const result = rateLimit(`project:${projectId}`, 100, 60000);
+  
+  if (!result.success) {
+    return rateLimitResponse(result);
+  }
+  return null;
 }
 
 /**
