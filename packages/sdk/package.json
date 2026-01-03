@@ -1,5 +1,5 @@
 {
-  "name": "@lelemon/sdk",
+  "name": "@lelemondev/sdk",
   "version": "0.1.0",
   "description": "Low-friction LLM observability. 3 lines of code.",
   "author": "Lelemon <info@lelemon.dev>",
