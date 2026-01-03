@@ -1,0 +1,25 @@
+# AWS Amplify Build Configuration for Next.js SSR in Yarn Workspace Monorepo
+# Based on: https://docs.aws.amazon.com/amplify/latest/userguide/monorepo-configuration.html
+
+version: 1
+applications:
+  - appRoot: apps/web
+    frontend:
+      buildPath: /
+      phases:
+        preBuild:
+          commands:
+            - npm install -g yarn
+            - yarn install --frozen-lockfile
+            - env | grep -E '^(NEXT_PUBLIC_|DATABASE_URL)' >> apps/web/.env.production || true
+        build:
+          commands:
+            - yarn workspace web build
+      artifacts:
+        baseDirectory: apps/web/.next
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
+          - apps/web/.next/cache/**/*
