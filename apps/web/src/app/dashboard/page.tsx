@@ -1,147 +1,263 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useProject } from '@/lib/project-context';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
-// Mock data for demo
-const stats = {
-  totalTraces: 1247,
-  totalTokens: 458293,
-  totalCost: 12.47,
-  avgDuration: 2340,
-  errorRate: 2.3,
-};
+interface Stats {
+  totalTraces: number;
+  totalTokens: number;
+  totalCostUsd: number;
+  errorRate: number;
+}
+
+interface RecentTrace {
+  id: string;
+  sessionId: string | null;
+  totalDurationMs: number;
+  totalTokens: number;
+  totalCostUsd: string;
+  status: 'active' | 'completed' | 'error';
+  createdAt: string;
+}
+
+function formatDuration(ms: number): string {
+  if (ms === 0) return '-';
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function formatRelativeTime(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 1000 / 60);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
+  return `${Math.floor(diffMins / 1440)}d ago`;
+}
 
 export default function DashboardPage() {
+  const { currentProject, isLoading: projectLoading } = useProject();
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [recentTraces, setRecentTraces] = useState<RecentTrace[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!currentProject) {
+      setStats(null);
+      setRecentTraces([]);
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const [statsRes, tracesRes] = await Promise.all([
+          fetch(`/api/v1/dashboard/stats?projectId=${currentProject.id}`),
+          fetch(`/api/v1/dashboard/traces?projectId=${currentProject.id}`),
+        ]);
+
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          setStats(statsData);
+        }
+
+        if (tracesRes.ok) {
+          const tracesData = await tracesRes.json();
+          setRecentTraces(tracesData.slice(0, 5));
+        }
+      } catch (error) {
+        console.error('Failed to fetch dashboard data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [currentProject]);
+
+  if (projectLoading) {
+    return (
+      <div className="space-y-8">
+        <div className="h-12 w-64 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-28 bg-zinc-200 dark:bg-zinc-800 rounded-2xl animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentProject) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16">
+        <div className="w-20 h-20 rounded-full bg-amber-100 dark:bg-amber-500/10 flex items-center justify-center mb-6">
+          <svg className="w-10 h-10 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+          </svg>
+        </div>
+        <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">Welcome to Lelemon</h2>
+        <p className="text-zinc-500 dark:text-zinc-400 mb-6 text-center max-w-md">
+          Create your first project to start tracing your LLM applications.
+        </p>
+        <Link href="/dashboard/projects">
+          <Button className="bg-amber-500 hover:bg-amber-600 text-zinc-900 font-medium">
+            <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Create Project
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Overview</h1>
+        <p className="text-zinc-500 dark:text-zinc-400 mt-1">
           Monitor your LLM application performance at a glance.
         </p>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Traces</CardTitle>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              className="h-4 w-4 text-muted-foreground"
-            >
-              <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-            </svg>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalTraces.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">+12% from last week</p>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+          <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Total Traces</p>
+          {isLoading ? (
+            <div className="h-9 w-24 bg-zinc-200 dark:bg-zinc-700 rounded mt-2 animate-pulse" />
+          ) : (
+            <p className="text-3xl font-bold text-zinc-900 dark:text-white mt-2">
+              {stats?.totalTraces.toLocaleString() ?? '0'}
+            </p>
+          )}
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Tokens</CardTitle>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              className="h-4 w-4 text-muted-foreground"
-            >
-              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-              <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-            </svg>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{(stats.totalTokens / 1000).toFixed(0)}k</div>
-            <p className="text-xs text-muted-foreground">+8% from last week</p>
-          </CardContent>
-        </Card>
+        <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+          <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Total Tokens</p>
+          {isLoading ? (
+            <div className="h-9 w-24 bg-zinc-200 dark:bg-zinc-700 rounded mt-2 animate-pulse" />
+          ) : (
+            <p className="text-3xl font-bold text-zinc-900 dark:text-white mt-2">
+              {stats?.totalTokens ? `${(stats.totalTokens / 1000).toFixed(1)}k` : '0'}
+            </p>
+          )}
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              className="h-4 w-4 text-muted-foreground"
-            >
-              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-            </svg>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${stats.totalCost.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">+5% from last week</p>
-          </CardContent>
-        </Card>
+        <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+          <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Total Cost</p>
+          {isLoading ? (
+            <div className="h-9 w-24 bg-zinc-200 dark:bg-zinc-700 rounded mt-2 animate-pulse" />
+          ) : (
+            <p className="text-3xl font-bold text-amber-600 dark:text-amber-400 mt-2">
+              ${stats?.totalCostUsd?.toFixed(2) ?? '0.00'}
+            </p>
+          )}
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Error Rate</CardTitle>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              className="h-4 w-4 text-muted-foreground"
-            >
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-              <line x1="12" y1="9" x2="12" y2="13" />
-              <line x1="12" y1="17" x2="12.01" y2="17" />
-            </svg>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.errorRate}%</div>
-            <p className="text-xs text-muted-foreground">-0.5% from last week</p>
-          </CardContent>
-        </Card>
+        <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+          <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Error Rate</p>
+          {isLoading ? (
+            <div className="h-9 w-24 bg-zinc-200 dark:bg-zinc-700 rounded mt-2 animate-pulse" />
+          ) : (
+            <p className={`text-3xl font-bold mt-2 ${
+              (stats?.errorRate ?? 0) > 5
+                ? 'text-red-600 dark:text-red-400'
+                : 'text-emerald-600 dark:text-emerald-400'
+            }`}>
+              {stats?.errorRate?.toFixed(1) ?? '0'}%
+            </p>
+          )}
+        </div>
       </div>
 
-      {/* Recent Activity */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Traces</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
+      {/* Recent Traces */}
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+        <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Recent Traces</h2>
+          <Link href="/dashboard/traces">
+            <Button variant="ghost" size="sm">
+              View all
+              <svg className="w-4 h-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+              </svg>
+            </Button>
+          </Link>
+        </div>
+        {isLoading ? (
+          <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="flex items-center justify-between py-2 border-b last:border-0">
-                <div className="flex items-center space-x-4">
-                  <div className={`w-2 h-2 rounded-full ${i === 3 ? 'bg-red-500' : 'bg-green-500'}`} />
-                  <div>
-                    <p className="text-sm font-medium">chat-completion</p>
-                    <p className="text-xs text-muted-foreground">session-{Math.random().toString(36).slice(2, 8)}</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                  <span>{Math.floor(Math.random() * 3000 + 500)}ms</span>
-                  <span>{Math.floor(Math.random() * 2000 + 100)} tokens</span>
-                  <span>${(Math.random() * 0.05).toFixed(4)}</span>
-                </div>
+              <div key={i} className="px-6 py-4">
+                <div className="h-10 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse" />
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+        ) : recentTraces.length === 0 ? (
+          <div className="p-12 text-center">
+            <p className="text-zinc-500 dark:text-zinc-400 mb-4">
+              No traces yet. Start by sending traces from your application.
+            </p>
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg">
+              <code className="text-sm font-mono text-zinc-600 dark:text-zinc-300">
+                LELEMON_API_KEY={currentProject.apiKey.slice(0, 12)}...
+              </code>
+            </div>
+          </div>
+        ) : (
+          <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
+            {recentTraces.map((trace) => (
+              <Link
+                key={trace.id}
+                href={`/dashboard/traces/${trace.id}`}
+                className="px-6 py-4 flex items-center justify-between hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+              >
+                <div className="flex items-center gap-4">
+                  <div className={`w-2 h-2 rounded-full ${
+                    trace.status === 'completed' ? 'bg-emerald-500' :
+                    trace.status === 'error' ? 'bg-red-500' : 'bg-amber-500'
+                  }`} />
+                  <div>
+                    <p className="text-sm font-medium text-zinc-900 dark:text-white">
+                      {formatRelativeTime(trace.createdAt)}
+                    </p>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 font-mono">
+                      {trace.sessionId?.slice(0, 16) || trace.id.slice(0, 8)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-8 text-sm text-zinc-500 dark:text-zinc-400">
+                  <span className="w-16 text-right">{formatDuration(trace.totalDurationMs)}</span>
+                  <span className="w-20 text-right">{trace.totalTokens.toLocaleString()} tok</span>
+                  <span className="w-16 text-right font-mono text-amber-600 dark:text-amber-400">
+                    ${parseFloat(trace.totalCostUsd).toFixed(3)}
+                  </span>
+                  <Badge
+                    variant={
+                      trace.status === 'completed'
+                        ? 'default'
+                        : trace.status === 'error'
+                        ? 'destructive'
+                        : 'secondary'
+                    }
+                    className="text-xs w-20 justify-center"
+                  >
+                    {trace.status}
+                  </Badge>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

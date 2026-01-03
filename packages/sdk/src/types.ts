@@ -28,6 +28,21 @@ export interface LelemonConfig {
    * Disable tracing (useful for testing)
    */
   disabled?: boolean;
+
+  /**
+   * Number of items to batch before sending (default: 10)
+   */
+  batchSize?: number;
+
+  /**
+   * Interval in ms to flush pending items (default: 1000)
+   */
+  flushIntervalMs?: number;
+
+  /**
+   * Request timeout in ms (default: 10000)
+   */
+  requestTimeoutMs?: number;
 }
 
 // ============================================

@@ -1,22 +1,29 @@
 /**
  * Lelemon SDK
- * Low-friction LLM observability
+ * Fire-and-forget LLM observability
  *
  * @example
- * import { trace } from '@lelemon/sdk';
+ * import { init, trace, flush } from '@lelemondev/sdk';
  *
+ * // Initialize once
+ * init({ apiKey: process.env.LELEMON_API_KEY });
+ *
+ * // Trace your agent (fire-and-forget, no awaits needed)
  * const t = trace({ input: userMessage });
  * try {
- *   const messages = [...];
- *   // ... your agent code ...
- *   await t.success(messages);
+ *   const result = await myAgent(userMessage);
+ *   t.success(result.messages);
  * } catch (error) {
- *   await t.error(error, messages);
+ *   t.error(error);
+ *   throw error;
  * }
+ *
+ * // For serverless: flush before response
+ * await flush();
  */
 
 // Main API
-export { trace, init, Trace } from './tracer';
+export { init, trace, flush, isEnabled, Trace } from './tracer';
 
 // Types
 export type {

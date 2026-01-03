@@ -1,14 +1,18 @@
 /**
- * Lelemon Tracer - Simple, low-friction API
+ * Lelemon Tracer - Fire-and-forget LLM observability
  *
  * Usage:
  *   const t = trace({ input: userMessage });
  *   try {
- *     // your agent code
- *     t.success(messages);
+ *     const result = await myAgent(userMessage);
+ *     t.success(result.messages);
  *   } catch (error) {
- *     t.error(error, messages);
+ *     t.error(error);
+ *     throw error;
  *   }
+ *
+ * For serverless:
+ *   await flush(); // Before response
  */
 
 import { Transport } from './transport';
@@ -17,27 +21,267 @@ import type {
   LelemonConfig,
   TraceOptions,
   ParsedLLMCall,
-  CompleteTraceRequest,
 } from './types';
 
 const DEFAULT_ENDPOINT = 'https://api.lelemon.dev';
 
-// Global config (set via init())
+// ─────────────────────────────────────────────────────────────
+// Global state
+// ─────────────────────────────────────────────────────────────
+
 let globalConfig: LelemonConfig = {};
 let globalTransport: Transport | null = null;
+let initialized = false;
+
+// ─────────────────────────────────────────────────────────────
+// Public API
+// ─────────────────────────────────────────────────────────────
 
 /**
- * Initialize the SDK globally (optional)
- * If not called, trace() will auto-initialize with env vars
+ * Initialize the SDK (optional, will auto-init with env vars)
+ *
+ * @example
+ * init({ apiKey: 'le_xxx' });
+ * init({ apiKey: 'le_xxx', debug: true });
  */
 export function init(config: LelemonConfig = {}): void {
   globalConfig = config;
   globalTransport = createTransport(config);
+  initialized = true;
 }
 
 /**
- * Create a transport instance
+ * Start a new trace
+ *
+ * @example
+ * const t = trace({ input: userMessage });
+ * try {
+ *   const result = await myAgent(userMessage);
+ *   t.success(result.messages);
+ * } catch (error) {
+ *   t.error(error);
+ *   throw error;
+ * }
  */
+export function trace(options: TraceOptions): Trace {
+  const transport = getTransport();
+  const debug = globalConfig.debug ?? false;
+  const disabled = globalConfig.disabled ?? !transport.isEnabled();
+
+  return new Trace(options, transport, debug, disabled);
+}
+
+/**
+ * Flush all pending traces to the server
+ * Call this before process exit in serverless environments
+ *
+ * @example
+ * // In Next.js API route
+ * export async function POST(req: Request) {
+ *   // ... your code with traces ...
+ *   await flush();
+ *   return Response.json(result);
+ * }
+ *
+ * // With Vercel waitUntil
+ * import { waitUntil } from '@vercel/functions';
+ * waitUntil(flush());
+ */
+export async function flush(): Promise<void> {
+  if (globalTransport) {
+    await globalTransport.flush();
+  }
+}
+
+/**
+ * Check if SDK is enabled
+ */
+export function isEnabled(): boolean {
+  return getTransport().isEnabled();
+}
+
+// ─────────────────────────────────────────────────────────────
+// Trace class
+// ─────────────────────────────────────────────────────────────
+
+export class Trace {
+  private id: string | null = null;
+  private idPromise: Promise<string | null>;
+  private readonly transport: Transport;
+  private readonly startTime: number;
+  private readonly debug: boolean;
+  private readonly disabled: boolean;
+  private completed = false;
+  private llmCalls: ParsedLLMCall[] = [];
+
+  constructor(
+    options: TraceOptions,
+    transport: Transport,
+    debug: boolean,
+    disabled: boolean
+  ) {
+    this.transport = transport;
+    this.startTime = Date.now();
+    this.debug = debug;
+    this.disabled = disabled;
+
+    // Enqueue trace creation immediately
+    if (disabled) {
+      this.idPromise = Promise.resolve(null);
+    } else {
+      this.idPromise = transport.enqueueCreate({
+        name: options.name,
+        sessionId: options.sessionId,
+        userId: options.userId,
+        input: options.input,
+        metadata: options.metadata,
+        tags: options.tags,
+      });
+
+      // Resolve ID when available (for internal use)
+      this.idPromise.then((id) => {
+        this.id = id;
+      });
+    }
+  }
+
+  /**
+   * Log an LLM response for token tracking
+   * Optional - use if you want per-call token counts
+   */
+  log(response: unknown): this {
+    if (this.disabled || this.completed) return this;
+
+    const parsed = parseResponse(response);
+    if (parsed.model || parsed.inputTokens || parsed.outputTokens) {
+      this.llmCalls.push(parsed);
+    }
+
+    return this;
+  }
+
+  /**
+   * Complete trace successfully (fire-and-forget)
+   *
+   * @param messages - Full message history (OpenAI/Anthropic format)
+   */
+  success(messages: unknown): void {
+    if (this.completed || this.disabled) return;
+    this.completed = true;
+
+    const durationMs = Date.now() - this.startTime;
+    const parsed = parseMessages(messages);
+    const allLLMCalls = [...this.llmCalls, ...parsed.llmCalls];
+    const { totalInputTokens, totalOutputTokens, models } = this.aggregateCalls(allLLMCalls);
+
+    // Wait for ID, then enqueue completion
+    this.idPromise.then((id) => {
+      if (!id) return;
+
+      this.transport.enqueueComplete(id, {
+        status: 'completed',
+        output: parsed.output,
+        systemPrompt: parsed.systemPrompt,
+        llmCalls: allLLMCalls,
+        toolCalls: parsed.toolCalls,
+        models,
+        totalInputTokens,
+        totalOutputTokens,
+        durationMs,
+      });
+    });
+  }
+
+  /**
+   * Complete trace with error (fire-and-forget)
+   *
+   * @param error - The error that occurred
+   * @param messages - Optional message history up to failure
+   */
+  error(error: Error | unknown, messages?: unknown): void {
+    if (this.completed || this.disabled) return;
+    this.completed = true;
+
+    const durationMs = Date.now() - this.startTime;
+    const parsed = messages ? parseMessages(messages) : null;
+    const errorObj = error instanceof Error ? error : new Error(String(error));
+    const allLLMCalls = parsed
+      ? [...this.llmCalls, ...parsed.llmCalls]
+      : this.llmCalls;
+    const { totalInputTokens, totalOutputTokens, models } = this.aggregateCalls(allLLMCalls);
+
+    // Wait for ID, then enqueue completion
+    this.idPromise.then((id) => {
+      if (!id) return;
+
+      this.transport.enqueueComplete(id, {
+        status: 'error',
+        errorMessage: errorObj.message,
+        errorStack: errorObj.stack,
+        output: parsed?.output,
+        systemPrompt: parsed?.systemPrompt,
+        llmCalls: allLLMCalls.length > 0 ? allLLMCalls : undefined,
+        toolCalls: parsed?.toolCalls,
+        models: models.length > 0 ? models : undefined,
+        totalInputTokens,
+        totalOutputTokens,
+        durationMs,
+      });
+    });
+  }
+
+  /**
+   * Get the trace ID (may be null if not yet created or failed)
+   */
+  getId(): string | null {
+    return this.id;
+  }
+
+  /**
+   * Wait for trace ID to be available
+   */
+  async waitForId(): Promise<string | null> {
+    return this.idPromise;
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Private methods
+  // ─────────────────────────────────────────────────────────────
+
+  private aggregateCalls(calls: ParsedLLMCall[]): {
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    models: string[];
+  } {
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    const modelSet = new Set<string>();
+
+    for (const call of calls) {
+      if (call.inputTokens) totalInputTokens += call.inputTokens;
+      if (call.outputTokens) totalOutputTokens += call.outputTokens;
+      if (call.model) modelSet.add(call.model);
+    }
+
+    return {
+      totalInputTokens,
+      totalOutputTokens,
+      models: Array.from(modelSet),
+    };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Internal helpers
+// ─────────────────────────────────────────────────────────────
+
+function getTransport(): Transport {
+  if (!globalTransport) {
+    globalTransport = createTransport(globalConfig);
+  }
+  return globalTransport;
+}
+
 function createTransport(config: LelemonConfig): Transport {
   const apiKey = config.apiKey ?? getEnvVar('LELEMON_API_KEY');
 
@@ -52,219 +296,15 @@ function createTransport(config: LelemonConfig): Transport {
     endpoint: config.endpoint ?? DEFAULT_ENDPOINT,
     debug: config.debug ?? false,
     disabled: config.disabled ?? !apiKey,
+    batchSize: config.batchSize,
+    flushIntervalMs: config.flushIntervalMs,
+    requestTimeoutMs: config.requestTimeoutMs,
   });
 }
 
-/**
- * Get transport (create if needed)
- */
-function getTransport(): Transport {
-  if (!globalTransport) {
-    globalTransport = createTransport(globalConfig);
-  }
-  return globalTransport;
-}
-
-/**
- * Get environment variable (works in Node and edge)
- */
 function getEnvVar(name: string): string | undefined {
   if (typeof process !== 'undefined' && process.env) {
     return process.env[name];
   }
   return undefined;
 }
-
-/**
- * Active trace handle returned by trace()
- */
-export class Trace {
-  private id: string | null = null;
-  private transport: Transport;
-  private options: TraceOptions;
-  private startTime: number;
-  private completed = false;
-  private debug: boolean;
-  private disabled: boolean;
-  private llmCalls: ParsedLLMCall[] = [];
-
-  constructor(options: TraceOptions, transport: Transport, debug: boolean, disabled: boolean) {
-    this.options = options;
-    this.transport = transport;
-    this.startTime = Date.now();
-    this.debug = debug;
-    this.disabled = disabled;
-  }
-
-  /**
-   * Initialize trace on server (called internally)
-   */
-  async init(): Promise<void> {
-    if (this.disabled) return;
-
-    try {
-      const result = await this.transport.createTrace({
-        name: this.options.name,
-        sessionId: this.options.sessionId,
-        userId: this.options.userId,
-        input: this.options.input,
-        metadata: this.options.metadata,
-        tags: this.options.tags,
-      });
-      this.id = result.id;
-    } catch (error) {
-      if (this.debug) {
-        console.error('[Lelemon] Failed to create trace:', error);
-      }
-    }
-  }
-
-  /**
-   * Log an LLM response (optional - for tracking individual calls)
-   * Use this if you want to track tokens per call, not just at the end
-   */
-  log(response: unknown): void {
-    const parsed = parseResponse(response);
-    if (parsed.model || parsed.inputTokens || parsed.outputTokens) {
-      this.llmCalls.push(parsed);
-    }
-  }
-
-  /**
-   * Complete trace successfully
-   * @param messages - The full message history (OpenAI/Anthropic format)
-   */
-  async success(messages: unknown): Promise<void> {
-    if (this.completed) return;
-    this.completed = true;
-
-    if (this.disabled || !this.id) return;
-
-    const durationMs = Date.now() - this.startTime;
-    const parsed = parseMessages(messages);
-
-    // Merge logged LLM calls with parsed ones
-    const allLLMCalls = [...this.llmCalls, ...parsed.llmCalls];
-
-    // Calculate totals
-    let totalInputTokens = 0;
-    let totalOutputTokens = 0;
-    const models = new Set<string>();
-
-    for (const call of allLLMCalls) {
-      if (call.inputTokens) totalInputTokens += call.inputTokens;
-      if (call.outputTokens) totalOutputTokens += call.outputTokens;
-      if (call.model) models.add(call.model);
-    }
-
-    try {
-      await this.transport.completeTrace(this.id, {
-        status: 'completed',
-        output: parsed.output,
-        systemPrompt: parsed.systemPrompt,
-        llmCalls: allLLMCalls,
-        toolCalls: parsed.toolCalls,
-        models: Array.from(models),
-        totalInputTokens,
-        totalOutputTokens,
-        durationMs,
-      });
-    } catch (err) {
-      if (this.debug) {
-        console.error('[Lelemon] Failed to complete trace:', err);
-      }
-    }
-  }
-
-  /**
-   * Complete trace with error
-   * @param error - The error that occurred
-   * @param messages - The message history up to the failure (optional)
-   */
-  async error(error: Error | unknown, messages?: unknown): Promise<void> {
-    if (this.completed) return;
-    this.completed = true;
-
-    if (this.disabled || !this.id) return;
-
-    const durationMs = Date.now() - this.startTime;
-    const parsed = messages ? parseMessages(messages) : null;
-
-    const errorObj = error instanceof Error ? error : new Error(String(error));
-
-    // Merge logged LLM calls
-    const allLLMCalls = parsed
-      ? [...this.llmCalls, ...parsed.llmCalls]
-      : this.llmCalls;
-
-    // Calculate totals
-    let totalInputTokens = 0;
-    let totalOutputTokens = 0;
-    const models = new Set<string>();
-
-    for (const call of allLLMCalls) {
-      if (call.inputTokens) totalInputTokens += call.inputTokens;
-      if (call.outputTokens) totalOutputTokens += call.outputTokens;
-      if (call.model) models.add(call.model);
-    }
-
-    const request: CompleteTraceRequest = {
-      status: 'error',
-      errorMessage: errorObj.message,
-      errorStack: errorObj.stack,
-      durationMs,
-      totalInputTokens,
-      totalOutputTokens,
-      models: Array.from(models),
-    };
-
-    if (parsed) {
-      request.output = parsed.output;
-      request.systemPrompt = parsed.systemPrompt;
-      request.llmCalls = allLLMCalls;
-      request.toolCalls = parsed.toolCalls;
-    }
-
-    try {
-      await this.transport.completeTrace(this.id, request);
-    } catch (err) {
-      if (this.debug) {
-        console.error('[Lelemon] Failed to complete trace:', err);
-      }
-    }
-  }
-}
-
-/**
- * Start a new trace
- *
- * @example
- * const t = trace({ input: userMessage });
- * try {
- *   const messages = [...];
- *   // ... your agent code ...
- *   await t.success(messages);
- * } catch (error) {
- *   await t.error(error, messages);
- *   throw error;
- * }
- */
-export function trace(options: TraceOptions): Trace {
-  const transport = getTransport();
-  const debug = globalConfig.debug ?? false;
-  const disabled = globalConfig.disabled ?? !transport.isEnabled();
-
-  const t = new Trace(options, transport, debug, disabled);
-
-  // Initialize async (fire and forget)
-  t.init().catch((err) => {
-    if (debug) {
-      console.error('[Lelemon] Trace init failed:', err);
-    }
-  });
-
-  return t;
-}
-
-// Re-export for backwards compatibility
-export { Trace as LLMTracer };
