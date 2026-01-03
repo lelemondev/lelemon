@@ -5,8 +5,13 @@ export async function middleware(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
 
-  // Skip auth if Supabase is not configured
+  // Block protected routes if Supabase is not configured
   if (!supabaseUrl || !supabaseKey) {
+    if (request.nextUrl.pathname.startsWith('/dashboard')) {
+      return new NextResponse('Service unavailable - authentication not configured', { 
+        status: 503 
+      });
+    }
     return NextResponse.next();
   }
 
@@ -74,6 +79,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - api (API routes)
      */
-    '/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

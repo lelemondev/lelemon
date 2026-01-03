@@ -2,6 +2,7 @@ import { db } from '@/db/client';
 import { projects } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { NextRequest } from 'next/server';
+import { createHash } from 'crypto';
 
 export interface AuthContext {
   projectId: string;
@@ -10,6 +11,13 @@ export interface AuthContext {
     name: string;
     ownerEmail: string;
   };
+}
+
+/**
+ * Hash an API key using SHA-256
+ */
+function hashApiKey(apiKey: string): string {
+  return createHash('sha256').update(apiKey).digest('hex');
 }
 
 /**
@@ -30,8 +38,11 @@ export async function authenticate(request: NextRequest): Promise<AuthContext | 
   }
 
   try {
+    // Hash the API key and compare against stored hash (not plaintext)
+    const apiKeyHash = hashApiKey(apiKey);
+
     const project = await db.query.projects.findFirst({
-      where: eq(projects.apiKey, apiKey),
+      where: eq(projects.apiKeyHash, apiKeyHash),
       columns: {
         id: true,
         name: true,

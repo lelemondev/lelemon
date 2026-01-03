@@ -21,7 +21,7 @@ export async function GET() {
       columns: {
         id: true,
         name: true,
-        apiKey: true,
+        // apiKey: excluded for security
         createdAt: true,
         updatedAt: true,
       },
