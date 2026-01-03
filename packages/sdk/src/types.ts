@@ -1,5 +1,6 @@
 /**
  * Lelemon SDK Types
+ * Minimal, low-friction API for LLM observability
  */
 
 // ============================================
@@ -24,26 +25,21 @@ export interface LelemonConfig {
   debug?: boolean;
 
   /**
-   * Batch size for sending spans (default: 10)
-   */
-  batchSize?: number;
-
-  /**
-   * Flush interval in milliseconds (default: 1000)
-   */
-  flushInterval?: number;
-
-  /**
    * Disable tracing (useful for testing)
    */
   disabled?: boolean;
 }
 
 // ============================================
-// TRACE
+// TRACE OPTIONS
 // ============================================
 
 export interface TraceOptions {
+  /**
+   * Initial input (user message, prompt, etc.)
+   */
+  input: unknown;
+
   /**
    * Session ID to group related traces
    */
@@ -55,7 +51,7 @@ export interface TraceOptions {
   userId?: string;
 
   /**
-   * Custom metadata (any JSON-serializable data)
+   * Custom metadata
    */
   metadata?: Record<string, unknown>;
 
@@ -63,113 +59,111 @@ export interface TraceOptions {
    * Tags for filtering
    */
   tags?: string[];
+
+  /**
+   * Name for this trace (e.g., 'chat-agent', 'summarizer')
+   */
+  name?: string;
 }
 
-export type TraceStatus = 'active' | 'completed' | 'error';
-
 // ============================================
-// SPAN
+// MESSAGE FORMATS (OpenAI / Anthropic)
 // ============================================
 
-export type SpanType = 'llm' | 'tool' | 'retrieval' | 'custom';
+export interface OpenAIMessage {
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  content: string | null;
+  tool_calls?: OpenAIToolCall[];
+  tool_call_id?: string;
+}
 
-export type SpanStatus = 'pending' | 'success' | 'error';
+export interface OpenAIToolCall {
+  id: string;
+  type: 'function';
+  function: {
+    name: string;
+    arguments: string;
+  };
+}
 
-export interface SpanOptions {
-  /**
-   * Type of span
-   */
-  type: SpanType;
+export interface AnthropicMessage {
+  role: 'user' | 'assistant';
+  content: string | AnthropicContent[];
+}
 
-  /**
-   * Name of the operation (e.g., 'openai.chat', 'search_documents')
-   */
-  name: string;
-
-  /**
-   * Input data (request body, parameters, etc.)
-   */
+export interface AnthropicContent {
+  type: 'text' | 'tool_use' | 'tool_result';
+  text?: string;
+  id?: string;
+  name?: string;
   input?: unknown;
-
-  /**
-   * Custom metadata
-   */
-  metadata?: Record<string, unknown>;
+  tool_use_id?: string;
+  content?: string;
 }
 
-export interface SpanEndOptions {
-  /**
-   * Output data (response body, result, etc.)
-   */
-  output?: unknown;
+// Generic message type (union)
+export type Message = OpenAIMessage | AnthropicMessage | Record<string, unknown>;
 
-  /**
-   * Status of the span
-   */
-  status?: SpanStatus;
+// ============================================
+// PARSED DATA
+// ============================================
 
-  /**
-   * Error message if status is 'error'
-   */
-  errorMessage?: string;
+export interface ParsedTrace {
+  systemPrompt?: string;
+  userInput?: string;
+  output?: string;
+  llmCalls: ParsedLLMCall[];
+  toolCalls: ParsedToolCall[];
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  models: string[];
+  provider?: 'openai' | 'anthropic' | 'gemini' | 'bedrock' | 'unknown';
+}
 
-  /**
-   * LLM model used
-   */
+export interface ParsedLLMCall {
   model?: string;
-
-  /**
-   * LLM provider (openai, anthropic, bedrock)
-   */
   provider?: string;
-
-  /**
-   * Number of input tokens
-   */
   inputTokens?: number;
-
-  /**
-   * Number of output tokens
-   */
   outputTokens?: number;
+  input?: unknown;
+  output?: unknown;
+  toolCalls?: ParsedToolCall[];
+}
 
-  /**
-   * Duration in milliseconds (auto-calculated if not provided)
-   */
-  durationMs?: number;
+export interface ParsedToolCall {
+  name: string;
+  input: unknown;
+  output?: unknown;
 }
 
 // ============================================
-// API TYPES
+// API REQUEST/RESPONSE
 // ============================================
 
 export interface CreateTraceRequest {
+  name?: string;
   sessionId?: string;
   userId?: string;
-  metadata?: Record<string, unknown>;
-  tags?: string[];
-}
-
-export interface CreateSpanRequest {
-  parentSpanId?: string;
-  type: SpanType;
-  name: string;
   input?: unknown;
-  output?: unknown;
-  inputTokens?: number;
-  outputTokens?: number;
-  durationMs?: number;
-  status?: SpanStatus;
-  errorMessage?: string;
-  model?: string;
-  provider?: string;
-  metadata?: Record<string, unknown>;
-  startedAt?: string;
-  endedAt?: string;
-}
-
-export interface UpdateTraceRequest {
-  status?: TraceStatus;
   metadata?: Record<string, unknown>;
   tags?: string[];
 }
+
+export interface CompleteTraceRequest {
+  status: 'completed' | 'error';
+  output?: unknown;
+  errorMessage?: string;
+  errorStack?: string;
+  // Parsed data
+  systemPrompt?: string;
+  llmCalls?: ParsedLLMCall[];
+  toolCalls?: ParsedToolCall[];
+  models?: string[];
+  totalInputTokens?: number;
+  totalOutputTokens?: number;
+  totalCostUsd?: number;
+  durationMs?: number;
+  metadata?: Record<string, unknown>;
+}
+
+export type TraceStatus = 'active' | 'completed' | 'error';

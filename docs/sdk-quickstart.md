@@ -1,277 +1,213 @@
-# SDK Quick Start Guide
+# Lelemon SDK
+
+Low-friction LLM observability. 3 lines of code.
 
 ## Installation
 
 ```bash
 npm install @lelemon/sdk
-# or
-yarn add @lelemon/sdk
-# or
-pnpm add @lelemon/sdk
 ```
 
-## Basic Usage
+## Quick Start
 
 ```typescript
-import { LLMTracer } from '@lelemon/sdk';
+import { trace } from '@lelemon/sdk';
 
-// Initialize (reads LELEMON_API_KEY from env if not provided)
-const tracer = new LLMTracer({
-  apiKey: 'le_your_api_key',
-});
-
-// Create a trace for a conversation
-const trace = await tracer.startTrace({
-  sessionId: 'conv-123',
-  userId: 'user-456',
-});
-
-// Record an LLM call
-const span = trace.startSpan({
-  type: 'llm',
-  name: 'openai.chat',
-  input: { messages: [{ role: 'user', content: 'Hello' }] },
-});
-
-// ... your LLM call here ...
-
-span.end({
-  output: { content: 'Hi there!' },
-  model: 'gpt-4',
-  inputTokens: 10,
-  outputTokens: 5,
-});
-
-// End the trace
-await trace.end();
-```
-
-## Integration Examples
-
-### OpenAI
-
-```typescript
-import OpenAI from 'openai';
-import { LLMTracer } from '@lelemon/sdk';
-
-const openai = new OpenAI();
-const tracer = new LLMTracer();
-
-async function chat(messages: OpenAI.ChatCompletionMessageParam[]) {
-  const trace = await tracer.startTrace({ sessionId: 'chat-session' });
-
-  const span = trace.startSpan({
-    type: 'llm',
-    name: 'openai.chat',
-    input: { messages },
-  });
+async function runAgent(userMessage: string) {
+  const t = trace({ input: userMessage });
 
   try {
+    const messages = [
+      { role: 'system', content: 'You are a helpful assistant.' },
+      { role: 'user', content: userMessage },
+    ];
+
     const response = await openai.chat.completions.create({
       model: 'gpt-4',
       messages,
     });
 
-    span.end({
-      output: response.choices[0].message,
-      model: response.model,
-      inputTokens: response.usage?.prompt_tokens,
-      outputTokens: response.usage?.completion_tokens,
-    });
+    messages.push(response.choices[0].message);
 
-    await trace.end();
-    return response.choices[0].message;
+    await t.success(messages);
+    return response.choices[0].message.content;
   } catch (error) {
-    span.setError(error as Error);
-    await trace.end({ status: 'error' });
+    await t.error(error, messages);
     throw error;
   }
 }
 ```
 
+That's it. Lelemon auto-detects:
+- System prompt
+- User input
+- Tool calls and results
+- Final output
+- Token usage (if you log responses)
+
+## Environment Variable
+
+```bash
+LELEMON_API_KEY=le_your_api_key
+```
+
+Or pass it directly:
+
+```typescript
+import { init } from '@lelemon/sdk';
+
+init({ apiKey: 'le_xxx' });
+```
+
+## With Tool Calls
+
+Lelemon automatically parses tool calls from the message history:
+
+```typescript
+import { trace } from '@lelemon/sdk';
+
+async function agentWithTools(userMessage: string) {
+  const t = trace({ input: userMessage });
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userMessage },
+  ];
+
+  try {
+    while (true) {
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4',
+        messages,
+        tools: myTools,
+      });
+
+      // Optional: log response to capture token usage
+      t.log(response);
+
+      const message = response.choices[0].message;
+      messages.push(message);
+
+      if (message.tool_calls) {
+        for (const toolCall of message.tool_calls) {
+          const result = await executeTool(toolCall);
+          messages.push({
+            role: 'tool',
+            tool_call_id: toolCall.id,
+            content: JSON.stringify(result),
+          });
+        }
+      } else {
+        await t.success(messages);
+        return message.content;
+      }
+    }
+  } catch (error) {
+    await t.error(error, messages);
+    throw error;
+  }
+}
+```
+
+## API Reference
+
+### `trace(options)`
+
+Start a new trace.
+
+```typescript
+const t = trace({
+  input: userMessage,        // Required: initial input
+  name: 'my-agent',          // Optional: trace name
+  sessionId: 'session-123',  // Optional: group related traces
+  userId: 'user-456',        // Optional: end user ID
+  metadata: { ... },         // Optional: custom data
+  tags: ['prod'],            // Optional: tags for filtering
+});
+```
+
+### `t.success(messages)`
+
+Complete trace successfully. Pass the full message history.
+
+```typescript
+await t.success(messages);
+```
+
+### `t.error(error, messages?)`
+
+Complete trace with error. Messages are optional but helpful for debugging.
+
+```typescript
+await t.error(error, messages);
+```
+
+### `t.log(response)`
+
+Optional: Log an LLM response to capture token usage.
+
+```typescript
+const response = await openai.chat.completions.create({ ... });
+t.log(response);  // Extracts model, input/output tokens
+```
+
+### `init(config)`
+
+Optional: Initialize SDK globally.
+
+```typescript
+import { init } from '@lelemon/sdk';
+
+init({
+  apiKey: 'le_xxx',
+  endpoint: 'https://custom.endpoint.com',  // Optional
+  debug: true,                               // Optional: log requests
+  disabled: process.env.NODE_ENV === 'test', // Optional: disable in tests
+});
+```
+
+## Supported Formats
+
+Lelemon auto-detects message formats:
+
+### OpenAI
+
+```typescript
+const messages = [
+  { role: 'system', content: '...' },
+  { role: 'user', content: '...' },
+  { role: 'assistant', content: '...', tool_calls: [...] },
+  { role: 'tool', tool_call_id: '...', content: '...' },
+];
+```
+
 ### Anthropic
 
 ```typescript
-import Anthropic from '@anthropic-ai/sdk';
-import { LLMTracer } from '@lelemon/sdk';
-
-const anthropic = new Anthropic();
-const tracer = new LLMTracer();
-
-async function chat(prompt: string) {
-  const trace = await tracer.startTrace();
-
-  const span = trace.startSpan({
-    type: 'llm',
-    name: 'anthropic.messages',
-    input: { prompt },
-  });
-
-  const response = await anthropic.messages.create({
-    model: 'claude-3-5-sonnet-20241022',
-    max_tokens: 1024,
-    messages: [{ role: 'user', content: prompt }],
-  });
-
-  span.end({
-    output: response.content,
-    model: response.model,
-    inputTokens: response.usage.input_tokens,
-    outputTokens: response.usage.output_tokens,
-  });
-
-  await trace.end();
-  return response;
-}
+const messages = [
+  { role: 'user', content: '...' },
+  { role: 'assistant', content: [
+    { type: 'text', text: '...' },
+    { type: 'tool_use', id: '...', name: '...', input: {...} },
+  ]},
+  { role: 'user', content: [
+    { type: 'tool_result', tool_use_id: '...', content: '...' },
+  ]},
+];
 ```
 
-### AWS Bedrock
+## What Gets Captured
 
-```typescript
-import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
-import { LLMTracer } from '@lelemon/sdk';
-
-const bedrock = new BedrockRuntimeClient({ region: 'us-east-1' });
-const tracer = new LLMTracer();
-
-async function invokeClaude(prompt: string) {
-  const trace = await tracer.startTrace();
-
-  const span = trace.startSpan({
-    type: 'llm',
-    name: 'bedrock.invoke',
-    input: { prompt },
-  });
-
-  const response = await bedrock.send(new InvokeModelCommand({
-    modelId: 'anthropic.claude-3-sonnet-20240229-v1:0',
-    body: JSON.stringify({
-      anthropic_version: 'bedrock-2023-05-31',
-      max_tokens: 1024,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  }));
-
-  const result = JSON.parse(new TextDecoder().decode(response.body));
-
-  span.end({
-    output: result.content,
-    model: 'anthropic.claude-3-sonnet-20240229-v1:0',
-    provider: 'bedrock',
-    inputTokens: result.usage.input_tokens,
-    outputTokens: result.usage.output_tokens,
-  });
-
-  await trace.end();
-  return result;
-}
-```
-
-## Tool Calls
-
-```typescript
-const span = trace.startSpan({
-  type: 'tool',
-  name: 'search_documents',
-  input: { query: 'pricing information' },
-});
-
-const results = await searchDocuments(query);
-
-span.end({
-  output: { results },
-  status: 'success',
-});
-```
-
-## Nested Spans
-
-```typescript
-const parentSpan = trace.startSpan({
-  type: 'custom',
-  name: 'process-request',
-});
-
-// Child span
-const childSpan = parentSpan.startSpan({
-  type: 'llm',
-  name: 'generate-response',
-  input: { messages },
-});
-
-// ... LLM call ...
-
-childSpan.end({ output: response });
-parentSpan.end();
-```
-
-## Error Handling
-
-```typescript
-const span = trace.startSpan({ type: 'llm', name: 'chat' });
-
-try {
-  const response = await llm.call();
-  span.end({ output: response, status: 'success' });
-} catch (error) {
-  span.setError(error as Error);
-  // or manually:
-  // span.end({ status: 'error', errorMessage: error.message });
-}
-```
-
-## Serverless / Edge
-
-Always flush before the function ends:
-
-```typescript
-export async function handler(event) {
-  const tracer = new LLMTracer();
-  const trace = await tracer.startTrace();
-
-  // ... your logic ...
-
-  await trace.end();
-  await tracer.flush(); // Important for serverless!
-
-  return response;
-}
-```
-
-## Configuration Options
-
-```typescript
-const tracer = new LLMTracer({
-  // Required
-  apiKey: 'le_xxx',
-
-  // Optional
-  endpoint: 'https://your-instance.vercel.app', // Custom endpoint
-  debug: true,                                   // Enable console logging
-  batchSize: 10,                                 // Spans per batch
-  flushInterval: 1000,                           // Batch interval (ms)
-  disabled: process.env.NODE_ENV === 'test',    // Disable in tests
-});
-```
-
-## Metadata & Tags
-
-```typescript
-const trace = await tracer.startTrace({
-  sessionId: 'session-123',
-  userId: 'user-456',
-  metadata: {
-    environment: 'production',
-    version: '1.2.3',
-    customField: 'any value',
-  },
-  tags: ['production', 'high-priority', 'experiment-a'],
-});
-
-// Add metadata later
-trace.setMetadata('responseTime', 1234);
-trace.addTag('cached');
-```
+| Data | Source |
+|------|--------|
+| Input | First user message |
+| System prompt | System message |
+| Tool calls | `tool_calls` in assistant messages |
+| Tool results | Tool messages |
+| Output | Last assistant message |
+| Tokens | From `t.log(response)` calls |
+| Duration | Auto-calculated |
+| Errors | From `t.error()` |
 
 ## TypeScript Types
 
@@ -279,10 +215,8 @@ trace.addTag('cached');
 import type {
   LelemonConfig,
   TraceOptions,
-  SpanOptions,
-  SpanEndOptions,
-  TraceStatus,
-  SpanType,
-  SpanStatus,
+  ParsedTrace,
+  ParsedLLMCall,
+  ParsedToolCall,
 } from '@lelemon/sdk';
 ```

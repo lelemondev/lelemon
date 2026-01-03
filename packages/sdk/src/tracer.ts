@@ -1,240 +1,270 @@
 /**
- * Lelemon Tracer - Main SDK class
+ * Lelemon Tracer - Simple, low-friction API
+ *
+ * Usage:
+ *   const t = trace({ input: userMessage });
+ *   try {
+ *     // your agent code
+ *     t.success(messages);
+ *   } catch (error) {
+ *     t.error(error, messages);
+ *   }
  */
 
 import { Transport } from './transport';
+import { parseMessages, parseResponse } from './parser';
 import type {
   LelemonConfig,
   TraceOptions,
-  SpanOptions,
-  SpanEndOptions,
-  TraceStatus,
-  SpanStatus,
-  CreateSpanRequest,
+  ParsedLLMCall,
+  CompleteTraceRequest,
 } from './types';
 
 const DEFAULT_ENDPOINT = 'https://api.lelemon.dev';
 
+// Global config (set via init())
+let globalConfig: LelemonConfig = {};
+let globalTransport: Transport | null = null;
+
 /**
- * Span instance for recording operations
+ * Initialize the SDK globally (optional)
+ * If not called, trace() will auto-initialize with env vars
  */
-export class Span {
-  readonly id: string;
-  private traceId: string;
-  private transport: Transport;
-  private options: SpanOptions;
-  private startTime: number;
-  private ended = false;
-  private debug: boolean;
-
-  constructor(
-    id: string,
-    traceId: string,
-    transport: Transport,
-    options: SpanOptions,
-    debug: boolean
-  ) {
-    this.id = id;
-    this.traceId = traceId;
-    this.transport = transport;
-    this.options = options;
-    this.startTime = Date.now();
-    this.debug = debug;
-  }
-
-  /**
-   * Create a child span
-   */
-  startSpan(options: SpanOptions): Span {
-    const id = crypto.randomUUID();
-    return new Span(id, this.traceId, this.transport, options, this.debug);
-  }
-
-  /**
-   * End the span and record results
-   */
-  end(options: SpanEndOptions = {}): void {
-    if (this.ended) {
-      if (this.debug) {
-        console.warn('[Lelemon] Span already ended');
-      }
-      return;
-    }
-    this.ended = true;
-
-    const durationMs = options.durationMs ?? Date.now() - this.startTime;
-    const now = new Date().toISOString();
-
-    const spanData: CreateSpanRequest = {
-      type: this.options.type,
-      name: this.options.name,
-      input: this.options.input,
-      output: options.output,
-      inputTokens: options.inputTokens,
-      outputTokens: options.outputTokens,
-      durationMs,
-      status: options.status ?? 'success',
-      errorMessage: options.errorMessage,
-      model: options.model,
-      provider: options.provider,
-      metadata: this.options.metadata,
-      startedAt: new Date(this.startTime).toISOString(),
-      endedAt: now,
-    };
-
-    // Queue the span for batch sending
-    this.transport.queueSpan(this.traceId, spanData);
-  }
-
-  /**
-   * Mark span as error
-   */
-  setError(error: Error): void {
-    this.end({
-      status: 'error',
-      errorMessage: error.message,
-    });
-  }
+export function init(config: LelemonConfig = {}): void {
+  globalConfig = config;
+  globalTransport = createTransport(config);
 }
 
 /**
- * Trace instance for grouping related spans
+ * Create a transport instance
+ */
+function createTransport(config: LelemonConfig): Transport {
+  const apiKey = config.apiKey ?? getEnvVar('LELEMON_API_KEY');
+
+  if (!apiKey && !config.disabled) {
+    console.warn(
+      '[Lelemon] No API key provided. Set apiKey in config or LELEMON_API_KEY env var. Tracing disabled.'
+    );
+  }
+
+  return new Transport({
+    apiKey: apiKey ?? '',
+    endpoint: config.endpoint ?? DEFAULT_ENDPOINT,
+    debug: config.debug ?? false,
+    disabled: config.disabled ?? !apiKey,
+  });
+}
+
+/**
+ * Get transport (create if needed)
+ */
+function getTransport(): Transport {
+  if (!globalTransport) {
+    globalTransport = createTransport(globalConfig);
+  }
+  return globalTransport;
+}
+
+/**
+ * Get environment variable (works in Node and edge)
+ */
+function getEnvVar(name: string): string | undefined {
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env[name];
+  }
+  return undefined;
+}
+
+/**
+ * Active trace handle returned by trace()
  */
 export class Trace {
-  readonly id: string;
+  private id: string | null = null;
   private transport: Transport;
   private options: TraceOptions;
+  private startTime: number;
+  private completed = false;
   private debug: boolean;
-  private ended = false;
+  private disabled: boolean;
+  private llmCalls: ParsedLLMCall[] = [];
 
-  constructor(
-    id: string,
-    transport: Transport,
-    options: TraceOptions,
-    debug: boolean
-  ) {
-    this.id = id;
-    this.transport = transport;
+  constructor(options: TraceOptions, transport: Transport, debug: boolean, disabled: boolean) {
     this.options = options;
+    this.transport = transport;
+    this.startTime = Date.now();
     this.debug = debug;
+    this.disabled = disabled;
   }
 
   /**
-   * Start a new span in this trace
+   * Initialize trace on server (called internally)
    */
-  startSpan(options: SpanOptions): Span {
-    const id = crypto.randomUUID();
-    return new Span(id, this.id, this.transport, options, this.debug);
-  }
+  async init(): Promise<void> {
+    if (this.disabled) return;
 
-  /**
-   * Update trace metadata
-   */
-  setMetadata(key: string, value: unknown): void {
-    this.options.metadata = {
-      ...this.options.metadata,
-      [key]: value,
-    };
-  }
-
-  /**
-   * Add a tag to the trace
-   */
-  addTag(tag: string): void {
-    this.options.tags = [...(this.options.tags || []), tag];
-  }
-
-  /**
-   * End the trace
-   */
-  async end(options: { status?: TraceStatus } = {}): Promise<void> {
-    if (this.ended) {
+    try {
+      const result = await this.transport.createTrace({
+        name: this.options.name,
+        sessionId: this.options.sessionId,
+        userId: this.options.userId,
+        input: this.options.input,
+        metadata: this.options.metadata,
+        tags: this.options.tags,
+      });
+      this.id = result.id;
+    } catch (error) {
       if (this.debug) {
-        console.warn('[Lelemon] Trace already ended');
+        console.error('[Lelemon] Failed to create trace:', error);
       }
-      return;
     }
-    this.ended = true;
+  }
 
-    // Flush pending spans first
-    await this.transport.flush();
+  /**
+   * Log an LLM response (optional - for tracking individual calls)
+   * Use this if you want to track tokens per call, not just at the end
+   */
+  log(response: unknown): void {
+    const parsed = parseResponse(response);
+    if (parsed.model || parsed.inputTokens || parsed.outputTokens) {
+      this.llmCalls.push(parsed);
+    }
+  }
 
-    // Update trace status
-    await this.transport.updateTrace(this.id, {
-      status: options.status ?? 'completed',
-      metadata: this.options.metadata,
-      tags: this.options.tags,
-    });
+  /**
+   * Complete trace successfully
+   * @param messages - The full message history (OpenAI/Anthropic format)
+   */
+  async success(messages: unknown): Promise<void> {
+    if (this.completed) return;
+    this.completed = true;
+
+    if (this.disabled || !this.id) return;
+
+    const durationMs = Date.now() - this.startTime;
+    const parsed = parseMessages(messages);
+
+    // Merge logged LLM calls with parsed ones
+    const allLLMCalls = [...this.llmCalls, ...parsed.llmCalls];
+
+    // Calculate totals
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    const models = new Set<string>();
+
+    for (const call of allLLMCalls) {
+      if (call.inputTokens) totalInputTokens += call.inputTokens;
+      if (call.outputTokens) totalOutputTokens += call.outputTokens;
+      if (call.model) models.add(call.model);
+    }
+
+    try {
+      await this.transport.completeTrace(this.id, {
+        status: 'completed',
+        output: parsed.output,
+        systemPrompt: parsed.systemPrompt,
+        llmCalls: allLLMCalls,
+        toolCalls: parsed.toolCalls,
+        models: Array.from(models),
+        totalInputTokens,
+        totalOutputTokens,
+        durationMs,
+      });
+    } catch (err) {
+      if (this.debug) {
+        console.error('[Lelemon] Failed to complete trace:', err);
+      }
+    }
+  }
+
+  /**
+   * Complete trace with error
+   * @param error - The error that occurred
+   * @param messages - The message history up to the failure (optional)
+   */
+  async error(error: Error | unknown, messages?: unknown): Promise<void> {
+    if (this.completed) return;
+    this.completed = true;
+
+    if (this.disabled || !this.id) return;
+
+    const durationMs = Date.now() - this.startTime;
+    const parsed = messages ? parseMessages(messages) : null;
+
+    const errorObj = error instanceof Error ? error : new Error(String(error));
+
+    // Merge logged LLM calls
+    const allLLMCalls = parsed
+      ? [...this.llmCalls, ...parsed.llmCalls]
+      : this.llmCalls;
+
+    // Calculate totals
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    const models = new Set<string>();
+
+    for (const call of allLLMCalls) {
+      if (call.inputTokens) totalInputTokens += call.inputTokens;
+      if (call.outputTokens) totalOutputTokens += call.outputTokens;
+      if (call.model) models.add(call.model);
+    }
+
+    const request: CompleteTraceRequest = {
+      status: 'error',
+      errorMessage: errorObj.message,
+      errorStack: errorObj.stack,
+      durationMs,
+      totalInputTokens,
+      totalOutputTokens,
+      models: Array.from(models),
+    };
+
+    if (parsed) {
+      request.output = parsed.output;
+      request.systemPrompt = parsed.systemPrompt;
+      request.llmCalls = allLLMCalls;
+      request.toolCalls = parsed.toolCalls;
+    }
+
+    try {
+      await this.transport.completeTrace(this.id, request);
+    } catch (err) {
+      if (this.debug) {
+        console.error('[Lelemon] Failed to complete trace:', err);
+      }
+    }
   }
 }
 
 /**
- * Main Lelemon tracer class
+ * Start a new trace
+ *
+ * @example
+ * const t = trace({ input: userMessage });
+ * try {
+ *   const messages = [...];
+ *   // ... your agent code ...
+ *   await t.success(messages);
+ * } catch (error) {
+ *   await t.error(error, messages);
+ *   throw error;
+ * }
  */
-export class LLMTracer {
-  private transport: Transport;
-  private config: LelemonConfig;
-  private disabled: boolean;
+export function trace(options: TraceOptions): Trace {
+  const transport = getTransport();
+  const debug = globalConfig.debug ?? false;
+  const disabled = globalConfig.disabled ?? !transport.isEnabled();
 
-  constructor(config: LelemonConfig = {}) {
-    const apiKey = config.apiKey ?? process.env.LELEMON_API_KEY;
+  const t = new Trace(options, transport, debug, disabled);
 
-    if (!apiKey && !config.disabled) {
-      console.warn(
-        '[Lelemon] No API key provided. Set apiKey in config or LELEMON_API_KEY env var. Tracing disabled.'
-      );
+  // Initialize async (fire and forget)
+  t.init().catch((err) => {
+    if (debug) {
+      console.error('[Lelemon] Trace init failed:', err);
     }
+  });
 
-    this.config = config;
-    this.disabled = config.disabled ?? !apiKey;
-
-    this.transport = new Transport(
-      {
-        apiKey: apiKey ?? '',
-        endpoint: config.endpoint ?? DEFAULT_ENDPOINT,
-        debug: config.debug ?? false,
-      },
-      config.batchSize,
-      config.flushInterval
-    );
-  }
-
-  /**
-   * Start a new trace
-   */
-  async startTrace(options: TraceOptions = {}): Promise<Trace> {
-    if (this.disabled) {
-      // Return a no-op trace
-      return new Trace('disabled', this.transport, options, false);
-    }
-
-    const result = await this.transport.createTrace({
-      sessionId: options.sessionId,
-      userId: options.userId,
-      metadata: options.metadata,
-      tags: options.tags,
-    });
-
-    return new Trace(
-      result.id,
-      this.transport,
-      options,
-      this.config.debug ?? false
-    );
-  }
-
-  /**
-   * Flush all pending spans
-   * Call this before shutting down to ensure all data is sent
-   */
-  async flush(): Promise<void> {
-    await this.transport.flush();
-  }
-
-  /**
-   * Check if tracing is enabled
-   */
-  isEnabled(): boolean {
-    return !this.disabled;
-  }
+  return t;
 }
+
+// Re-export for backwards compatibility
+export { Trace as LLMTracer };

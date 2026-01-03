@@ -1,50 +1,34 @@
 /**
- * Lelemon SDK - LLM Observability
+ * Lelemon SDK
+ * Low-friction LLM observability
  *
  * @example
- * ```typescript
- * import { LLMTracer } from '@lelemon/sdk';
+ * import { trace } from '@lelemon/sdk';
  *
- * const tracer = new LLMTracer({
- *   apiKey: process.env.LELEMON_API_KEY
- * });
- *
- * // Manual tracing
- * const trace = await tracer.startTrace({
- *   sessionId: 'conv-123',
- *   userId: 'user-456'
- * });
- *
- * const span = trace.startSpan({
- *   type: 'llm',
- *   name: 'chat-completion',
- *   input: { messages }
- * });
- *
- * const response = await openai.chat.completions.create({ ... });
- *
- * span.end({
- *   output: response,
- *   model: response.model,
- *   inputTokens: response.usage.prompt_tokens,
- *   outputTokens: response.usage.completion_tokens
- * });
- *
- * await trace.end();
- * ```
+ * const t = trace({ input: userMessage });
+ * try {
+ *   const messages = [...];
+ *   // ... your agent code ...
+ *   await t.success(messages);
+ * } catch (error) {
+ *   await t.error(error, messages);
+ * }
  */
 
-export { LLMTracer, Trace, Span } from './tracer';
+// Main API
+export { trace, init, Trace } from './tracer';
 
+// Types
 export type {
   LelemonConfig,
   TraceOptions,
-  SpanOptions,
-  SpanEndOptions,
-  TraceStatus,
-  SpanType,
-  SpanStatus,
+  Message,
+  OpenAIMessage,
+  AnthropicMessage,
+  ParsedTrace,
+  ParsedLLMCall,
+  ParsedToolCall,
 } from './types';
 
-// Re-export for convenience
-export { Transport } from './transport';
+// Parser (for advanced usage)
+export { parseMessages, parseResponse, parseBedrockResponse } from './parser';
