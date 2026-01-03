@@ -16,6 +16,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Lelemon - LLM Observability",
   description: "Track, analyze, and optimize your LLM applications",
+  icons: {
+    icon: { url: "/favicon.svg", type: "image/svg+xml" },
+    apple: "/favicon.svg",
+  },
+  manifest: "/site.webmanifest",
 };
 
 export default function RootLayout({

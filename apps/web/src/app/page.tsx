@@ -25,16 +25,17 @@ function LemonIcon({ className }: { className?: string }) {
 function CodeBlock() {
   const [copied, setCopied] = useState(false);
 
-  const code = `import { trace } from '@lelemondev/sdk';
+  const code = `import { init, observe } from '@lelemondev/sdk';
+import OpenAI from 'openai';
 
-const t = trace({ input: userMessage });
+init({ apiKey: process.env.LELEMON_API_KEY });
 
-try {
-  const messages = await runAgent(userMessage);
-  await t.success(messages);
-} catch (err) {
-  await t.error(err, messages);
-}`;
+const openai = observe(new OpenAI());
+
+const res = await openai.chat.completions.create({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Hello!' }],
+});`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(code);
@@ -56,7 +57,7 @@ try {
               <div className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
               <div className="w-3 h-3 rounded-full bg-[#28C840]" />
             </div>
-            <span className="text-sm text-white/30 font-mono">agent.ts</span>
+            <span className="text-sm text-white/30 font-mono">app.ts</span>
           </div>
           <button
             onClick={handleCopy}
@@ -85,50 +86,64 @@ try {
           <code>
             <span className="text-[#C678DD]">import</span>
             <span className="text-white/90">{' { '}</span>
-            <span className="text-[#E5C07B]">trace</span>
+            <span className="text-[#E5C07B]">init</span>
+            <span className="text-white/90">{', '}</span>
+            <span className="text-[#E5C07B]">observe</span>
             <span className="text-white/90">{' } '}</span>
             <span className="text-[#C678DD]">from</span>
-            <span className="text-[#98C379]">{` '@lelemondev/sdk'`}</span>
+            <span className="text-[#98C379]">{" '@lelemondev/sdk'"}</span>
+            <span className="text-white/30">;</span>
+            {'\n'}
+            <span className="text-[#C678DD]">import</span>
+            <span className="text-[#E5C07B]"> OpenAI </span>
+            <span className="text-[#C678DD]">from</span>
+            <span className="text-[#98C379]">{" 'openai'"}</span>
             <span className="text-white/30">;</span>
             {'\n\n'}
-            <span className="text-[#C678DD]">const</span>
-            <span className="text-[#E06C75]"> t</span>
-            <span className="text-white/90"> = </span>
-            <span className="text-[#61AFEF]">trace</span>
+            <span className="text-[#61AFEF]">init</span>
             <span className="text-white/90">{'({ '}</span>
-            <span className="text-[#E06C75]">input</span>
-            <span className="text-white/90">: userMessage {'}'});</span>
+            <span className="text-[#E06C75]">apiKey</span>
+            <span className="text-white/90">: process.env.</span>
+            <span className="text-[#E5C07B]">LELEMON_API_KEY</span>
+            <span className="text-white/90">{' });'}</span>
             {'\n\n'}
-            <span className="text-[#C678DD]">try</span>
-            <span className="text-white/90">{' {'}</span>
-            {'\n'}
-            <span className="text-white/90">{'  '}</span>
             <span className="text-[#C678DD]">const</span>
-            <span className="text-[#E06C75]"> messages</span>
+            <span className="text-[#E06C75]"> openai</span>
+            <span className="text-white/90"> = </span>
+            <span className="text-[#61AFEF]">observe</span>
+            <span className="text-white/90">(</span>
+            <span className="text-[#C678DD]">new</span>
+            <span className="text-[#E5C07B]"> OpenAI</span>
+            <span className="text-white/90">());</span>
+            {'\n\n'}
+            <span className="text-[#C678DD]">const</span>
+            <span className="text-[#E06C75]"> res</span>
             <span className="text-white/90"> = </span>
             <span className="text-[#C678DD]">await</span>
-            <span className="text-[#61AFEF]"> runAgent</span>
-            <span className="text-white/90">(userMessage);</span>
+            <span className="text-[#E06C75]"> openai</span>
+            <span className="text-white/90">.chat.completions.</span>
+            <span className="text-[#61AFEF]">create</span>
+            <span className="text-white/90">{'({'}</span>
             {'\n'}
             <span className="text-white/90">{'  '}</span>
-            <span className="text-[#C678DD]">await</span>
-            <span className="text-[#E06C75]"> t</span>
-            <span className="text-white/90">.</span>
-            <span className="text-[#61AFEF]">success</span>
-            <span className="text-white/90">(messages);</span>
-            {'\n'}
-            <span className="text-white/90">{'} '}</span>
-            <span className="text-[#C678DD]">catch</span>
-            <span className="text-white/90"> (err) {'{'}</span>
+            <span className="text-[#E06C75]">model</span>
+            <span className="text-white/90">: </span>
+            <span className="text-[#98C379]">{"'gpt-4'"}</span>
+            <span className="text-white/90">,</span>
             {'\n'}
             <span className="text-white/90">{'  '}</span>
-            <span className="text-[#C678DD]">await</span>
-            <span className="text-[#E06C75]"> t</span>
-            <span className="text-white/90">.</span>
-            <span className="text-[#61AFEF]">error</span>
-            <span className="text-white/90">(err, messages);</span>
+            <span className="text-[#E06C75]">messages</span>
+            <span className="text-white/90">{': [{ '}</span>
+            <span className="text-[#E06C75]">role</span>
+            <span className="text-white/90">: </span>
+            <span className="text-[#98C379]">{"'user'"}</span>
+            <span className="text-white/90">{', '}</span>
+            <span className="text-[#E06C75]">content</span>
+            <span className="text-white/90">: </span>
+            <span className="text-[#98C379]">{"'Hello!'"}</span>
+            <span className="text-white/90">{' }],'}</span>
             {'\n'}
-            <span className="text-white/90">{'}'}</span>
+            <span className="text-white/90">{'});'}</span>
           </code>
         </pre>
       </div>
@@ -233,9 +248,9 @@ export default function LandingPage() {
               <div className="order-2 lg:order-1 space-y-6">
                 <CodeBlock />
                 <div className="flex items-center gap-2 text-sm text-[#1B1B1B]/50">
-                  <span className="font-medium">Integraciones:</span>
+                  <span className="font-medium">Providers:</span>
                   <div className="flex gap-2">
-                    {['LangChain', 'LlamaIndex', 'Custom'].map((name) => (
+                    {['OpenAI', 'Anthropic', 'Bedrock', 'Gemini'].map((name) => (
                       <span key={name} className="px-3 py-1 rounded-full bg-[#F9F9FB] text-[#1B1B1B]/70 text-xs font-medium">
                         {name}
                       </span>
@@ -291,32 +306,6 @@ export default function LandingPage() {
           </div>
         </footer>
       </div>
-
-      {/* Custom animations */}
-      <style jsx global>{`
-        @keyframes float-slow {
-          0%, 100% { transform: translateY(0) rotate(12deg); }
-          50% { transform: translateY(-10px) rotate(12deg); }
-        }
-        @keyframes float-delayed {
-          0%, 100% { transform: translateY(0) rotate(-12deg); }
-          50% { transform: translateY(-8px) rotate(-12deg); }
-        }
-        @keyframes bounce-slow {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-8px); }
-        }
-        .animate-float-slow {
-          animation: float-slow 4s ease-in-out infinite;
-        }
-        .animate-float-delayed {
-          animation: float-delayed 5s ease-in-out infinite;
-          animation-delay: 1s;
-        }
-        .animate-bounce-slow {
-          animation: bounce-slow 2s ease-in-out infinite;
-        }
-      `}</style>
     </div>
   );
 }
