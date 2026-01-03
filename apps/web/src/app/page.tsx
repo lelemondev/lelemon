@@ -297,8 +297,8 @@ export default function LandingPage() {
                 </p>
               </div>
               <nav className="flex items-center gap-8 text-sm">
-                <Link href="#" className="text-[#1B1B1B]/50 hover:text-[#1B1B1B] transition-colors font-medium">Docs</Link>
-                <Link href="https://github.com/lelemondev/lelemon" target="_blank" className="text-[#1B1B1B]/50 hover:text-[#1B1B1B] transition-colors font-medium">GitHub</Link>
+                <Link href="https://lelemondev.github.io/lelemondev-sdk/" target="_blank" className="text-[#1B1B1B]/50 hover:text-[#1B1B1B] transition-colors font-medium">Docs</Link>
+                <Link href="https://github.com/lelemondev/lelemondev-sdk" target="_blank" className="text-[#1B1B1B]/50 hover:text-[#1B1B1B] transition-colors font-medium">GitHub</Link>
                 <Link href="#" className="text-[#1B1B1B]/50 hover:text-[#1B1B1B] transition-colors font-medium">Privacy</Link>
                 <Link href="#" className="text-[#1B1B1B]/50 hover:text-[#1B1B1B] transition-colors font-medium">Terms</Link>
               </nav>
