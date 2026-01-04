@@ -1,16 +1,20 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useProject } from '@/lib/project-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function ProjectsPage() {
+  const router = useRouter();
   const { projects, currentProject, setCurrentProject, refreshProjects, isLoading } = useProject();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [creating, setCreating] = useState(false);
+  const [newApiKey, setNewApiKey] = useState<string | null>(null);
+  const [apiKeyCopied, setApiKeyCopied] = useState(false);
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,15 +29,32 @@ export default function ProjectsPage() {
       });
 
       if (response.ok) {
+        const data = await response.json();
         setNewProjectName('');
         setShowCreateForm(false);
         await refreshProjects();
+        if (data.apiKey) {
+          setNewApiKey(data.apiKey);
+        }
       }
     } catch (error) {
       console.error('Failed to create project:', error);
     } finally {
       setCreating(false);
     }
+  };
+
+  const handleCopyApiKey = async () => {
+    if (!newApiKey) return;
+    await navigator.clipboard.writeText(newApiKey);
+    setApiKeyCopied(true);
+    setTimeout(() => setApiKeyCopied(false), 2000);
+  };
+
+  const handleCloseApiKeyModal = () => {
+    setNewApiKey(null);
+    setApiKeyCopied(false);
+    router.push('/dashboard/config');
   };
 
   const handleSelectProject = (project: typeof projects[0]) => {
@@ -59,7 +80,49 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8">      {newApiKey && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <Card className="w-full max-w-lg mx-4 border-amber-500 shadow-2xl">
+            <CardHeader className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 dark:from-amber-500/5 dark:to-orange-500/5 border-b border-zinc-200 dark:border-zinc-800">
+              <CardTitle className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+                </svg>
+                Your API Key
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 pt-6">
+              <div className="p-4 bg-amber-50 dark:bg-amber-500/10 rounded-lg border border-amber-200 dark:border-amber-500/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                  </svg>
+                  <span className="text-sm font-medium text-amber-700 dark:text-amber-300">Save this key now!</span>
+                </div>
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  This is the only time you will see this API key. Copy it and store it securely. If you lose it, you will need to rotate your key.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">API Key</label>
+                <div className="flex gap-2">
+                  <Input value={newApiKey} readOnly className="font-mono text-sm" />
+                  <Button
+                    onClick={handleCopyApiKey}
+                    className={apiKeyCopied ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-amber-500 hover:bg-amber-600 text-zinc-900'}
+                  >
+                    {apiKeyCopied ? 'Copied!' : 'Copy'}
+                  </Button>
+                </div>
+              </div>
+              <Button onClick={handleCloseApiKeyModal} className="w-full" variant="outline">
+                I have saved my key, continue to setup
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Projects</h1>
@@ -78,7 +141,6 @@ export default function ProjectsPage() {
         </Button>
       </div>
 
-      {/* Create Project Form */}
       {showCreateForm && (
         <Card className="border-amber-200 dark:border-amber-500/20 bg-amber-50/50 dark:bg-amber-500/5">
           <CardHeader>
@@ -104,7 +166,6 @@ export default function ProjectsPage() {
         </Card>
       )}
 
-      {/* Projects List */}
       {projects.length === 0 && !showCreateForm ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12">

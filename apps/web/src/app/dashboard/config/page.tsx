@@ -41,14 +41,36 @@ function CodeBlock({ code }: { code: string }) {
 
 export default function ConfigPage() {
   const { currentProject, isLoading } = useProject();
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [rotating, setRotating] = useState(false);
+  const [newApiKey, setNewApiKey] = useState<string | null>(null);
+  const [apiKeyCopied, setApiKeyCopied] = useState(false);
 
-  const copyApiKey = async () => {
-    if (!currentProject?.apiKey) return;
-    await navigator.clipboard.writeText(currentProject.apiKey);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleRotateApiKey = async () => {
+    if (!currentProject) return;
+    setRotating(true);
+    try {
+      const response = await fetch('/api/v1/projects/api-key', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ projectId: currentProject.id }) });
+      if (response.ok) {
+        const data = await response.json();
+        setNewApiKey(data.apiKey);
+      }
+    } catch (error) {
+      console.error('Failed to rotate API key:', error);
+    } finally {
+      setRotating(false);
+    }
+  };
+
+  const handleCopyApiKey = async () => {
+    if (!newApiKey) return;
+    await navigator.clipboard.writeText(newApiKey);
+    setApiKeyCopied(true);
+    setTimeout(() => setApiKeyCopied(false), 2000);
+  };
+
+  const handleCloseApiKeyModal = () => {
+    setNewApiKey(null);
+    setApiKeyCopied(false);
   };
 
   if (isLoading) {
@@ -86,6 +108,49 @@ export default function ConfigPage() {
 
   return (
     <div className="space-y-8 max-w-2xl">
+      {newApiKey && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <Card className="w-full max-w-lg mx-4 border-amber-500 shadow-2xl">
+            <CardHeader className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 dark:from-amber-500/5 dark:to-orange-500/5 border-b border-zinc-200 dark:border-zinc-800">
+              <CardTitle className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+                </svg>
+                New API Key
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 pt-6">
+              <div className="p-4 bg-amber-50 dark:bg-amber-500/10 rounded-lg border border-amber-200 dark:border-amber-500/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                  </svg>
+                  <span className="text-sm font-medium text-amber-700 dark:text-amber-300">Save this key now!</span>
+                </div>
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  This is the only time you will see this API key. Your old key has been invalidated.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">API Key</label>
+                <div className="flex gap-2">
+                  <Input value={newApiKey} readOnly className="font-mono text-sm" />
+                  <Button
+                    onClick={handleCopyApiKey}
+                    className={apiKeyCopied ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-amber-500 hover:bg-amber-600 text-zinc-900'}
+                  >
+                    {apiKeyCopied ? 'Copied!' : 'Copy'}
+                  </Button>
+                </div>
+              </div>
+              <Button onClick={handleCloseApiKeyModal} className="w-full" variant="outline">
+                I have saved my key
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       <div>
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Project Config</h1>
         <p className="text-zinc-500 dark:text-zinc-400 mt-1">
@@ -105,47 +170,21 @@ export default function ConfigPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Use this key to authenticate SDK requests. Keep it secret and never expose it in client-side code.
+            Your API key is shown only once when you create a project. If you lost it, you can rotate it to get a new one.
           </p>
-          <div className="space-y-3">
-            <div className="flex gap-2">
-              <Input
-                value={showApiKey ? currentProject.apiKey : '•'.repeat(32)}
-                readOnly
-                className="font-mono text-sm"
-              />
-              <Button
-                variant="outline"
-                onClick={() => setShowApiKey(!showApiKey)}
-                className="shrink-0"
-              >
-                {showApiKey ? (
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={copyApiKey}
-                className="shrink-0"
-              >
-                {copied ? (
-                  <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
-                  </svg>
-                )}
-              </Button>
-            </div>
+          <div className="flex gap-2">
+            <Input
+              value={currentProject.apiKeyHint ? currentProject.apiKeyHint + '•'.repeat(20) : '•'.repeat(32)}
+              readOnly
+              className="font-mono text-sm"
+            />
+            <Button
+              onClick={handleRotateApiKey}
+              disabled={rotating}
+              className="bg-amber-500 hover:bg-amber-600 text-zinc-900"
+            >
+              {rotating ? 'Rotating...' : 'Rotate Key'}
+            </Button>
           </div>
         </CardContent>
       </Card>

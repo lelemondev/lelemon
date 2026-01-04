@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 export interface Project {
   id: string;
   name: string;
-  apiKey: string;
+  apiKeyHint: string | null;
   createdAt: string;
 }
 

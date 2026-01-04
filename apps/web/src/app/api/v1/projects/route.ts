@@ -21,14 +21,20 @@ export async function GET() {
       columns: {
         id: true,
         name: true,
-        // apiKey: excluded for security
+        apiKey: true, // We will transform to hint
         createdAt: true,
         updatedAt: true,
       },
       orderBy: (projects, { desc }) => [desc(projects.createdAt)],
     });
 
-    return Response.json(userProjects);
+    // Transform apiKey to a hint (first 12 chars + ...)
+    const projectsWithHint = userProjects.map(({ apiKey, ...rest }) => ({
+      ...rest,
+      apiKeyHint: apiKey ? apiKey.slice(0, 12) + '...' : null,
+    }));
+
+    return Response.json(projectsWithHint);
   } catch (error) {
     console.error('Error fetching projects:', error);
     return Response.json({ error: 'Internal server error' }, { status: 500 });
