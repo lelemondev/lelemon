@@ -1,15 +1,22 @@
 {
   "name": "Lelemon",
   "short_name": "Lelemon",
-  "description": "LLM Observability Platform",
+  "description": "Lightweight LLM Observability Platform",
+  "start_url": "/",
   "icons": [
     {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
+      "src": "/icon",
+      "sizes": "64x64",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
-  "theme_color": "#FFD84D",
-  "background_color": "#FFFDF8",
+  "theme_color": "#FACC15",
+  "background_color": "#FAFDF7",
   "display": "standalone"
 }

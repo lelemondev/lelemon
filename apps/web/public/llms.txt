@@ -1,0 +1,47 @@
+# Lelemon
+
+> Lightweight LLM observability platform for AI agents
+
+Lelemon helps developers trace, debug, and optimize their AI agents with zero overhead.
+
+## Quick Facts
+
+- SDK size: <2KB gzipped
+- Zero configuration required
+- Supports: OpenAI, Anthropic, Bedrock, Gemini
+- Real-time tracing of prompts, tool calls, and outputs
+
+## What Lelemon Does
+
+- Traces the complete flow of LLM calls
+- Records token usage and costs
+- Measures latency and performance
+- Helps debug agent decisions and retries
+
+## SDK Installation
+
+```bash
+npm install @lelemondev/sdk
+```
+
+## Basic Usage
+
+```typescript
+import { init, observe } from '@lelemondev/sdk';
+
+init({ apiKey: process.env.LELEMON_API_KEY });
+
+const openai = observe(new OpenAI());
+// All calls are now automatically traced
+```
+
+## Links
+
+- Website: https://lelemon.dev
+- Documentation: https://lelemondev.github.io/lelemondev-sdk/
+- SDK Repository: https://github.com/lelemondev/lelemondev-sdk
+- NPM Package: https://www.npmjs.com/package/@lelemondev/sdk
+
+## Contact
+
+For questions or support, visit our GitHub repository.

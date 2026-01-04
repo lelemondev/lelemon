@@ -1,0 +1,15 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Sitemaps
+Sitemap: https://lelemon.dev/sitemap.xml
+
+# LLM-friendly documentation
+# See https://llmstxt.org for the llms.txt standard
+# /llms.txt - Quick overview for LLMs
+# /llms-full.txt - Complete documentation for LLMs
+
+# Disallow dashboard (private)
+Disallow: /dashboard
+Disallow: /api

@@ -1,0 +1,202 @@
+# Lelemon - Complete Documentation for LLMs
+
+## Overview
+
+Lelemon is a lightweight LLM observability platform designed for developers building AI agents. It provides real-time tracing, debugging, and analytics for LLM-powered applications with minimal overhead.
+
+### Key Differentiators
+
+1. **Lightweight**: SDK is <2KB gzipped, zero dependencies
+2. **Zero Config**: Just wrap your client and it works
+3. **No Overhead**: Fire-and-forget architecture, doesn't slow down your app
+4. **Multi-Provider**: Works with OpenAI, Anthropic, AWS Bedrock, Google Gemini
+
+## Installation
+
+```bash
+npm install @lelemondev/sdk
+# or
+yarn add @lelemondev/sdk
+# or
+pnpm add @lelemondev/sdk
+```
+
+## Quick Start
+
+```typescript
+import { init, observe } from '@lelemondev/sdk';
+import OpenAI from 'openai';
+
+// Initialize with your API key
+init({ apiKey: process.env.LELEMON_API_KEY });
+
+// Wrap your OpenAI client
+const openai = observe(new OpenAI());
+
+// Use normally - all calls are automatically traced
+const response = await openai.chat.completions.create({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: 'Hello!' }],
+});
+```
+
+## Features
+
+### 1. Automatic Tracing
+
+Once you wrap your LLM client with `observe()`, all API calls are automatically traced including:
+
+- Input prompts and messages
+- Model responses and outputs
+- Token usage (input/output)
+- Latency measurements
+- Cost calculations
+
+### 2. Multi-Provider Support
+
+```typescript
+// OpenAI
+const openai = observe(new OpenAI());
+
+// Anthropic
+const anthropic = observe(new Anthropic());
+
+// AWS Bedrock
+const bedrock = observe(new BedrockRuntimeClient());
+
+// Google Gemini
+const gemini = observe(new GoogleGenerativeAI(apiKey));
+```
+
+### 3. Session Tracking
+
+Group related calls into sessions:
+
+```typescript
+init({
+  apiKey: process.env.LELEMON_API_KEY,
+  sessionId: 'conversation-123',
+  userId: 'user-456',
+});
+```
+
+### 4. Custom Metadata
+
+Add custom metadata to your traces:
+
+```typescript
+init({
+  apiKey: process.env.LELEMON_API_KEY,
+  metadata: {
+    environment: 'production',
+    version: '1.0.0',
+  },
+  tags: ['production', 'gpt-4'],
+});
+```
+
+## Dashboard Features
+
+The Lelemon dashboard (https://lelemon.dev/dashboard) provides:
+
+1. **Traces View**: See all LLM calls with timing, tokens, and costs
+2. **Analytics**: Aggregate metrics over time
+3. **Session Replay**: Follow complete conversation flows
+4. **Error Tracking**: Identify and debug failed calls
+5. **Cost Analysis**: Track spending by model and time period
+
+## API Endpoints
+
+### Public API (requires API key)
+
+All API endpoints require authentication via Bearer token:
+```
+Authorization: Bearer le_xxx...
+```
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | /api/v1/traces | Create a new trace |
+| GET | /api/v1/traces | List traces |
+| GET | /api/v1/traces/:id | Get trace details |
+| POST | /api/v1/ingest | Batch ingest events |
+
+## Pricing
+
+Lelemon offers a generous free tier for individual developers. Visit https://lelemon.dev for current pricing.
+
+## Support
+
+- Documentation: https://lelemondev.github.io/lelemondev-sdk/
+- GitHub Issues: https://github.com/lelemondev/lelemondev-sdk/issues
+- Email: Support available through GitHub
+
+## Technical Specifications
+
+- **SDK Size**: <2KB gzipped
+- **Dependencies**: Zero runtime dependencies
+- **Compatibility**: Node.js 18+, Edge Runtime, Browsers
+- **Data Retention**: Configurable per plan
+- **Latency Impact**: <1ms (async, non-blocking)
+
+## Security
+
+- All data encrypted in transit (TLS 1.3)
+- API keys are hashed and never stored in plain text
+- SOC 2 Type II compliance (in progress)
+- GDPR compliant
+- Data can be deleted on request
+
+## Code Examples
+
+### Tracing an AI Agent
+
+```typescript
+import { init, observe } from '@lelemondev/sdk';
+import OpenAI from 'openai';
+
+init({ apiKey: process.env.LELEMON_API_KEY });
+
+const openai = observe(new OpenAI());
+
+async function runAgent(userMessage: string) {
+  // This call is automatically traced
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4',
+    messages: [
+      { role: 'system', content: 'You are a helpful assistant.' },
+      { role: 'user', content: userMessage },
+    ],
+    tools: [...], // Tool calls are also traced
+  });
+
+  return response;
+}
+```
+
+### Serverless/Edge Deployment
+
+```typescript
+import { init, observe, flush } from '@lelemondev/sdk';
+
+init({ apiKey: process.env.LELEMON_API_KEY });
+
+export async function handler(event) {
+  const openai = observe(new OpenAI());
+
+  const result = await openai.chat.completions.create({...});
+
+  // Important: flush before function ends
+  await flush();
+
+  return result;
+}
+```
+
+## Changelog
+
+For the latest updates, see: https://github.com/lelemondev/lelemondev-sdk/releases
+
+---
+
+This documentation is optimized for LLM consumption. For human-readable docs, visit https://lelemondev.github.io/lelemondev-sdk/

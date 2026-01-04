@@ -4,24 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-
-function LemonIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 64 64" fill="none">
-      <ellipse cx="32" cy="34" rx="24" ry="26" fill="#FFE566" />
-      <ellipse cx="32" cy="34" rx="24" ry="26" fill="url(#lemon-gradient-signup)" />
-      <ellipse cx="28" cy="30" rx="16" ry="18" fill="#FFF9E0" opacity="0.4" />
-      <path d="M32 8C32 8 28 4 32 2C36 4 32 8 32 8Z" fill="#4ADE80" />
-      <path d="M30 8C28 6 24 7 24 7" stroke="#4ADE80" strokeWidth="2" strokeLinecap="round" />
-      <defs>
-        <linearGradient id="lemon-gradient-signup" x1="8" y1="8" x2="56" y2="60">
-          <stop stopColor="#FFE566" />
-          <stop offset="1" stopColor="#FFD84D" />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-}
+import { LemonIcon } from '@/components/lemon-icon';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -83,37 +66,37 @@ export default function SignupPage() {
   
   if (success) {
     return (
-      <div className="min-h-screen bg-[#FFFDF8] flex flex-col">
+      <div className="min-h-screen bg-[#FAFDF7] flex flex-col">
         {/* Background elements */}
         <div className="fixed inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-[#FFD84D]/20 via-[#FFE566]/10 to-transparent rounded-full blur-3xl" />
-          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-[#FFD84D]/10 to-transparent rounded-full blur-3xl" />
+          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-[#FACC15]/20 via-[#FEF08A]/10 to-transparent rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-[#FACC15]/10 to-transparent rounded-full blur-3xl" />
         </div>
 
         {/* Header */}
         <header className="relative z-10 p-6">
           <Link href="/" className="inline-flex items-center gap-2.5 group">
             <LemonIcon className="w-9 h-9 transition-transform group-hover:rotate-12 group-hover:scale-110" />
-            <span className="font-bold text-xl tracking-tight text-[#1B1B1B]">Lelemon</span>
+            <span className="font-bold text-xl tracking-tight text-[#18181B]">Lelemon</span>
           </Link>
         </header>
 
         {/* Main */}
         <main className="relative z-10 flex-1 flex items-center justify-center px-6 py-12">
           <div className="w-full max-w-md text-center">
-            <div className="bg-white rounded-2xl shadow-xl shadow-[#FFD84D]/10 border border-[#1B1B1B]/5 p-8">
-              <div className="w-16 h-16 rounded-full bg-[#FFD84D]/20 flex items-center justify-center mx-auto mb-6">
-                <svg className="w-8 h-8 text-[#B8860B]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <div className="bg-white rounded-2xl shadow-xl shadow-[#FACC15]/10 border border-[#18181B]/5 p-8">
+              <div className="w-16 h-16 rounded-full bg-[#FACC15]/20 flex items-center justify-center mx-auto mb-6">
+                <svg className="w-8 h-8 text-[#A16207]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </div>
-              <h1 className="text-2xl font-bold text-[#1B1B1B] mb-2">Check your email</h1>
-              <p className="text-[#1B1B1B]/60 mb-6">
-                We&apos;ve sent a confirmation link to <strong className="text-[#1B1B1B]">{email}</strong>
+              <h1 className="text-2xl font-bold text-[#18181B] mb-2">Check your email</h1>
+              <p className="text-[#71717A] mb-6">
+                We&apos;ve sent a confirmation link to <strong className="text-[#18181B]">{email}</strong>
               </p>
               <Link
                 href="/login"
-                className="inline-flex items-center gap-2 text-[#B8860B] font-medium hover:underline"
+                className="inline-flex items-center gap-2 text-[#A16207] font-medium hover:underline"
               >
                 Back to login
               </Link>
@@ -125,18 +108,18 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FFFDF8] flex flex-col">
+    <div className="min-h-screen bg-[#FAFDF7] flex flex-col">
       {/* Background elements */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-[#FFD84D]/20 via-[#FFE566]/10 to-transparent rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-[#FFD84D]/10 to-transparent rounded-full blur-3xl" />
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-[#FACC15]/20 via-[#FEF08A]/10 to-transparent rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-[#FACC15]/10 to-transparent rounded-full blur-3xl" />
       </div>
 
       {/* Header */}
       <header className="relative z-10 p-6">
         <Link href="/" className="inline-flex items-center gap-2.5 group">
           <LemonIcon className="w-9 h-9 transition-transform group-hover:rotate-12 group-hover:scale-110" />
-          <span className="font-bold text-xl tracking-tight text-[#1B1B1B]">Lelemon</span>
+          <span className="font-bold text-xl tracking-tight text-[#18181B]">Lelemon</span>
         </Link>
       </header>
 
@@ -144,17 +127,17 @@ export default function SignupPage() {
       <main className="relative z-10 flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-md">
           {/* Card */}
-          <div className="bg-white rounded-2xl shadow-xl shadow-[#FFD84D]/10 border border-[#1B1B1B]/5 p-8">
+          <div className="bg-white rounded-2xl shadow-xl shadow-[#FACC15]/10 border border-[#18181B]/5 p-8">
             <div className="text-center mb-8">
-              <h1 className="text-2xl font-bold text-[#1B1B1B] mb-2">Create your account</h1>
-              <p className="text-[#1B1B1B]/60">Start tracing your LLMs today</p>
+              <h1 className="text-2xl font-bold text-[#18181B] mb-2">Create your account</h1>
+              <p className="text-[#71717A]">Start tracing your LLMs today</p>
             </div>
 
             {/* OAuth Buttons */}
             <div className="mb-6">
               <button
                 onClick={handleGoogleSignup}
-                className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-[#1B1B1B]/10 bg-white hover:bg-[#F9F9FB] transition-colors font-medium text-[#1B1B1B]"
+                className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-[#18181B]/10 bg-white hover:bg-[#F4F4F5] transition-colors font-medium text-[#18181B]"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -169,10 +152,10 @@ export default function SignupPage() {
             {/* Divider */}
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-[#1B1B1B]/10" />
+                <div className="w-full border-t border-[#18181B]/10" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-[#1B1B1B]/40">or continue with email</span>
+                <span className="px-4 bg-white text-[#A1A1AA]">or continue with email</span>
               </div>
             </div>
 
@@ -185,7 +168,7 @@ export default function SignupPage() {
               )}
 
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-[#1B1B1B] mb-2">
+                <label htmlFor="email" className="block text-sm font-medium text-[#18181B] mb-2">
                   Email
                 </label>
                 <input
@@ -194,13 +177,13 @@ export default function SignupPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full px-4 py-3 rounded-xl border border-[#1B1B1B]/10 bg-[#F9F9FB] focus:bg-white focus:border-[#FFD84D] focus:ring-2 focus:ring-[#FFD84D]/20 outline-none transition-all text-[#1B1B1B] placeholder:text-[#1B1B1B]/40"
+                  className="w-full px-4 py-3 rounded-xl border border-[#18181B]/10 bg-[#F4F4F5] focus:bg-white focus:border-[#FACC15] focus:ring-2 focus:ring-[#FACC15]/20 outline-none transition-all text-[#18181B] placeholder:text-[#A1A1AA]"
                   placeholder="you@example.com"
                 />
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-[#1B1B1B] mb-2">
+                <label htmlFor="password" className="block text-sm font-medium text-[#18181B] mb-2">
                   Password
                 </label>
                 <input
@@ -209,13 +192,13 @@ export default function SignupPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full px-4 py-3 rounded-xl border border-[#1B1B1B]/10 bg-[#F9F9FB] focus:bg-white focus:border-[#FFD84D] focus:ring-2 focus:ring-[#FFD84D]/20 outline-none transition-all text-[#1B1B1B] placeholder:text-[#1B1B1B]/40"
+                  className="w-full px-4 py-3 rounded-xl border border-[#18181B]/10 bg-[#F4F4F5] focus:bg-white focus:border-[#FACC15] focus:ring-2 focus:ring-[#FACC15]/20 outline-none transition-all text-[#18181B] placeholder:text-[#A1A1AA]"
                   placeholder="••••••••"
                 />
               </div>
 
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-[#1B1B1B] mb-2">
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-[#18181B] mb-2">
                   Confirm Password
                 </label>
                 <input
@@ -224,7 +207,7 @@ export default function SignupPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  className="w-full px-4 py-3 rounded-xl border border-[#1B1B1B]/10 bg-[#F9F9FB] focus:bg-white focus:border-[#FFD84D] focus:ring-2 focus:ring-[#FFD84D]/20 outline-none transition-all text-[#1B1B1B] placeholder:text-[#1B1B1B]/40"
+                  className="w-full px-4 py-3 rounded-xl border border-[#18181B]/10 bg-[#F4F4F5] focus:bg-white focus:border-[#FACC15] focus:ring-2 focus:ring-[#FACC15]/20 outline-none transition-all text-[#18181B] placeholder:text-[#A1A1AA]"
                   placeholder="••••••••"
                 />
               </div>
@@ -232,16 +215,16 @@ export default function SignupPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 px-4 rounded-xl bg-[#FFD84D] text-[#1B1B1B] font-semibold hover:bg-[#F5C800] transition-all shadow-[0_4px_20px_-4px_rgba(255,216,77,0.5)] hover:shadow-[0_8px_30px_-4px_rgba(255,216,77,0.6)] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 px-4 rounded-xl bg-[#FACC15] text-[#18181B] font-semibold hover:bg-[#EAB308] transition-all shadow-[0_4px_20px_-4px_rgba(255,216,77,0.5)] hover:shadow-[0_8px_30px_-4px_rgba(255,216,77,0.6)] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Creating account...' : 'Create account'}
               </button>
             </form>
 
             {/* Footer */}
-            <p className="mt-6 text-center text-sm text-[#1B1B1B]/60">
+            <p className="mt-6 text-center text-sm text-[#71717A]">
               Already have an account?{' '}
-              <Link href="/login" className="text-[#B8860B] font-medium hover:underline">
+              <Link href="/login" className="text-[#A16207] font-medium hover:underline">
                 Sign in
               </Link>
             </p>

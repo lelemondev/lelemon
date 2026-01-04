@@ -2,24 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-
-function LemonIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 64 64" fill="none">
-      <ellipse cx="32" cy="34" rx="24" ry="26" fill="#FFE566" />
-      <ellipse cx="32" cy="34" rx="24" ry="26" fill="url(#lemon-gradient)" />
-      <ellipse cx="28" cy="30" rx="16" ry="18" fill="#FFF9E0" opacity="0.4" />
-      <path d="M32 8C32 8 28 4 32 2C36 4 32 8 32 8Z" fill="#4ADE80" />
-      <path d="M30 8C28 6 24 7 24 7" stroke="#4ADE80" strokeWidth="2" strokeLinecap="round" />
-      <defs>
-        <linearGradient id="lemon-gradient" x1="8" y1="8" x2="56" y2="60">
-          <stop stopColor="#FFE566" />
-          <stop offset="1" stopColor="#FFD84D" />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-}
+import { LemonIcon } from '@/components/lemon-icon';
 
 
 function CodeBlock() {
@@ -45,12 +28,12 @@ const res = await openai.chat.completions.create({
 
   return (
     <div className="relative group">
-      {/* Glow effect */}
-      <div className="absolute -inset-1 bg-gradient-to-r from-[#FFD84D]/20 via-[#FFE566]/10 to-[#FFD84D]/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      {/* Glow effect - más sutil */}
+      <div className="absolute -inset-1 bg-gradient-to-r from-[#FACC15]/15 via-[#FEF08A]/8 to-[#FACC15]/15 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-      <div className="relative rounded-2xl bg-[#1B1B1B] overflow-hidden shadow-2xl border border-white/5">
+      <div className="relative rounded-2xl bg-[#0F0F10] overflow-hidden shadow-xl border border-white/5">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-gradient-to-r from-[#252525] to-[#1B1B1B]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-gradient-to-r from-[#1A1A1B] to-[#0F0F10]">
           <div className="flex items-center gap-3">
             <div className="flex gap-2">
               <div className="w-3 h-3 rounded-full bg-[#FF5F57]" />
@@ -154,34 +137,34 @@ const res = await openai.chat.completions.create({
 function FeatureCheck({ children }: { children: React.ReactNode }) {
   return (
     <li className="flex items-start gap-3 group">
-      <div className="mt-1 w-5 h-5 rounded-full bg-gradient-to-br from-[#FFE566] to-[#FFD84D] flex items-center justify-center shadow-[0_2px_8px_-2px_rgba(255,216,77,0.5)] group-hover:shadow-[0_4px_12px_-2px_rgba(255,216,77,0.6)] transition-shadow">
-        <svg className="w-3 h-3 text-[#1B1B1B]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+      <div className="mt-1 w-5 h-5 rounded-full bg-gradient-to-br from-[#FEF08A] to-[#FACC15] flex items-center justify-center shadow-[0_2px_6px_-2px_rgba(250,204,21,0.4)] group-hover:shadow-[0_2px_8px_-2px_rgba(250,204,21,0.5)] transition-shadow">
+        <svg className="w-3 h-3 text-[#18181B]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
         </svg>
       </div>
-      <span className="text-[#1B1B1B]/80 leading-relaxed">{children}</span>
+      <span className="text-[#3F3F46] leading-relaxed">{children}</span>
     </li>
   );
 }
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-[#FFFDF8] text-[#1B1B1B] overflow-hidden">
+    <div className="min-h-screen bg-[#FAFDF7] text-[#18181B] overflow-hidden">
       {/* Background elements */}
       <div className="fixed inset-0 pointer-events-none">
         {/* Subtle grid */}
-        <div className="absolute inset-0 opacity-[0.015]" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h60v60H0z' fill='none' stroke='%231B1B1B' stroke-width='1'/%3E%3C/svg%3E")`,
+        <div className="absolute inset-0 opacity-[0.02]" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h60v60H0z' fill='none' stroke='%2318181B' stroke-width='0.5'/%3E%3C/svg%3E")`,
         }} />
-        {/* Gradient blobs */}
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-[#FFD84D]/20 via-[#FFE566]/10 to-transparent rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-[#FFD84D]/10 to-transparent rounded-full blur-3xl" />
+        {/* Gradient blobs - más sutiles */}
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-[#FACC15]/15 via-[#FEF08A]/8 to-transparent rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-[#FACC15]/8 to-transparent rounded-full blur-3xl" />
       </div>
 
       {/* Content */}
       <div className="relative">
         {/* Header */}
-        <header className="fixed top-0 left-0 right-0 z-50 bg-[#FFFDF8]/80 backdrop-blur-md border-b border-[#1B1B1B]/5">
+        <header className="fixed top-0 left-0 right-0 z-50 bg-[#FAFDF7]/80 backdrop-blur-md border-b border-[#18181B]/5">
           <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2.5 group">
               <div className="relative">
@@ -191,7 +174,7 @@ export default function LandingPage() {
             </Link>
             <Link
               href="/login"
-              className="text-sm px-5 py-2.5 rounded-full bg-[#FFD84D] text-[#1B1B1B] font-semibold hover:bg-[#F5C800] transition-all shadow-[0_2px_10px_-2px_rgba(255,216,77,0.4)]"
+              className="text-sm px-5 py-2.5 rounded-full bg-[#FACC15] text-[#18181B] font-semibold hover:bg-[#EAB308] transition-all shadow-[0_2px_8px_-2px_rgba(250,204,21,0.35)]"
             >
               Sign in
             </Link>
@@ -199,12 +182,12 @@ export default function LandingPage() {
         </header>
 
         {/* Hero Section */}
-        <section className="pt-32 pb-24 px-6">
+        <section className="pt-32 pb-20 px-6">
           <div className="max-w-4xl mx-auto text-center">
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FFD84D]/10 border border-[#FFD84D]/20 mb-8">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FACC15]/10 border border-[#FACC15]/20 mb-8">
               <span className="text-sm">🍋</span>
-              <span className="text-sm font-medium text-[#B8860B]">LLM Observability</span>
+              <span className="text-sm font-medium text-[#A16207]">LLM Observability</span>
             </div>
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.1] mb-6">
@@ -212,7 +195,7 @@ export default function LandingPage() {
               <br />
               <span className="relative inline-block">
                 with a twist
-                <svg className="absolute -bottom-2 left-0 w-full h-3 text-[#FFD84D]" viewBox="0 0 200 12" fill="none">
+                <svg className="absolute -bottom-2 left-0 w-full h-3 text-[#FACC15]" viewBox="0 0 200 12" fill="none">
                   <path d="M2 10C50 4 150 4 198 10" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
                 </svg>
               </span>
@@ -220,15 +203,37 @@ export default function LandingPage() {
               <span className="inline-block animate-bounce-slow">🍋</span>
             </h1>
 
-            <p className="text-xl text-[#1B1B1B]/60 leading-relaxed max-w-2xl mx-auto mb-10">
+            <p className="text-xl text-[#3F3F46] leading-relaxed max-w-2xl mx-auto mb-8">
               Lelemon te muestra qué hacen tus agentes: prompts, decisiones y métricas en tiempo real.
-              <span className="text-[#1B1B1B] font-medium"> Claro, rápido y sin enredos.</span>
+              <span className="text-[#18181B] font-medium"> Claro, rápido y sin enredos.</span>
             </p>
+
+            {/* Lightness badges */}
+            <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 mb-10 text-sm">
+              <span className="flex items-center gap-1.5 text-[#3F3F46]">
+                <svg className="w-4 h-4 text-[#FACC15]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Zero config
+              </span>
+              <span className="flex items-center gap-1.5 text-[#3F3F46]">
+                <svg className="w-4 h-4 text-[#22C55E]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+                &lt;2KB gzipped
+              </span>
+              <span className="flex items-center gap-1.5 text-[#3F3F46]">
+                <svg className="w-4 h-4 text-[#FACC15]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                No overhead
+              </span>
+            </div>
 
             <div className="flex justify-center">
               <a
                 href="#demo"
-                className="group inline-flex items-center gap-2 px-7 py-4 bg-[#FFD84D] text-[#1B1B1B] font-semibold rounded-full hover:bg-[#F5C800] transition-all shadow-[0_4px_20px_-4px_rgba(255,216,77,0.5)] hover:shadow-[0_8px_30px_-4px_rgba(255,216,77,0.6)] hover:-translate-y-0.5"
+                className="group inline-flex items-center gap-2 px-7 py-4 bg-[#FACC15] text-[#18181B] font-semibold rounded-full hover:bg-[#EAB308] transition-all shadow-[0_2px_12px_-4px_rgba(250,204,21,0.4)] hover:shadow-[0_4px_16px_-4px_rgba(250,204,21,0.5)] hover:-translate-y-0.5"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -241,17 +246,17 @@ export default function LandingPage() {
         </section>
 
         {/* Product/Dev Section */}
-        <section id="demo" className="py-24 px-6 bg-white border-y border-[#1B1B1B]/5">
+        <section id="demo" className="py-24 px-6 bg-white border-y border-[#18181B]/5">
           <div className="max-w-6xl mx-auto">
             <div className="grid lg:grid-cols-2 gap-16 lg:gap-20 items-center">
               {/* Left - Code */}
               <div className="order-2 lg:order-1 space-y-6">
                 <CodeBlock />
-                <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-[#1B1B1B]/50">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-[#71717A]">
                   <span className="font-medium">Providers:</span>
                   <div className="flex flex-wrap gap-2">
                     {['OpenAI', 'Anthropic', 'Bedrock', 'Gemini'].map((name) => (
-                      <span key={name} className="px-3 py-1 rounded-full bg-[#F9F9FB] text-[#1B1B1B]/70 text-xs font-medium">
+                      <span key={name} className="px-3 py-1 rounded-full bg-[#F4F4F5] text-[#3F3F46] text-xs font-medium">
                         {name}
                       </span>
                     ))}
@@ -265,20 +270,20 @@ export default function LandingPage() {
                   <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2">
                     Built for developers
                   </h2>
-                  <p className="text-[#1B1B1B]/50">
+                  <p className="text-[#71717A]">
                     Sin complicaciones, directo al código.
                   </p>
                 </div>
 
                 <ul className="space-y-5">
                   <FeatureCheck>
-                    <strong className="text-[#1B1B1B] font-semibold">Tracea el flujo completo:</strong> prompts, tool calls y outputs.
+                    <strong className="text-[#18181B] font-semibold">Tracea el flujo completo:</strong> prompts, tool calls y outputs.
                   </FeatureCheck>
                   <FeatureCheck>
-                    <strong className="text-[#1B1B1B] font-semibold">Entiende decisiones y retries:</strong> ve por qué el agente hizo lo que hizo.
+                    <strong className="text-[#18181B] font-semibold">Entiende decisiones y retries:</strong> ve por qué el agente hizo lo que hizo.
                   </FeatureCheck>
                   <FeatureCheck>
-                    <strong className="text-[#1B1B1B] font-semibold">Métricas útiles:</strong> tokens y latencia sin fricción.
+                    <strong className="text-[#18181B] font-semibold">Métricas útiles:</strong> tokens y latencia sin fricción.
                   </FeatureCheck>
                 </ul>
               </div>
@@ -292,15 +297,15 @@ export default function LandingPage() {
             <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
               <div className="flex items-center gap-3">
                 <LemonIcon className="w-6 h-6" />
-                <p className="text-sm text-[#1B1B1B]/50">
+                <p className="text-sm text-[#71717A]">
                   © Lelemon — Observability for generative agents.
                 </p>
               </div>
               <nav className="flex flex-wrap items-center justify-center sm:justify-start gap-4 sm:gap-8 text-sm">
-                <Link href="https://lelemondev.github.io/lelemondev-sdk/" target="_blank" className="text-[#1B1B1B]/50 hover:text-[#1B1B1B] transition-colors font-medium">Docs</Link>
-                <Link href="https://github.com/lelemondev/lelemondev-sdk" target="_blank" className="text-[#1B1B1B]/50 hover:text-[#1B1B1B] transition-colors font-medium">GitHub</Link>
-                <Link href="#" className="text-[#1B1B1B]/50 hover:text-[#1B1B1B] transition-colors font-medium">Privacy</Link>
-                <Link href="#" className="text-[#1B1B1B]/50 hover:text-[#1B1B1B] transition-colors font-medium">Terms</Link>
+                <Link href="https://lelemondev.github.io/lelemondev-sdk/" target="_blank" className="text-[#71717A] hover:text-[#18181B] transition-colors font-medium">Docs</Link>
+                <Link href="https://github.com/lelemondev/lelemondev-sdk" target="_blank" className="text-[#71717A] hover:text-[#18181B] transition-colors font-medium">GitHub</Link>
+                <Link href="#" className="text-[#71717A] hover:text-[#18181B] transition-colors font-medium">Privacy</Link>
+                <Link href="#" className="text-[#71717A] hover:text-[#18181B] transition-colors font-medium">Terms</Link>
               </nav>
             </div>
           </div>

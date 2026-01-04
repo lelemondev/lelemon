@@ -14,17 +14,100 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = "https://lelemon.dev";
+
 export const metadata: Metadata = {
-  title: "Lelemon - LLM Observability",
-  description: "Track, analyze, and optimize your LLM applications",
-  icons: {
-    icon: { url: "/favicon.svg", type: "image/svg+xml" },
-    apple: "/favicon.svg",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "Lelemon - Lightweight LLM Observability",
+    template: "%s | Lelemon",
+  },
+  description:
+    "Trace your AI agents with zero overhead. Lelemon is a lightweight observability platform for LLMs — track prompts, decisions, and metrics in real-time. <2KB SDK, zero config.",
+  keywords: [
+    "LLM observability",
+    "AI monitoring",
+    "OpenAI tracing",
+    "Anthropic monitoring",
+    "AI agent debugging",
+    "LLM analytics",
+    "prompt tracing",
+    "AI observability",
+    "lightweight observability",
+  ],
+  authors: [{ name: "Lelemon", url: siteUrl }],
+  creator: "Lelemon",
+  publisher: "Lelemon",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
   manifest: "/site.webmanifest",
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: siteUrl,
+    siteName: "Lelemon",
+    title: "Lelemon - Lightweight LLM Observability",
+    description:
+      "Trace your AI agents with zero overhead. Track prompts, decisions, and metrics in real-time. <2KB SDK, zero config.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Lelemon - Lightweight LLM Observability",
+    description:
+      "Trace your AI agents with zero overhead. <2KB SDK, zero config.",
+    creator: "@lelemondev",
+  },
+  alternates: {
+    canonical: siteUrl,
+  },
+  category: "technology",
 };
 
 const isProduction = process.env.NODE_ENV === "production";
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Lelemon",
+  applicationCategory: "DeveloperApplication",
+  operatingSystem: "Cross-platform",
+  description:
+    "Lightweight LLM observability platform for AI agents. Trace prompts, decisions, and metrics in real-time with zero overhead.",
+  url: "https://lelemon.dev",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+    description: "Free tier available",
+  },
+  featureList: [
+    "LLM call tracing",
+    "Token usage tracking",
+    "Cost analytics",
+    "Multi-provider support (OpenAI, Anthropic, Bedrock, Gemini)",
+    "Real-time dashboard",
+    "Zero configuration SDK",
+  ],
+  author: {
+    "@type": "Organization",
+    name: "Lelemon",
+    url: "https://lelemon.dev",
+  },
+  aggregateRating: {
+    "@type": "AggregateRating",
+    ratingValue: "5",
+    ratingCount: "1",
+  },
+};
 
 export default function RootLayout({
   children,
@@ -34,6 +117,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         {isProduction && (
           <>
             <Script

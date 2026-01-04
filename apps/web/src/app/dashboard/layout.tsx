@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ProjectProvider } from '@/lib/project-context';
 import { ProjectSelector } from '@/components/project-selector';
+import { LemonIcon } from '@/components/lemon-icon';
 
 const navigation = [
   {
@@ -48,24 +49,6 @@ const navigation = [
     )
   },
 ];
-
-function LemonIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 64 64" fill="none">
-      <ellipse cx="32" cy="34" rx="24" ry="26" fill="#FFE566" />
-      <ellipse cx="32" cy="34" rx="24" ry="26" fill="url(#lemon-gradient-dash)" />
-      <ellipse cx="28" cy="30" rx="16" ry="18" fill="#FFF9E0" opacity="0.4" />
-      <path d="M32 8C32 8 28 4 32 2C36 4 32 8 32 8Z" fill="#4ADE80" />
-      <path d="M30 8C28 6 24 7 24 7" stroke="#4ADE80" strokeWidth="2" strokeLinecap="round" />
-      <defs>
-        <linearGradient id="lemon-gradient-dash" x1="8" y1="8" x2="56" y2="60">
-          <stop stopColor="#FFE566" />
-          <stop offset="1" stopColor="#FFD84D" />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-}
 
 export default function DashboardLayout({
   children,
