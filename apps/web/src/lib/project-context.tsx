@@ -1,11 +1,13 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
 export interface Project {
   id: string;
   name: string;
+  apiKey?: string; // Only present on creation
   apiKeyHint: string | null;
   createdAt: string;
 }
@@ -24,6 +26,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentProject, setCurrentProjectState] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
+  const pathname = usePathname();
 
   const fetchProjects = async () => {
     try {
@@ -39,7 +43,32 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
       const response = await fetch('/api/v1/projects');
       if (response.ok) {
-        const data = await response.json();
+        let data = await response.json();
+
+        // Auto-create project for new users (email/password login case)
+        if (data.length === 0) {
+          const createResponse = await fetch('/api/v1/projects', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: 'My Project' }),
+          });
+
+          if (createResponse.ok) {
+            const newProject = await createResponse.json();
+            data = [{
+              id: newProject.id,
+              name: newProject.name,
+              apiKeyHint: newProject.apiKey?.slice(0, 12) + '...',
+              createdAt: newProject.createdAt,
+            }];
+
+            // Redirect to config with API key for onboarding
+            if (pathname !== '/dashboard/config') {
+              router.push(`/dashboard/config?welcome=true&key=${encodeURIComponent(newProject.apiKey)}`);
+            }
+          }
+        }
+
         setProjects(data);
 
         // Restore last selected project from localStorage or select first

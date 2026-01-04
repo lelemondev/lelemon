@@ -1,5 +1,12 @@
 import type { NextConfig } from "next";
 
+const isDev = process.env.NODE_ENV === 'development';
+
+// In development, allow localhost connections for Supabase local
+const connectSrc = isDev
+  ? "'self' http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:* https://www.google-analytics.com https://*.supabase.co wss://*.supabase.co"
+  : "'self' https://www.google-analytics.com https://*.supabase.co wss://*.supabase.co";
+
 const securityHeaders = [
   {
     key: 'X-DNS-Prefetch-Control',
@@ -37,7 +44,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https: blob:",
       "font-src 'self' data:",
-      "connect-src 'self' https://www.google-analytics.com https://*.supabase.co wss://*.supabase.co",
+      `connect-src ${connectSrc}`,
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

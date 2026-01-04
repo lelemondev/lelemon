@@ -41,6 +41,51 @@ export async function GET() {
   }
 }
 
+// PATCH /api/v1/projects - Update a project
+const updateProjectSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1).max(100),
+});
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user?.email) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const result = updateProjectSchema.safeParse(body);
+
+    if (!result.success) {
+      return Response.json({ error: result.error.message }, { status: 400 });
+    }
+
+    const { id, name } = result.data;
+
+    // Verify ownership
+    const project = await db.query.projects.findFirst({
+      where: eq(projects.id, id),
+      columns: { ownerEmail: true },
+    });
+
+    if (!project || project.ownerEmail !== user.email) {
+      return Response.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    await db.update(projects)
+      .set({ name, updatedAt: new Date() })
+      .where(eq(projects.id, id));
+
+    return Response.json({ id, name });
+  } catch (error) {
+    console.error('Error updating project:', error);
+    return Response.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 // POST /api/v1/projects - Create a new project
 const createProjectSchema = z.object({
   name: z.string().min(1).max(100),
