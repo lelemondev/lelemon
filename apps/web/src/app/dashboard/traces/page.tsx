@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { Suspense, useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useProject } from '@/lib/project-context';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -54,15 +55,20 @@ function formatDuration(ms: number): string {
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
-export default function TracesPage() {
+function TracesPageContent() {
   const { currentProject } = useProject();
+  const searchParams = useSearchParams();
   const [traces, setTraces] = useState<Trace[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Get sessionId from URL if present (for filtering by session)
+  const sessionIdFromUrl = searchParams.get('sessionId');
 
   // Filters
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [tagFilter, setTagFilter] = useState<string>('all');
+  const [sessionFilter, setSessionFilter] = useState<string>(sessionIdFromUrl || 'all');
 
   // Fetch traces
   useEffect(() => {
@@ -99,6 +105,15 @@ export default function TracesPage() {
     return Array.from(tagSet).sort();
   }, [traces]);
 
+  // Get unique sessions from traces
+  const allSessions = useMemo(() => {
+    const sessionSet = new Set<string>();
+    traces.forEach((trace) => {
+      if (trace.sessionId) sessionSet.add(trace.sessionId);
+    });
+    return Array.from(sessionSet).sort();
+  }, [traces]);
+
   // Filter traces
   const filteredTraces = useMemo(() => {
     return traces.filter((trace) => {
@@ -117,9 +132,12 @@ export default function TracesPage() {
       // Tag filter
       if (tagFilter !== 'all' && !trace.tags?.includes(tagFilter)) return false;
 
+      // Session filter
+      if (sessionFilter !== 'all' && trace.sessionId !== sessionFilter) return false;
+
       return true;
     });
-  }, [traces, search, statusFilter, tagFilter]);
+  }, [traces, search, statusFilter, tagFilter, sessionFilter]);
 
   if (!currentProject) {
     return (
@@ -144,13 +162,36 @@ export default function TracesPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Traces</h1>
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
+            {sessionFilter !== 'all' ? 'Session Traces' : 'Traces'}
+          </h1>
           <p className="text-zinc-500 dark:text-zinc-400 mt-1">
-            View and analyze all your LLM traces.
+            {sessionFilter !== 'all' ? (
+              <>
+                Viewing traces for session{' '}
+                <code className="px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-800 rounded text-xs font-mono">
+                  {sessionFilter.length > 20 ? `${sessionFilter.slice(0, 20)}...` : sessionFilter}
+                </code>
+              </>
+            ) : (
+              'View and analyze all your LLM traces.'
+            )}
           </p>
         </div>
-        <div className="text-sm text-zinc-500 dark:text-zinc-400">
-          {filteredTraces.length} of {traces.length} traces
+        <div className="flex items-center gap-4">
+          {sessionFilter !== 'all' && (
+            <Link href="/dashboard/sessions">
+              <Button variant="outline" size="sm">
+                <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                </svg>
+                All Sessions
+              </Button>
+            </Link>
+          )}
+          <div className="text-sm text-zinc-500 dark:text-zinc-400">
+            {filteredTraces.length} of {traces.length} traces
+          </div>
         </div>
       </div>
 
@@ -193,7 +234,23 @@ export default function TracesPage() {
               </SelectContent>
             </Select>
 
-            {(search || statusFilter !== 'all' || tagFilter !== 'all') && (
+            {allSessions.length > 0 && (
+              <Select value={sessionFilter} onValueChange={setSessionFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Session" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Sessions</SelectItem>
+                  {allSessions.map((session) => (
+                    <SelectItem key={session} value={session}>
+                      {session.length > 16 ? `${session.slice(0, 16)}...` : session}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            {(search || statusFilter !== 'all' || tagFilter !== 'all' || sessionFilter !== 'all') && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -201,6 +258,7 @@ export default function TracesPage() {
                   setSearch('');
                   setStatusFilter('all');
                   setTagFilter('all');
+                  setSessionFilter('all');
                 }}
               >
                 Clear filters
@@ -256,8 +314,18 @@ export default function TracesPage() {
                         {formatRelativeTime(trace.createdAt)}
                       </Link>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell font-mono text-xs text-zinc-600 dark:text-zinc-400">
-                      {trace.sessionId?.slice(0, 16) || '-'}
+                    <TableCell className="hidden md:table-cell font-mono text-xs">
+                      {trace.sessionId ? (
+                        <button
+                          onClick={() => setSessionFilter(trace.sessionId!)}
+                          className="text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                          title={`Filter by session: ${trace.sessionId}`}
+                        >
+                          {trace.sessionId.slice(0, 16)}...
+                        </button>
+                      ) : (
+                        <span className="text-zinc-400">-</span>
+                      )}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell text-zinc-600 dark:text-zinc-400">
                       {trace.userId || 'Anonymous'}
@@ -325,5 +393,29 @@ export default function TracesPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function TracesPageFallback() {
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Traces</h1>
+          <p className="text-zinc-500 dark:text-zinc-400 mt-1">
+            View and manage your LLM trace data.
+          </p>
+        </div>
+      </div>
+      <div className="h-48 bg-zinc-200 dark:bg-zinc-800 rounded-2xl animate-pulse" />
+    </div>
+  );
+}
+
+export default function TracesPage() {
+  return (
+    <Suspense fallback={<TracesPageFallback />}>
+      <TracesPageContent />
+    </Suspense>
   );
 }

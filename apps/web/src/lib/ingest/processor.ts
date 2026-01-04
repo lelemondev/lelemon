@@ -86,7 +86,11 @@ async function processSessionEvents(
 
   // Create span for each event
   const spansToInsert = events.map((event) => {
-    const cost = calculateCost(event.model, event.inputTokens, event.outputTokens);
+    // Only calculate LLM costs for LLM spans
+    const spanType = event.spanType || 'llm';
+    const cost = spanType === 'llm'
+      ? calculateCost(event.model, event.inputTokens, event.outputTokens)
+      : 0;
 
     totalInputTokens += event.inputTokens;
     totalOutputTokens += event.outputTokens;
@@ -95,10 +99,10 @@ async function processSessionEvents(
 
     return {
       traceId,
-      type: 'llm' as const,
-      name: event.model,
+      type: spanType as 'llm' | 'tool' | 'retrieval' | 'custom',
+      name: event.name || event.model,
       provider: event.provider,
-      model: event.model,
+      model: spanType === 'llm' ? event.model : null,
       input: event.input,
       output: event.output,
       inputTokens: event.inputTokens,
@@ -107,8 +111,10 @@ async function processSessionEvents(
       durationMs: event.durationMs,
       status: event.status === 'error' ? ('error' as const) : ('success' as const),
       errorMessage: event.errorMessage,
+      parentSpanId: event.parentSpanId,
       metadata: {
         streaming: event.streaming,
+        toolCallId: event.toolCallId,
         ...(event.metadata || {}),
       },
       startedAt: event.timestamp ? new Date(event.timestamp) : new Date(),

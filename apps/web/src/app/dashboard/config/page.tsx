@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useProject } from '@/lib/project-context';
@@ -40,7 +40,7 @@ function CodeBlock({ code }: { code: string }) {
   );
 }
 
-export default function ConfigPage() {
+function ConfigPageContent() {
   const { currentProject, isLoading, refreshProjects } = useProject();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -438,5 +438,28 @@ await flush();`} />
         </div>
       </div>
     </div>
+  );
+}
+
+function ConfigPageFallback() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Project Settings</h1>
+        <p className="text-zinc-500 dark:text-zinc-400 mt-1">Configure your project and get started with the SDK.</p>
+      </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="h-48 bg-zinc-200 dark:bg-zinc-800 rounded-2xl animate-pulse" />
+        <div className="h-48 bg-zinc-200 dark:bg-zinc-800 rounded-2xl animate-pulse" />
+      </div>
+    </div>
+  );
+}
+
+export default function ConfigPage() {
+  return (
+    <Suspense fallback={<ConfigPageFallback />}>
+      <ConfigPageContent />
+    </Suspense>
   );
 }

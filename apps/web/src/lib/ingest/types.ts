@@ -23,19 +23,32 @@ export const ProviderSchema = z.enum([
 export type Provider = z.infer<typeof ProviderSchema>;
 
 // ─────────────────────────────────────────────────────────────
+// Span Type Schema
+// ─────────────────────────────────────────────────────────────
+
+export const SpanTypeSchema = z.enum(['llm', 'tool', 'retrieval', 'custom']);
+export type SpanType = z.infer<typeof SpanTypeSchema>;
+
+// ─────────────────────────────────────────────────────────────
 // Ingest Event Schema
 // ─────────────────────────────────────────────────────────────
 
 export const IngestEventSchema = z.object({
+  // Span type (defaults to 'llm' for backwards compatibility)
+  spanType: SpanTypeSchema.optional().default('llm'),
+
   // Provider and model
   provider: ProviderSchema,
   model: z.string().min(1).max(100),
+
+  // Span name (for tool spans: tool name, for LLM: model name)
+  name: z.string().max(255).optional(),
 
   // Input/Output data
   input: z.unknown(),
   output: z.unknown(),
 
-  // Token counts
+  // Token counts (0 for tool spans)
   inputTokens: z.number().int().min(0).max(10_000_000),
   outputTokens: z.number().int().min(0).max(10_000_000),
 
@@ -53,6 +66,12 @@ export const IngestEventSchema = z.object({
   // Context (for grouping)
   sessionId: z.string().max(255).optional(),
   userId: z.string().max(255).optional(),
+
+  // Parent span ID (for tool spans to link to LLM span)
+  parentSpanId: z.string().uuid().optional(),
+
+  // Tool-specific fields
+  toolCallId: z.string().max(255).optional(), // Anthropic/OpenAI tool_use ID
 
   // Custom data
   metadata: z.record(z.unknown()).optional(),

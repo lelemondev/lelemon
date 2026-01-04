@@ -18,6 +18,9 @@ This file provides guidance to Claude Code when working with code in this reposi
 - **UI:** Tailwind CSS + shadcn/ui
 - **SDK:** TypeScript, zero dependencies, tree-shakeable
 
+**Related Projects:**
+- **SDK Repository:** `C:\Users\kmilo\Documents\projects\lelemondev-sdk` - The official `@lelemon/sdk` package for instrumenting LLM applications
+
 ---
 
 ## Project Structure

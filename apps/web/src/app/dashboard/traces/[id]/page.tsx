@@ -1,12 +1,26 @@
 'use client';
 
-import { use, useEffect, useState, useCallback, useRef } from 'react';
+import { use, useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { LLMDataViewer } from '@/components/llm-data-viewer';
 
 const POLLING_INTERVAL = 2000; // 2 seconds
+
+// Calculate metrics from spans (more accurate than pre-calculated values)
+function calculateMetricsFromSpans(spans: Span[]) {
+  return spans.reduce(
+    (acc, span) => ({
+      totalSpans: acc.totalSpans + 1,
+      totalTokens: acc.totalTokens + (span.inputTokens || 0) + (span.outputTokens || 0),
+      totalCostUsd: acc.totalCostUsd + (span.costUsd ? parseFloat(span.costUsd) : 0),
+      totalDurationMs: acc.totalDurationMs + (span.durationMs || 0),
+    }),
+    { totalSpans: 0, totalTokens: 0, totalCostUsd: 0, totalDurationMs: 0 }
+  );
+}
 
 interface Span {
   id: string;
@@ -140,6 +154,12 @@ export default function TraceDetailPage({ params }: { params: Promise<{ id: stri
     });
   };
 
+  // Calculate metrics from actual spans (always accurate)
+  const metrics = useMemo(() => {
+    if (!trace) return { totalSpans: 0, totalTokens: 0, totalCostUsd: 0, totalDurationMs: 0 };
+    return calculateMetricsFromSpans(trace.spans);
+  }, [trace]);
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -223,7 +243,7 @@ export default function TraceDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      {/* Summary */}
+      {/* Summary - calculated from actual spans */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
@@ -233,7 +253,7 @@ export default function TraceDetailPage({ params }: { params: Promise<{ id: stri
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-zinc-900 dark:text-white">
-              {formatDuration(trace.totalDurationMs)}
+              {formatDuration(metrics.totalDurationMs)}
             </div>
           </CardContent>
         </Card>
@@ -245,7 +265,7 @@ export default function TraceDetailPage({ params }: { params: Promise<{ id: stri
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-zinc-900 dark:text-white">
-              {trace.totalSpans}
+              {metrics.totalSpans}
             </div>
           </CardContent>
         </Card>
@@ -257,7 +277,7 @@ export default function TraceDetailPage({ params }: { params: Promise<{ id: stri
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-zinc-900 dark:text-white">
-              {trace.totalTokens.toLocaleString()}
+              {metrics.totalTokens.toLocaleString()}
             </div>
           </CardContent>
         </Card>
@@ -269,7 +289,7 @@ export default function TraceDetailPage({ params }: { params: Promise<{ id: stri
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
-              ${parseFloat(trace.totalCostUsd).toFixed(4)}
+              ${metrics.totalCostUsd.toFixed(4)}
             </div>
           </CardContent>
         </Card>
@@ -371,23 +391,9 @@ export default function TraceDetailPage({ params }: { params: Promise<{ id: stri
                           <p className="text-sm text-red-600 dark:text-red-300">{span.errorMessage}</p>
                         </div>
                       )}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-2">
-                            Input
-                          </p>
-                          <pre className="text-xs bg-white dark:bg-zinc-900 p-3 rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-auto max-h-48">
-                            {JSON.stringify(span.input, null, 2) || '-'}
-                          </pre>
-                        </div>
-                        <div>
-                          <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-2">
-                            Output
-                          </p>
-                          <pre className="text-xs bg-white dark:bg-zinc-900 p-3 rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-auto max-h-48">
-                            {JSON.stringify(span.output, null, 2) || '-'}
-                          </pre>
-                        </div>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <LLMDataViewer data={span.input} label="Input" />
+                        <LLMDataViewer data={span.output} label="Output" />
                       </div>
                     </div>
                   )}
