@@ -263,11 +263,61 @@ export default function ExamplePage() {
 
 ```bash
 # .env.local (apps/web)
-DATABASE_URL=postgresql://...   # Neon/Supabase connection string
+DATABASE_URL=postgresql://...              # Neon/Supabase connection string
+NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+NEXT_PUBLIC_APP_URL=http://localhost:3000  # For auth callbacks
 
 # For SDK users
-LELEMON_API_KEY=le_xxx...       # Project API key
+LELEMON_API_KEY=le_xxx...                  # Project API key
 ```
+
+---
+
+## Supabase Local Development
+
+### Setup
+
+1. **Install Supabase CLI:**
+   ```bash
+   npm install -g supabase
+   ```
+
+2. **Configure environment:**
+   ```bash
+   cd supabase
+   cp .env.example .env
+   # Edit .env with your Google OAuth credentials
+   ```
+
+3. **Start local Supabase:**
+   ```bash
+   supabase start
+   ```
+
+4. **Access local services:**
+   - Studio: http://localhost:54333
+   - API: http://localhost:54331
+   - Inbucket (email testing): http://localhost:54334
+
+### Configuration Files
+
+| File | Purpose |
+|------|---------|
+| `supabase/config.toml` | Main configuration (ports, auth, storage) |
+| `supabase/.env` | Local secrets (NOT committed) |
+| `supabase/.env.example` | Template for required env vars |
+
+### Google OAuth (Local)
+
+The `config.toml` uses environment variables for secrets:
+```toml
+[auth.external.google]
+client_id = "env(GOOGLE_CLIENT_ID)"
+secret = "env(GOOGLE_CLIENT_SECRET)"
+```
+
+**Never hardcode secrets in config.toml!**
 
 ---
 
@@ -393,4 +443,4 @@ Run `yarn db:generate` to update types after schema changes.
 
 ---
 
-**Last updated:** 2026-01-03
+**Last updated:** 2026-01-04

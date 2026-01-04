@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(yarn:*)",
+      "Bash(npm run:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git branch:*)",
+      "Bash(git checkout:*)",
+      "Bash(supabase:*)",
+      "WebFetch(domain:lelemon.dev)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(apps/web/.env)",
+      "Read(apps/web/.env.*)",
+      "Read(supabase/.env)",
+      "Read(supabase/.env.*)",
+      "Read(**/*.key)",
+      "Read(**/*.secret)",
+      "Bash(rm -rf:*)",
+      "Bash(git push --force:*)",
+      "Bash(git reset --hard:*)"
+    ]
+  },
+  "env": {
+    "NODE_ENV": "development"
+  }
+}
