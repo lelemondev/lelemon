@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { createClient } from '@/lib/supabase/client';
+import { signOut } from '@/app/actions/auth';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ProjectProvider } from '@/lib/project-context';
 import { ProjectSelector } from '@/components/project-selector';
@@ -56,14 +56,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const supabase = createClient();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    // Force hard reload to properly clear session cookies
-    window.location.href = '/';
-  };
 
   return (
     <ProjectProvider>
@@ -168,15 +161,17 @@ export default function DashboardLayout({
             </svg>
             Account
           </Link>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400 transition-all"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
-            </svg>
-            Logout
-          </button>
+          <form action={signOut}>
+            <button
+              type="submit"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400 transition-all"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+              </svg>
+              Logout
+            </button>
+          </form>
         </div>
         </aside>
 
