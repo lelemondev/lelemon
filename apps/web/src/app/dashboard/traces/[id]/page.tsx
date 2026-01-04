@@ -1,10 +1,12 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+const POLLING_INTERVAL = 2000; // 2 seconds
 
 interface Span {
   id: string;
@@ -66,28 +68,65 @@ export default function TraceDetailPage({ params }: { params: Promise<{ id: stri
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedSpans, setExpandedSpans] = useState<Set<string>>(new Set());
+  const [isPolling, setIsPolling] = useState(false);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
+  const fetchTrace = useCallback(async (isInitial = false) => {
+    try {
+      const response = await fetch(`/api/v1/dashboard/traces/${id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setTrace(data);
+        // Return whether we should continue polling
+        return data.status === 'active';
+      } else if (response.status === 404) {
+        setError('Trace not found');
+        return false;
+      } else {
+        if (isInitial) setError('Failed to load trace');
+        return false;
+      }
+    } catch (err) {
+      if (isInitial) setError('Failed to load trace');
+      return false;
+    } finally {
+      if (isInitial) setIsLoading(false);
+    }
+  }, [id]);
+
+  // Initial fetch and polling setup
   useEffect(() => {
-    const fetchTrace = async () => {
-      try {
-        const response = await fetch(`/api/v1/dashboard/traces/${id}`);
-        if (response.ok) {
-          const data = await response.json();
-          setTrace(data);
-        } else if (response.status === 404) {
-          setError('Trace not found');
-        } else {
-          setError('Failed to load trace');
-        }
-      } catch (err) {
-        setError('Failed to load trace');
-      } finally {
-        setIsLoading(false);
+    let isMounted = true;
+
+    const startPolling = async () => {
+      const shouldPoll = await fetchTrace(true);
+
+      if (shouldPoll && isMounted) {
+        setIsPolling(true);
+        pollingRef.current = setInterval(async () => {
+          if (!isMounted) return;
+          const continuePolling = await fetchTrace(false);
+          if (!continuePolling && isMounted) {
+            setIsPolling(false);
+            if (pollingRef.current) {
+              clearInterval(pollingRef.current);
+              pollingRef.current = null;
+            }
+          }
+        }, POLLING_INTERVAL);
       }
     };
 
-    fetchTrace();
-  }, [id]);
+    startPolling();
+
+    return () => {
+      isMounted = false;
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, [fetchTrace]);
 
   const toggleSpan = (spanId: string) => {
     setExpandedSpans((prev) => {
@@ -156,6 +195,15 @@ export default function TraceDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {isPolling && (
+            <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">LIVE</span>
+            </div>
+          )}
           {trace.tags?.map((tag) => (
             <Badge key={tag} variant="secondary">
               {tag}
