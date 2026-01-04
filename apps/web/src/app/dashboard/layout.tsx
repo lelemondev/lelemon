@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -74,6 +75,7 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -84,14 +86,50 @@ export default function DashboardLayout({
   return (
     <ProjectProvider>
       <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+        {/* Mobile header */}
+        <div className="lg:hidden fixed top-0 left-0 right-0 z-40 h-16 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-4">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+          >
+            <svg className="w-6 h-6 text-zinc-600 dark:text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            </svg>
+          </button>
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <LemonIcon className="w-7 h-7" />
+            <span className="font-bold text-lg text-zinc-900 dark:text-white">Lelemon</span>
+          </Link>
+          <div className="w-10" />
+        </div>
+
+        {/* Mobile sidebar overlay */}
+        {sidebarOpen && (
+          <div
+            className="lg:hidden fixed inset-0 z-40 bg-black/50"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
         {/* Sidebar */}
-        <aside className="fixed left-0 top-0 bottom-0 w-64 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 flex flex-col">
+        <aside className={cn(
+          "fixed left-0 top-0 bottom-0 w-64 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 flex flex-col z-50 transition-transform duration-200",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        )}>
           {/* Logo */}
-          <div className="p-6 border-b border-zinc-200 dark:border-zinc-800">
-            <Link href="/dashboard" className="flex items-center gap-2.5 group">
+          <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+            <Link href="/dashboard" className="flex items-center gap-2.5 group" onClick={() => setSidebarOpen(false)}>
               <LemonIcon className="w-8 h-8 transition-transform group-hover:rotate-12" />
               <span className="font-bold text-xl text-zinc-900 dark:text-white">Lelemon</span>
             </Link>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            >
+              <svg className="w-5 h-5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
 
           {/* Project Selector */}
@@ -107,6 +145,7 @@ export default function DashboardLayout({
               <Link
                 key={item.name}
                 href={item.href}
+                onClick={() => setSidebarOpen(false)}
                 className={cn(
                   'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all',
                   isActive
@@ -134,6 +173,7 @@ export default function DashboardLayout({
           </div>
           <Link
             href="/dashboard/account"
+            onClick={() => setSidebarOpen(false)}
             className={cn(
               'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all',
               pathname === '/dashboard/account'
@@ -159,8 +199,8 @@ export default function DashboardLayout({
         </aside>
 
         {/* Main content */}
-        <main className="ml-64 min-h-screen">
-          <div className="p-8">
+        <main className="lg:ml-64 min-h-screen pt-16 lg:pt-0">
+          <div className="p-4 sm:p-6 lg:p-8">
             {children}
           </div>
         </main>

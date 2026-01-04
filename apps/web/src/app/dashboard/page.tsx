@@ -234,10 +234,10 @@ export default function DashboardPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-8 text-sm text-zinc-500 dark:text-zinc-400">
-                  <span className="w-16 text-right">{formatDuration(trace.totalDurationMs)}</span>
-                  <span className="w-20 text-right">{trace.totalTokens.toLocaleString()} tok</span>
-                  <span className="w-16 text-right font-mono text-amber-600 dark:text-amber-400">
+                <div className="flex items-center gap-4 sm:gap-8 text-sm text-zinc-500 dark:text-zinc-400">
+                  <span className="hidden sm:inline w-16 text-right">{formatDuration(trace.totalDurationMs)}</span>
+                  <span className="hidden sm:inline w-20 text-right">{trace.totalTokens.toLocaleString()} tok</span>
+                  <span className="w-14 sm:w-16 text-right font-mono text-amber-600 dark:text-amber-400">
                     ${parseFloat(trace.totalCostUsd).toFixed(3)}
                   </span>
                   <Badge
@@ -248,7 +248,7 @@ export default function DashboardPage() {
                         ? 'destructive'
                         : 'secondary'
                     }
-                    className="text-xs w-20 justify-center"
+                    className="text-xs w-16 sm:w-20 justify-center"
                   >
                     {trace.status}
                   </Badge>

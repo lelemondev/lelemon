@@ -82,7 +82,7 @@ const res = await openai.chat.completions.create({
         </div>
 
         {/* Code */}
-        <pre className="p-6 text-[13px] font-mono leading-7 overflow-x-auto">
+        <pre className="p-4 sm:p-6 text-[11px] sm:text-[13px] font-mono leading-6 sm:leading-7 overflow-x-auto">
           <code>
             <span className="text-[#C678DD]">import</span>
             <span className="text-white/90">{' { '}</span>
@@ -207,7 +207,7 @@ export default function LandingPage() {
               <span className="text-sm font-medium text-[#B8860B]">LLM Observability</span>
             </div>
 
-            <h1 className="text-5xl sm:text-6xl font-extrabold tracking-tight leading-[1.1] mb-6">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.1] mb-6">
               Trace your LLMs
               <br />
               <span className="relative inline-block">
@@ -247,9 +247,9 @@ export default function LandingPage() {
               {/* Left - Code */}
               <div className="order-2 lg:order-1 space-y-6">
                 <CodeBlock />
-                <div className="flex items-center gap-2 text-sm text-[#1B1B1B]/50">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-[#1B1B1B]/50">
                   <span className="font-medium">Providers:</span>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {['OpenAI', 'Anthropic', 'Bedrock', 'Gemini'].map((name) => (
                       <span key={name} className="px-3 py-1 rounded-full bg-[#F9F9FB] text-[#1B1B1B]/70 text-xs font-medium">
                         {name}
@@ -262,7 +262,7 @@ export default function LandingPage() {
               {/* Right - Features */}
               <div className="order-1 lg:order-2 space-y-8">
                 <div>
-                  <h2 className="text-4xl font-bold tracking-tight mb-2">
+                  <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2">
                     Built for developers
                   </h2>
                   <p className="text-[#1B1B1B]/50">
@@ -296,7 +296,7 @@ export default function LandingPage() {
                   © Lelemon — Observability for generative agents.
                 </p>
               </div>
-              <nav className="flex items-center gap-8 text-sm">
+              <nav className="flex flex-wrap items-center justify-center sm:justify-start gap-4 sm:gap-8 text-sm">
                 <Link href="https://lelemondev.github.io/lelemondev-sdk/" target="_blank" className="text-[#1B1B1B]/50 hover:text-[#1B1B1B] transition-colors font-medium">Docs</Link>
                 <Link href="https://github.com/lelemondev/lelemondev-sdk" target="_blank" className="text-[#1B1B1B]/50 hover:text-[#1B1B1B] transition-colors font-medium">GitHub</Link>
                 <Link href="#" className="text-[#1B1B1B]/50 hover:text-[#1B1B1B] transition-colors font-medium">Privacy</Link>

@@ -142,7 +142,7 @@ export default function TracesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Traces</h1>
           <p className="text-zinc-500 dark:text-zinc-400 mt-1">
@@ -235,13 +235,13 @@ export default function TracesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[100px]">Time</TableHead>
-                  <TableHead>Session</TableHead>
-                  <TableHead>User</TableHead>
-                  <TableHead>Tags</TableHead>
-                  <TableHead className="text-right">Spans</TableHead>
+                  <TableHead className="hidden md:table-cell">Session</TableHead>
+                  <TableHead className="hidden lg:table-cell">User</TableHead>
+                  <TableHead className="hidden lg:table-cell">Tags</TableHead>
+                  <TableHead className="hidden sm:table-cell text-right">Spans</TableHead>
                   <TableHead className="text-right">Tokens</TableHead>
                   <TableHead className="text-right">Cost</TableHead>
-                  <TableHead className="text-right">Duration</TableHead>
+                  <TableHead className="hidden sm:table-cell text-right">Duration</TableHead>
                   <TableHead className="text-center">Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -256,13 +256,13 @@ export default function TracesPage() {
                         {formatRelativeTime(trace.createdAt)}
                       </Link>
                     </TableCell>
-                    <TableCell className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                    <TableCell className="hidden md:table-cell font-mono text-xs text-zinc-600 dark:text-zinc-400">
                       {trace.sessionId?.slice(0, 16) || '-'}
                     </TableCell>
-                    <TableCell className="text-zinc-600 dark:text-zinc-400">
+                    <TableCell className="hidden lg:table-cell text-zinc-600 dark:text-zinc-400">
                       {trace.userId || 'Anonymous'}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden lg:table-cell">
                       <div className="flex gap-1 flex-wrap">
                         {trace.tags?.map((tag) => (
                           <Badge
@@ -276,7 +276,7 @@ export default function TracesPage() {
                         ))}
                       </div>
                     </TableCell>
-                    <TableCell className="text-right text-zinc-600 dark:text-zinc-400">
+                    <TableCell className="hidden sm:table-cell text-right text-zinc-600 dark:text-zinc-400">
                       {trace.totalSpans}
                     </TableCell>
                     <TableCell className="text-right text-zinc-600 dark:text-zinc-400">
@@ -285,7 +285,7 @@ export default function TracesPage() {
                     <TableCell className="text-right font-mono text-amber-600 dark:text-amber-400">
                       ${parseFloat(trace.totalCostUsd).toFixed(4)}
                     </TableCell>
-                    <TableCell className="text-right text-zinc-600 dark:text-zinc-400">
+                    <TableCell className="hidden sm:table-cell text-right text-zinc-600 dark:text-zinc-400">
                       {formatDuration(trace.totalDurationMs)}
                     </TableCell>
                     <TableCell className="text-center">
