@@ -69,7 +69,7 @@ export async function runOpenAIAgent(message: string, options?: AgentOptions): P
   const toolsUsed: string[] = [];
 
   try {
-    const result = await trace({ name: 'openai-playground-agent' }, async () => {
+    const result = await trace({ name: 'openai-playground-agent', input: message }, async () => {
       traceId = getTraceContext()?.traceId;
 
       const messages: ChatCompletionMessageParam[] = [
