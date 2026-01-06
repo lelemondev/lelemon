@@ -192,7 +192,7 @@ export function TraceDetail({ traceId, onClose }: TraceDetailProps) {
             <CardContent className="p-3">
               <div className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">Tokens</div>
               <div className="text-lg font-bold text-zinc-900 dark:text-white">
-                {(trace.totalTokens ?? 0).toLocaleString()}
+                {trace.totalTokens && trace.totalTokens > 0 ? trace.totalTokens.toLocaleString() : '-'}
               </div>
             </CardContent>
           </Card>
@@ -200,7 +200,7 @@ export function TraceDetail({ traceId, onClose }: TraceDetailProps) {
             <CardContent className="p-3">
               <div className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">Cost</div>
               <div className="text-lg font-bold text-amber-600 dark:text-amber-400">
-                ${(trace.totalCostUsd ?? 0).toFixed(4)}
+                {trace.totalCostUsd && trace.totalCostUsd > 0 ? `$${trace.totalCostUsd.toFixed(4)}` : '-'}
               </div>
             </CardContent>
           </Card>

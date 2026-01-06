@@ -1,24 +1,19 @@
-# Lelemon - Full Stack with ClickHouse (Enterprise/High Volume)
-# Use this for: enterprise deployments, very high volume analytics
-# Recommended for: >1M traces/day, complex analytics queries
-# RAM usage: ~500MB+ (backend ~50MB + frontend ~50MB + ClickHouse ~400MB+)
+# Lelemon - Full Stack with ClickHouse
+# Usage: docker-compose -f docker-compose.clickhouse.yml up -d
+# Recommended for: high volume, >1M traces/day
 
 services:
-  # Go Backend API
   lelemon-api:
-    build: .
+    build: ./apps/server
     ports:
       - "8080:8080"
     environment:
       - PORT=8080
       - DATABASE_URL=clickhouse://default:${CLICKHOUSE_PASSWORD:-}@clickhouse:9000/lelemon
-      - LOG_LEVEL=info
+      - LOG_LEVEL=${LOG_LEVEL:-info}
       - LOG_FORMAT=json
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
-      # Optional: Google OAuth
-      # - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      # - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
     depends_on:
       clickhouse:
         condition: service_healthy
@@ -30,13 +25,11 @@ services:
       retries: 3
       start_period: 10s
 
-  # Next.js Frontend Dashboard
   lelemon-web:
     build:
-      context: ../web
+      context: ./apps/web
       args:
-        # API URL for browser access (baked into JS at build time)
-        - NEXT_PUBLIC_API_URL=http://localhost:8080
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8080}
     ports:
       - "3000:3000"
     depends_on:
@@ -44,7 +37,6 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # ClickHouse Database
   clickhouse:
     image: clickhouse/clickhouse-server:24-alpine
     environment:
@@ -55,8 +47,8 @@ services:
       - clickhouse_data:/var/lib/clickhouse
       - clickhouse_logs:/var/log/clickhouse-server
     ports:
-      - "8123:8123"  # HTTP interface
-      - "9000:9000"  # Native interface
+      - "8123:8123"
+      - "9000:9000"
     healthcheck:
       test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
       interval: 10s

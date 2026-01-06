@@ -162,8 +162,70 @@ function TracesPageContent() {
 
   const hasActiveFilters = search || statusFilter !== 'all' || sessionFilter !== 'all';
 
+  // When a trace is selected, use edge-to-edge layout
+  if (selectedTraceId) {
+    return (
+      <div className="flex flex-col h-full overflow-hidden">
+        {/* Master-Detail Layout - edge to edge */}
+        <div className="flex-1 flex min-h-0">
+          {/* Left Panel: Traces List */}
+          <div className="w-72 flex-shrink-0 flex flex-col border-r border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-hidden">
+            {/* Compact Filters */}
+            <div className="flex-shrink-0 p-2 border-b border-zinc-200 dark:border-zinc-700 space-y-2 bg-zinc-50 dark:bg-zinc-800/50">
+              <Input
+                placeholder="Search..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-7 text-xs"
+              />
+              <div className="flex gap-1">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="h-7 text-xs flex-1">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="completed">Done</SelectItem>
+                    <SelectItem value="error">Error</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* List Header */}
+            <div className="flex-shrink-0 px-2 py-1.5 border-b border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50">
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                {filteredTraces.length} traces
+              </span>
+            </div>
+
+            {/* Scrollable List */}
+            <div className="flex-1 overflow-auto">
+              <TracesList
+                traces={filteredTraces}
+                selectedTraceId={selectedTraceId}
+                onSelectTrace={setSelectedTraceId}
+                isLoading={isLoading}
+              />
+            </div>
+          </div>
+
+          {/* Right Panel: Trace Detail - takes remaining space */}
+          <div className="flex-1 bg-white dark:bg-zinc-900 overflow-hidden min-w-0">
+            <TraceDetail
+              traceId={selectedTraceId}
+              onClose={() => setSelectedTraceId(null)}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // When no trace is selected, show table with padding
   return (
-    <div className="flex flex-col h-full">
+    <div className="p-4 sm:p-6 lg:p-8 flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="flex-shrink-0 mb-4">
         <div className="flex items-center justify-between">
@@ -197,214 +259,153 @@ function TracesPageContent() {
         </div>
       </div>
 
-      {/* Main Content */}
-      {selectedTraceId ? (
-        /* Master-Detail Layout when trace is selected */
-        <div className="flex-1 flex gap-4 min-h-0">
-          {/* Left Panel: Traces List (compact) */}
-          <div className="w-72 flex-shrink-0 flex flex-col border border-zinc-200 dark:border-zinc-700 rounded-xl bg-card overflow-hidden">
-            {/* Compact Filters */}
-            <div className="flex-shrink-0 p-2 border-b border-zinc-200 dark:border-zinc-700 space-y-2">
+      {/* Table View */}
+      <div className="flex-1 flex flex-col border border-zinc-200 dark:border-zinc-700 rounded-xl bg-card overflow-hidden">
+        {/* Filters Row */}
+        <div className="flex-shrink-0 p-4 border-b border-zinc-200 dark:border-zinc-700">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex-1 min-w-[200px] max-w-sm">
               <Input
-                placeholder="Search..."
+                placeholder="Search by session, user, or trace ID..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-7 text-xs"
-              />
-              <div className="flex gap-1">
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="h-7 text-xs flex-1">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="completed">Done</SelectItem>
-                    <SelectItem value="error">Error</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* List Header */}
-            <div className="flex-shrink-0 px-2 py-1.5 border-b border-zinc-200 dark:border-zinc-700">
-              <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                {filteredTraces.length} traces
-              </span>
-            </div>
-
-            {/* Scrollable List */}
-            <div className="flex-1 overflow-auto">
-              <TracesList
-                traces={filteredTraces}
-                selectedTraceId={selectedTraceId}
-                onSelectTrace={setSelectedTraceId}
-                isLoading={isLoading}
+                className="h-9"
               />
             </div>
-          </div>
-
-          {/* Right Panel: Trace Detail */}
-          <div className="flex-1 border border-zinc-200 dark:border-zinc-700 rounded-xl bg-card overflow-hidden min-w-0">
-            <TraceDetail
-              traceId={selectedTraceId}
-              onClose={() => setSelectedTraceId(null)}
-            />
-          </div>
-        </div>
-      ) : (
-        /* Full-width Table when no trace selected */
-        <div className="flex-1 flex flex-col border border-zinc-200 dark:border-zinc-700 rounded-xl bg-card overflow-hidden">
-          {/* Filters Row */}
-          <div className="flex-shrink-0 p-4 border-b border-zinc-200 dark:border-zinc-700">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex-1 min-w-[200px] max-w-sm">
-                <Input
-                  placeholder="Search by session, user, or trace ID..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="h-9"
-                />
-              </div>
-
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[130px] h-9">
-                  <SelectValue placeholder="Status" />
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[130px] h-9">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="error">Error</SelectItem>
+              </SelectContent>
+            </Select>
+            {allSessions.length > 0 && (
+              <Select value={sessionFilter} onValueChange={setSessionFilter}>
+                <SelectTrigger className="w-[160px] h-9">
+                  <SelectValue placeholder="Session" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="error">Error</SelectItem>
+                  <SelectItem value="all">All Sessions</SelectItem>
+                  {allSessions.map((session) => (
+                    <SelectItem key={session} value={session}>
+                      {session.length > 16 ? `${session.slice(0, 16)}...` : session}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-
-              {allSessions.length > 0 && (
-                <Select value={sessionFilter} onValueChange={setSessionFilter}>
-                  <SelectTrigger className="w-[160px] h-9">
-                    <SelectValue placeholder="Session" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Sessions</SelectItem>
-                    {allSessions.map((session) => (
-                      <SelectItem key={session} value={session}>
-                        {session.length > 16 ? `${session.slice(0, 16)}...` : session}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-
-              {hasActiveFilters && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setSearch('');
-                    setStatusFilter('all');
-                    setSessionFilter('all');
-                  }}
-                >
-                  Clear filters
-                </Button>
-              )}
-
-              <div className="ml-auto text-sm text-zinc-500 dark:text-zinc-400">
-                {filteredTraces.length} traces
-              </div>
+            )}
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearch('');
+                  setStatusFilter('all');
+                  setSessionFilter('all');
+                }}
+              >
+                Clear filters
+              </Button>
+            )}
+            <div className="ml-auto text-sm text-zinc-500 dark:text-zinc-400">
+              {filteredTraces.length} traces
             </div>
           </div>
-
-          {/* Table */}
-          <div className="flex-1 overflow-auto">
-            {isLoading ? (
-              <div className="p-4 space-y-3">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="h-12 bg-zinc-100 dark:bg-zinc-800 rounded animate-pulse" />
-                ))}
-              </div>
-            ) : filteredTraces.length === 0 ? (
-              <div className="flex items-center justify-center h-64">
-                <p className="text-zinc-500 dark:text-zinc-400">
-                  {traces.length === 0
-                    ? 'No traces yet. Start by sending traces from your application.'
-                    : 'No traces match your filters.'}
-                </p>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[100px]">Time</TableHead>
-                    <TableHead>Trace ID</TableHead>
-                    <TableHead className="hidden md:table-cell">Session</TableHead>
-                    <TableHead className="hidden lg:table-cell">User</TableHead>
-                    <TableHead className="text-right">Spans</TableHead>
-                    <TableHead className="text-right">Tokens</TableHead>
-                    <TableHead className="text-right">Cost</TableHead>
-                    <TableHead className="hidden sm:table-cell text-right">Duration</TableHead>
-                    <TableHead className="text-center">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredTraces.map((trace) => (
-                    <TableRow
-                      key={trace.id}
-                      className="cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
-                      onClick={() => setSelectedTraceId(trace.id)}
-                    >
-                      <TableCell className="font-medium text-amber-600 dark:text-amber-400">
-                        {formatRelativeTime(trace.createdAt)}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {trace.id.slice(0, 12)}...
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell font-mono text-xs text-zinc-500">
-                        {trace.sessionId ? `${trace.sessionId.slice(0, 12)}...` : '-'}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell text-zinc-600 dark:text-zinc-400">
-                        {trace.userId || 'Anonymous'}
-                      </TableCell>
-                      <TableCell className="text-right text-zinc-600 dark:text-zinc-400">
-                        {trace.totalSpans}
-                      </TableCell>
-                      <TableCell className="text-right text-zinc-600 dark:text-zinc-400">
-                        {trace.totalTokens.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-amber-600 dark:text-amber-400">
-                        ${trace.totalCostUsd.toFixed(4)}
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell text-right text-zinc-600 dark:text-zinc-400">
-                        {formatDuration(trace.totalDurationMs)}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge
-                          variant={
-                            trace.status === 'completed'
-                              ? 'default'
-                              : trace.status === 'error'
-                              ? 'destructive'
-                              : 'secondary'
-                          }
-                          className="text-xs"
-                        >
-                          {trace.status === 'active' && (
-                            <span className="relative flex h-2 w-2 mr-1">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                            </span>
-                          )}
-                          {trace.status}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </div>
         </div>
-      )}
+
+        {/* Table */}
+        <div className="flex-1 overflow-auto">
+          {isLoading ? (
+            <div className="p-4 space-y-3">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="h-12 bg-zinc-100 dark:bg-zinc-800 rounded animate-pulse" />
+              ))}
+            </div>
+          ) : filteredTraces.length === 0 ? (
+            <div className="flex items-center justify-center h-64">
+              <p className="text-zinc-500 dark:text-zinc-400">
+                {traces.length === 0
+                  ? 'No traces yet. Start by sending traces from your application.'
+                  : 'No traces match your filters.'}
+              </p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[100px]">Time</TableHead>
+                  <TableHead>Trace ID</TableHead>
+                  <TableHead className="hidden md:table-cell">Session</TableHead>
+                  <TableHead className="hidden lg:table-cell">User</TableHead>
+                  <TableHead className="text-right">Spans</TableHead>
+                  <TableHead className="text-right">Tokens</TableHead>
+                  <TableHead className="text-right">Cost</TableHead>
+                  <TableHead className="hidden sm:table-cell text-right">Duration</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredTraces.map((trace) => (
+                  <TableRow
+                    key={trace.id}
+                    className="cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                    onClick={() => setSelectedTraceId(trace.id)}
+                  >
+                    <TableCell className="font-medium text-amber-600 dark:text-amber-400">
+                      {formatRelativeTime(trace.createdAt)}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {trace.id.slice(0, 12)}...
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell font-mono text-xs text-zinc-500">
+                      {trace.sessionId ? `${trace.sessionId.slice(0, 12)}...` : '-'}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell text-zinc-600 dark:text-zinc-400">
+                      {trace.userId || 'Anonymous'}
+                    </TableCell>
+                    <TableCell className="text-right text-zinc-600 dark:text-zinc-400">
+                      {trace.totalSpans}
+                    </TableCell>
+                    <TableCell className="text-right text-zinc-600 dark:text-zinc-400">
+                      {trace.totalTokens > 0 ? trace.totalTokens.toLocaleString() : '-'}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-amber-600 dark:text-amber-400">
+                      {trace.totalCostUsd > 0 ? `$${trace.totalCostUsd.toFixed(4)}` : '-'}
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell text-right text-zinc-600 dark:text-zinc-400">
+                      {formatDuration(trace.totalDurationMs)}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge
+                        variant={
+                          trace.status === 'completed'
+                            ? 'default'
+                            : trace.status === 'error'
+                            ? 'destructive'
+                            : 'secondary'
+                        }
+                        className="text-xs"
+                      >
+                        {trace.status === 'active' && (
+                          <span className="relative flex h-2 w-2 mr-1">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                          </span>
+                        )}
+                        {trace.status}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

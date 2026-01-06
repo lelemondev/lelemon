@@ -99,8 +99,9 @@ export function formatDuration(ms: number | null): string {
 
 /**
  * Formatea costo en USD
+ * Returns "-" for null, undefined, or 0 (0 usually means unknown cost)
  */
 export function formatCost(cost: number | null): string {
-  if (cost === null || cost === undefined) return '-';
+  if (cost === null || cost === undefined || cost === 0) return '-';
   return `$${cost.toFixed(4)}`;
 }

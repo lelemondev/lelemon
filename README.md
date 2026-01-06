@@ -68,17 +68,20 @@ Open the dashboard to see your traces, costs, and analytics.
 ### Option 1: Docker Compose (Recommended)
 
 ```bash
-# Clone
 git clone https://github.com/lelemondev/lelemon.git
-cd lelemon/apps/server
-
-# Start with SQLite (simplest)
+cd lelemon
 docker-compose up -d
+```
 
-# Or with PostgreSQL
+That's it! Open http://localhost:3000 to access the dashboard.
+
+**Alternative databases:**
+
+```bash
+# PostgreSQL (production, >100k traces/day)
 docker-compose -f docker-compose.postgres.yml up -d
 
-# Or with ClickHouse (high volume)
+# ClickHouse (high volume, >1M traces/day)
 docker-compose -f docker-compose.clickhouse.yml up -d
 ```
 
@@ -90,24 +93,27 @@ cd apps/server
 go build -o lelemon ./cmd/server
 ./lelemon
 
-# Dashboard
+# Dashboard (separate terminal)
 cd apps/web
-yarn install
-yarn build
-yarn start
+yarn install && yarn build && yarn start
 ```
 
 ### Environment Variables
 
-```bash
-# Server (apps/server)
-DATABASE_URL=sqlite://./data/lelemon.db  # or postgres:// or clickhouse://
-JWT_SECRET=your-secret-key
-PORT=8080
+Copy `.env.example` to `.env` and customize:
 
-# Dashboard (apps/web)
-NEXT_PUBLIC_API_URL=http://localhost:8080
+```bash
+cp .env.example .env
 ```
+
+Key variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `JWT_SECRET` | - | Auth secret (required in production) |
+| `LOG_LEVEL` | `info` | debug, info, warn, error |
+| `POSTGRES_PASSWORD` | `lelemon` | PostgreSQL password |
+| `CLICKHOUSE_PASSWORD` | - | ClickHouse password |
 
 ---
 
@@ -146,12 +152,14 @@ import { withLelemon } from '@lelemondev/sdk/lambda';
 
 ```
 lelemon/
+├── docker-compose.yml            # SQLite (default)
+├── docker-compose.postgres.yml   # PostgreSQL
+├── docker-compose.clickhouse.yml # ClickHouse
+├── .env.example
 ├── apps/
-│   ├── server/      # Go backend (API, ingestion, auth)
-│   ├── web/         # Next.js dashboard
-│   └── playground/  # SDK testing app
+│   ├── server/     # Go backend
+│   └── web/        # Next.js dashboard
 └── docs/
-    └── ROADMAP.md   # Development roadmap
 ```
 
 ---

@@ -119,7 +119,7 @@ function SessionsPageContent() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 overflow-auto h-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Sessions</h1>
@@ -216,10 +216,10 @@ function SessionsPageContent() {
                       {session.totalSpans}
                     </TableCell>
                     <TableCell className="text-right text-zinc-600 dark:text-zinc-400">
-                      {session.totalTokens.toLocaleString()}
+                      {session.totalTokens > 0 ? session.totalTokens.toLocaleString() : '-'}
                     </TableCell>
                     <TableCell className="text-right font-mono text-amber-600 dark:text-amber-400">
-                      ${session.totalCostUsd.toFixed(4)}
+                      {session.totalCostUsd > 0 ? `$${session.totalCostUsd.toFixed(4)}` : '-'}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell text-right text-zinc-600 dark:text-zinc-400">
                       {formatDuration(session.totalDurationMs)}

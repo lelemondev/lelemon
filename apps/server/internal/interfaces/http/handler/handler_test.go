@@ -59,14 +59,15 @@ func setupTestServer(t *testing.T) *TestServer {
 	authSvc := appauth.NewService(store, jwtService, oauthService)
 
 	router := apphttp.NewRouter(apphttp.RouterConfig{
-		Store:        store,
-		IngestSvc:    ingestSvc,
-		TraceSvc:     traceSvc,
-		AnalyticsSvc: analyticsSvc,
-		ProjectSvc:   projectSvc,
-		AuthSvc:      authSvc,
-		JWTService:   jwtService,
-		FrontendURL:  "http://localhost:3000",
+		PrimaryStore:   store,
+		AnalyticsStore: store, // Same store for tests
+		IngestSvc:      ingestSvc,
+		TraceSvc:       traceSvc,
+		AnalyticsSvc:   analyticsSvc,
+		ProjectSvc:     projectSvc,
+		AuthSvc:        authSvc,
+		JWTService:     jwtService,
+		FrontendURL:    "http://localhost:3000",
 	})
 
 	server := httptest.NewServer(router)

@@ -18,12 +18,16 @@ var (
 
 // HealthHandler handles health check requests
 type HealthHandler struct {
-	store repository.Store
+	primaryStore   repository.Store
+	analyticsStore repository.Store
 }
 
 // NewHealthHandler creates a new health handler
-func NewHealthHandler(store repository.Store) *HealthHandler {
-	return &HealthHandler{store: store}
+func NewHealthHandler(primaryStore, analyticsStore repository.Store) *HealthHandler {
+	return &HealthHandler{
+		primaryStore:   primaryStore,
+		analyticsStore: analyticsStore,
+	}
 }
 
 // HealthResponse represents the health check response
@@ -37,7 +41,8 @@ type HealthResponse struct {
 
 // HealthChecks contains individual health check results
 type HealthChecks struct {
-	Database CheckResult `json:"database"`
+	Primary   CheckResult  `json:"primary"`
+	Analytics *CheckResult `json:"analytics,omitempty"` // Only shown if different from primary
 }
 
 // CheckResult represents the result of a single health check
@@ -61,17 +66,27 @@ type SystemInfo struct {
 func (h *HealthHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	verbose := r.URL.Query().Get("verbose") == "true"
 
+	primaryCheck := h.checkStore(r, h.primaryStore)
 	resp := HealthResponse{
 		Status:  "ok",
 		Version: Version,
 		Uptime:  time.Since(startTime).Round(time.Second).String(),
 		Checks: HealthChecks{
-			Database: h.checkDatabase(r),
+			Primary: primaryCheck,
 		},
 	}
 
+	// Check analytics store if different from primary
+	if h.analyticsStore != h.primaryStore {
+		analyticsCheck := h.checkStore(r, h.analyticsStore)
+		resp.Checks.Analytics = &analyticsCheck
+		if analyticsCheck.Status != "ok" {
+			resp.Status = "degraded"
+		}
+	}
+
 	// Check if any component is unhealthy
-	if resp.Checks.Database.Status != "ok" {
+	if primaryCheck.Status != "ok" {
 		resp.Status = "degraded"
 	}
 
@@ -97,10 +112,10 @@ func (h *HealthHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
-// checkDatabase checks the database connection
-func (h *HealthHandler) checkDatabase(r *http.Request) CheckResult {
+// checkStore checks a store's database connection
+func (h *HealthHandler) checkStore(r *http.Request, store repository.Store) CheckResult {
 	start := time.Now()
-	err := h.store.Ping(r.Context())
+	err := store.Ping(r.Context())
 	latency := time.Since(start)
 
 	if err != nil {
@@ -125,14 +140,28 @@ func LivenessHandler(w http.ResponseWriter, r *http.Request) {
 
 // ReadinessHandler handles GET /health/ready (Kubernetes readiness probe)
 func (h *HealthHandler) ReadinessHandler(w http.ResponseWriter, r *http.Request) {
-	if err := h.store.Ping(r.Context()); err != nil {
+	// Check primary store
+	if err := h.primaryStore.Ping(r.Context()); err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusServiceUnavailable)
 		json.NewEncoder(w).Encode(map[string]string{
 			"status": "not ready",
-			"error":  err.Error(),
+			"error":  "primary: " + err.Error(),
 		})
 		return
+	}
+
+	// Check analytics store if different
+	if h.analyticsStore != h.primaryStore {
+		if err := h.analyticsStore.Ping(r.Context()); err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusServiceUnavailable)
+			json.NewEncoder(w).Encode(map[string]string{
+				"status": "not ready",
+				"error":  "analytics: " + err.Error(),
+			})
+			return
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")

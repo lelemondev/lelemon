@@ -3,6 +3,7 @@ package ingest
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"sync"
 	"time"
@@ -364,19 +365,15 @@ func (w *Worker) eventToSpan(traceID string, event IngestEvent) entity.Span {
 	}
 
 	span := entity.Span{
-		TraceID:      traceID,
-		Type:         spanType,
-		Name:         name,
-		Input:        event.Input,
-		Output:       event.Output,
-		InputTokens:  event.InputTokens,
-		OutputTokens: event.OutputTokens,
-		CostUSD:      costUSD,
-		DurationMs:   event.DurationMs,
-		Status:       spanStatus,
-		Metadata:     metadata,
-		StartedAt:    startedAt,
-		EndedAt:      &now,
+		TraceID:    traceID,
+		Type:       spanType,
+		Name:       name,
+		Input:      event.Input,
+		DurationMs: event.DurationMs,
+		Status:     spanStatus,
+		Metadata:   metadata,
+		StartedAt:  startedAt,
+		EndedAt:    &now,
 	}
 
 	if event.ParentSpanID != "" {
@@ -392,5 +389,90 @@ func (w *Worker) eventToSpan(traceID string, event IngestEvent) entity.Span {
 		span.Provider = &event.Provider
 	}
 
+	// SDK-provided timing
+	if event.FirstTokenMs != nil {
+		span.FirstTokenMs = event.FirstTokenMs
+	}
+
+	// Parse RawResponse if available (SDK thin, server smart)
+	slog.Info("worker.eventToSpan", "provider", event.Provider, "hasRawResponse", event.RawResponse != nil, "model", event.Model)
+	if event.RawResponse != nil {
+		// Debug: log the raw response structure to see what we're receiving
+		if rawMap, ok := event.RawResponse.(map[string]any); ok {
+			slog.Info("rawResponse keys", "keys", getMapKeysW(rawMap))
+			if usage, ok := rawMap["usage"]; ok {
+				slog.Info("rawResponse.usage", "usage", usage, "type", fmt.Sprintf("%T", usage))
+			} else {
+				slog.Warn("rawResponse missing 'usage' field")
+			}
+			// Check for AWS metadata and metrics
+			if metadata, ok := rawMap["$metadata"]; ok {
+				slog.Info("rawResponse.$metadata", "metadata", metadata)
+			}
+			if metrics, ok := rawMap["metrics"]; ok {
+				slog.Info("rawResponse.metrics", "metrics", metrics)
+			}
+		}
+		slog.Info("worker parsing rawResponse", "provider", event.Provider)
+		parsed := service.ParseProviderResponse(event.Provider, event.RawResponse)
+		if parsed != nil {
+			span.Output = parsed.Output
+			span.InputTokens = intPtr(parsed.InputTokens)
+			span.OutputTokens = intPtr(parsed.OutputTokens)
+			span.CacheReadTokens = parsed.CacheReadTokens
+			span.CacheWriteTokens = parsed.CacheWriteTokens
+			span.ReasoningTokens = parsed.ReasoningTokens
+			span.StopReason = parsed.StopReason
+			span.Thinking = parsed.Thinking
+			span.SubType = parsed.SubType
+			span.ToolUses = parsed.ToolUses
+
+			// Calculate cost with extracted tokens
+			if spanType == entity.SpanTypeLLM && event.Model != "" {
+				cost := w.pricing.CalculateCost(event.Model, parsed.InputTokens, parsed.OutputTokens)
+				span.CostUSD = &cost
+			}
+		}
+	} else {
+		// Legacy mode: use fields from event directly
+		span.Output = event.Output
+		span.InputTokens = event.InputTokens
+		span.OutputTokens = event.OutputTokens
+		span.CacheReadTokens = event.CacheReadTokens
+		span.CacheWriteTokens = event.CacheWriteTokens
+		span.ReasoningTokens = event.ReasoningTokens
+		if event.StopReason != "" {
+			span.StopReason = &event.StopReason
+		}
+		if event.Thinking != "" {
+			span.Thinking = &event.Thinking
+		}
+
+		// Calculate cost with legacy tokens
+		if spanType == entity.SpanTypeLLM && event.Model != "" {
+			span.CostUSD = costUSD
+		}
+
+		// Extract subtype and tool uses from legacy output
+		if spanType == entity.SpanTypeLLM {
+			subType := determineLLMSubType(event.Output)
+			span.SubType = &subType
+
+			toolUses := extractToolUsesFromOutput(event.Output, span.ID)
+			if len(toolUses) > 0 {
+				span.ToolUses = toolUses
+			}
+		}
+	}
+
 	return span
+}
+
+// getMapKeysW returns all keys from a map (for debugging in worker)
+func getMapKeysW(m map[string]any) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }

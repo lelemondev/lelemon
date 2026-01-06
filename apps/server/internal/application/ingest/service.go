@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/lelemon/server/internal/domain/entity"
@@ -352,9 +353,21 @@ func (s *Service) eventToSpan(traceID string, event IngestEvent) entity.Span {
 	}
 
 	// Parse RawResponse if available (SDK thin, server smart)
+	slog.Info("eventToSpan", "provider", event.Provider, "hasRawResponse", event.RawResponse != nil, "model", event.Model)
 	if event.RawResponse != nil {
+		// Debug: log the raw response structure to see what we're receiving
+		if rawMap, ok := event.RawResponse.(map[string]any); ok {
+			slog.Info("rawResponse keys", "keys", getMapKeys(rawMap))
+			if usage, ok := rawMap["usage"]; ok {
+				slog.Info("rawResponse.usage", "usage", usage, "type", fmt.Sprintf("%T", usage))
+			} else {
+				slog.Warn("rawResponse missing 'usage' field")
+			}
+		}
+		slog.Info("parsing rawResponse", "provider", event.Provider)
 		parsed := service.ParseProviderResponse(event.Provider, event.RawResponse)
 		if parsed != nil {
+			slog.Debug("parsed rawResponse", "output", parsed.Output != nil, "inputTokens", parsed.InputTokens, "outputTokens", parsed.OutputTokens, "toolUses", len(parsed.ToolUses))
 			span.Output = parsed.Output
 			span.InputTokens = intPtr(parsed.InputTokens)
 			span.OutputTokens = intPtr(parsed.OutputTokens)
@@ -371,8 +384,11 @@ func (s *Service) eventToSpan(traceID string, event IngestEvent) entity.Span {
 				cost := s.pricing.CalculateCost(event.Model, parsed.InputTokens, parsed.OutputTokens)
 				span.CostUSD = &cost
 			}
+		} else {
+			slog.Warn("rawResponse parsing returned nil", "provider", event.Provider)
 		}
 	} else {
+		slog.Debug("no rawResponse, using legacy mode", "provider", event.Provider, "hasOutput", event.Output != nil)
 		// Legacy mode: use fields from event directly
 		span.Output = event.Output
 		span.InputTokens = event.InputTokens
@@ -419,6 +435,15 @@ func (s *Service) eventToSpan(traceID string, event IngestEvent) entity.Span {
 // intPtr creates a pointer to an int value
 func intPtr(v int) *int {
 	return &v
+}
+
+// getMapKeys returns all keys from a map (for debugging)
+func getMapKeys(m map[string]any) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 // determineLLMSubType determines if an LLM span is "planning" or "response"

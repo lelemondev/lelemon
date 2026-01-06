@@ -68,10 +68,14 @@ export function TracesList({ traces, selectedTraceId, onSelectTrace, isLoading }
 
           <div className="flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
             <span title="Spans">{trace.totalSpans} spans</span>
-            <span title="Tokens">{trace.totalTokens.toLocaleString()} tok</span>
-            <span className="text-amber-600 dark:text-amber-400" title="Cost">
-              ${trace.totalCostUsd.toFixed(4)}
-            </span>
+            {trace.totalTokens > 0 && (
+              <span title="Tokens">{trace.totalTokens.toLocaleString()} tok</span>
+            )}
+            {trace.totalCostUsd > 0 && (
+              <span className="text-amber-600 dark:text-amber-400" title="Cost">
+                ${trace.totalCostUsd.toFixed(4)}
+              </span>
+            )}
           </div>
 
           {trace.sessionId && (

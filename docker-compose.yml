@@ -1,11 +1,10 @@
-# Lelemon - Full Stack with SQLite (Default, lightweight)
-# Use this for: development, small deployments, single-server setups
-# RAM usage: ~100MB (backend ~50MB + frontend ~50MB)
+# Lelemon - Full Stack with SQLite (Default)
+# Usage: docker-compose up -d
+# Ports: API on 8080, Dashboard on 3000
 
 services:
-  # Go Backend API
   lelemon-api:
-    build: .
+    build: ./apps/server
     ports:
       - "8080:8080"
     volumes:
@@ -13,13 +12,10 @@ services:
     environment:
       - PORT=8080
       - DATABASE_URL=sqlite:///data/lelemon.db
-      - LOG_LEVEL=info
+      - LOG_LEVEL=${LOG_LEVEL:-info}
       - LOG_FORMAT=json
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
-      # Optional: Google OAuth
-      # - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      # - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
@@ -28,13 +24,11 @@ services:
       retries: 3
       start_period: 5s
 
-  # Next.js Frontend Dashboard
   lelemon-web:
     build:
-      context: ../web
+      context: ./apps/web
       args:
-        # API URL for browser access (baked into JS at build time)
-        - NEXT_PUBLIC_API_URL=http://localhost:8080
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8080}
     ports:
       - "3000:3000"
     depends_on:

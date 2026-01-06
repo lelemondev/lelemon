@@ -6,9 +6,11 @@
  * - description: what the tool does (for the LLM)
  * - parameters: JSON schema for tool inputs
  * - execute: function that runs the tool
+ *
+ * Note: Tool spans are automatically created by the server from the LLM's tool_use blocks.
+ * No manual span() calls needed here.
  */
 
-import { span } from '@lelemondev/sdk';
 import { executeQuery } from './data/database';
 import { searchDocuments } from './data/documents';
 
@@ -51,21 +53,10 @@ Only SELECT queries are allowed. Example: SELECT * FROM products WHERE category 
     },
   },
   execute: async (args) => {
-    const startTime = Date.now();
     const sql = args.sql as string;
 
     try {
       const result = executeQuery(sql);
-
-      span({
-        type: 'tool',
-        name: 'sqlite-query',
-        input: { sql },
-        output: { rowCount: result.rows.length, columns: result.columns },
-        durationMs: Date.now() - startTime,
-        status: 'success',
-      });
-
       return {
         success: true,
         rowCount: result.rows.length,
@@ -73,16 +64,6 @@ Only SELECT queries are allowed. Example: SELECT * FROM products WHERE category 
         rows: result.rows,
       };
     } catch (error) {
-      span({
-        type: 'tool',
-        name: 'sqlite-query',
-        input: { sql },
-        output: { error: error instanceof Error ? error.message : 'Unknown error' },
-        durationMs: Date.now() - startTime,
-        status: 'error',
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
-      });
-
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -117,37 +98,10 @@ Returns relevant documents with similarity scores.`,
     },
   },
   execute: async (args) => {
-    const startTime = Date.now();
     const query = args.query as string;
     const limit = (args.limit as number) || 5;
 
-    // Simulate embedding generation delay
-    await new Promise(resolve => setTimeout(resolve, 50));
-
-    span({
-      type: 'embedding',
-      name: 'query-embedding',
-      input: { query, queryLength: query.length },
-      output: { dimensions: 1536 }, // Simulated embedding dimensions
-      durationMs: 50,
-      status: 'success',
-    });
-
-    // Perform search
     const results = searchDocuments(query, limit);
-
-    span({
-      type: 'retrieval',
-      name: 'vector-search',
-      input: { query, limit },
-      output: {
-        resultsCount: results.length,
-        topScore: results[0]?.score || 0,
-        categories: [...new Set(results.map(r => r.category))],
-      },
-      durationMs: Date.now() - startTime,
-      status: 'success',
-    });
 
     return {
       success: true,
@@ -201,7 +155,6 @@ Use for fetching real-time data from external services.`,
     },
   },
   execute: async (args) => {
-    const startTime = Date.now();
     const method = args.method as string;
     const url = args.url as string;
     const body = args.body as Record<string, unknown> | undefined;
@@ -210,16 +163,6 @@ Use for fetching real-time data from external services.`,
       const parsedUrl = new URL(url);
 
       if (!ALLOWED_DOMAINS.includes(parsedUrl.hostname)) {
-        span({
-          type: 'tool',
-          name: 'http-request',
-          input: { method, url },
-          output: { error: 'Domain not allowed' },
-          durationMs: Date.now() - startTime,
-          status: 'error',
-          errorMessage: `Domain ${parsedUrl.hostname} not in allowlist`,
-        });
-
         return {
           success: false,
           error: `Domain ${parsedUrl.hostname} not allowed. Allowed: ${ALLOWED_DOMAINS.join(', ')}`,
@@ -237,15 +180,6 @@ Use for fetching real-time data from external services.`,
 
       const data = await response.json();
 
-      span({
-        type: 'tool',
-        name: 'http-request',
-        input: { method, url, hasBody: !!body },
-        output: { status: response.status, dataSize: JSON.stringify(data).length },
-        durationMs: Date.now() - startTime,
-        status: response.ok ? 'success' : 'error',
-      });
-
       return {
         success: response.ok,
         status: response.status,
@@ -253,16 +187,6 @@ Use for fetching real-time data from external services.`,
         data,
       };
     } catch (error) {
-      span({
-        type: 'tool',
-        name: 'http-request',
-        input: { method, url },
-        output: { error: error instanceof Error ? error.message : 'Unknown error' },
-        durationMs: Date.now() - startTime,
-        status: 'error',
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
-      });
-
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -292,7 +216,6 @@ Example: "2 * (3 + 4)" or "Math.sqrt(16) + Math.pow(2, 3)"`,
     },
   },
   execute: async (args) => {
-    const startTime = Date.now();
     const expression = args.expression as string;
 
     try {
@@ -304,31 +227,12 @@ Example: "2 * (3 + 4)" or "Math.sqrt(16) + Math.pow(2, 3)"`,
       const safeEval = new Function('Math', `"use strict"; return (${sanitized})`);
       const result = safeEval(Math);
 
-      span({
-        type: 'tool',
-        name: 'calculator',
-        input: { expression },
-        output: { result },
-        durationMs: Date.now() - startTime,
-        status: 'success',
-      });
-
       return {
         success: true,
         expression,
         result,
       };
     } catch (error) {
-      span({
-        type: 'tool',
-        name: 'calculator',
-        input: { expression },
-        output: { error: error instanceof Error ? error.message : 'Invalid expression' },
-        durationMs: Date.now() - startTime,
-        status: 'error',
-        errorMessage: error instanceof Error ? error.message : 'Invalid expression',
-      });
-
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Invalid expression',
@@ -358,7 +262,6 @@ export const getCurrentTime: Tool = {
     },
   },
   execute: async (args) => {
-    const startTime = Date.now();
     const timezone = (args.timezone as string) || 'UTC';
     const format = (args.format as string) || 'full';
 
@@ -388,15 +291,6 @@ export const getCurrentTime: Tool = {
           formatted = now.toLocaleString('en-US', options);
       }
 
-      span({
-        type: 'tool',
-        name: 'get-time',
-        input: { timezone, format },
-        output: { formatted },
-        durationMs: Date.now() - startTime,
-        status: 'success',
-      });
-
       return {
         success: true,
         timestamp: now.getTime(),
@@ -405,16 +299,6 @@ export const getCurrentTime: Tool = {
         timezone,
       };
     } catch (error) {
-      span({
-        type: 'tool',
-        name: 'get-time',
-        input: { timezone, format },
-        output: { error: error instanceof Error ? error.message : 'Unknown error' },
-        durationMs: Date.now() - startTime,
-        status: 'error',
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
-      });
-
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',

@@ -1,23 +1,19 @@
-# Lelemon - Full Stack with PostgreSQL (Production)
-# Use this for: production deployments, high availability, scaling
-# Recommended for: >100k traces/day
+# Lelemon - Full Stack with PostgreSQL
+# Usage: docker-compose -f docker-compose.postgres.yml up -d
+# Recommended for: production, >100k traces/day
 
 services:
-  # Go Backend API
   lelemon-api:
-    build: .
+    build: ./apps/server
     ports:
       - "8080:8080"
     environment:
       - PORT=8080
       - DATABASE_URL=postgres://lelemon:${POSTGRES_PASSWORD:-lelemon}@postgres:5432/lelemon?sslmode=disable
-      - LOG_LEVEL=info
+      - LOG_LEVEL=${LOG_LEVEL:-info}
       - LOG_FORMAT=json
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
-      # Optional: Google OAuth
-      # - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      # - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
@@ -29,16 +25,13 @@ services:
       retries: 3
       start_period: 10s
 
-  # Next.js Frontend Dashboard
   lelemon-web:
     build:
-      context: ../web
+      context: ./apps/web
       args:
-        - NEXT_PUBLIC_API_URL=http://localhost:8080
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8080}
     ports:
       - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://lelemon-api:8080
     depends_on:
       lelemon-api:
         condition: service_healthy

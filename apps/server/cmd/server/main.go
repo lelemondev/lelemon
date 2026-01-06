@@ -40,18 +40,35 @@ func main() {
 		"log_level", cfg.LogLevel,
 	)
 
-	// Initialize store
-	db, err := store.New(cfg.DatabaseURL)
+	// Initialize primary store (users, projects)
+	primaryStore, err := store.New(cfg.DatabaseURL)
 	if err != nil {
-		log.Error("failed to initialize store", "error", err)
+		log.Error("failed to initialize primary store", "error", err)
 		os.Exit(1)
+	}
+
+	// Initialize analytics store (traces, spans) - defaults to primary
+	analyticsStore := primaryStore
+	if cfg.AnalyticsDatabaseURL != "" {
+		analyticsStore, err = store.New(cfg.AnalyticsDatabaseURL)
+		if err != nil {
+			log.Error("failed to initialize analytics store", "error", err)
+			os.Exit(1)
+		}
+		log.Info("using separate analytics store")
 	}
 
 	// Run migrations
 	ctx := context.Background()
-	if err := db.Migrate(ctx); err != nil {
-		log.Error("failed to run migrations", "error", err)
+	if err := primaryStore.Migrate(ctx); err != nil {
+		log.Error("failed to run primary migrations", "error", err)
 		os.Exit(1)
+	}
+	if analyticsStore != primaryStore {
+		if err := analyticsStore.Migrate(ctx); err != nil {
+			log.Error("failed to run analytics migrations", "error", err)
+			os.Exit(1)
+		}
 	}
 	log.Info("database migrations completed")
 
@@ -60,23 +77,26 @@ func main() {
 	oauthService := auth.NewOAuthService(cfg.GoogleClientID, cfg.GoogleClientSecret, cfg.GoogleRedirectURL)
 
 	// Initialize application services
+	// - Services that handle traces/spans/analytics use analyticsStore
+	// - Services that handle users/projects use primaryStore
 	pricing := service.NewPricingCalculator()
-	ingestSvc := ingest.NewAsyncService(db, pricing, 1000, 4)
-	traceSvc := trace.NewService(db, pricing)
-	analyticsSvc := analytics.NewService(db)
-	projectSvc := project.NewService(db)
-	authSvc := appauth.NewService(db, jwtService, oauthService)
+	ingestSvc := ingest.NewAsyncService(analyticsStore, pricing, 1000, 4)
+	traceSvc := trace.NewService(analyticsStore, pricing)
+	analyticsSvc := analytics.NewService(analyticsStore)
+	projectSvc := project.NewService(primaryStore)
+	authSvc := appauth.NewService(primaryStore, jwtService, oauthService)
 
 	// Create router
 	router := apphttp.NewRouter(apphttp.RouterConfig{
-		Store:        db,
-		IngestSvc:    ingestSvc,
-		TraceSvc:     traceSvc,
-		AnalyticsSvc: analyticsSvc,
-		ProjectSvc:   projectSvc,
-		AuthSvc:      authSvc,
-		JWTService:   jwtService,
-		FrontendURL:  cfg.FrontendURL,
+		PrimaryStore:   primaryStore,
+		AnalyticsStore: analyticsStore,
+		IngestSvc:      ingestSvc,
+		TraceSvc:       traceSvc,
+		AnalyticsSvc:   analyticsSvc,
+		ProjectSvc:     projectSvc,
+		AuthSvc:        authSvc,
+		JWTService:     jwtService,
+		FrontendURL:    cfg.FrontendURL,
 	})
 
 	// Create server
@@ -108,9 +128,14 @@ func main() {
 	// Stop ingest worker (drain pending jobs)
 	ingestSvc.Stop(10 * time.Second)
 
-	// Close database connection
-	if err := db.Close(); err != nil {
-		log.Error("database close error", "error", err)
+	// Close database connections
+	if err := primaryStore.Close(); err != nil {
+		log.Error("primary store close error", "error", err)
+	}
+	if analyticsStore != primaryStore {
+		if err := analyticsStore.Close(); err != nil {
+			log.Error("analytics store close error", "error", err)
+		}
 	}
 
 	log.Info("server stopped gracefully")

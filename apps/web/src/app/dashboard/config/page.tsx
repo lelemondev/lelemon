@@ -187,7 +187,7 @@ function ConfigPageContent() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 overflow-auto h-full">
       {/* Welcome Modal for New Users */}
       {welcomeKey && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">

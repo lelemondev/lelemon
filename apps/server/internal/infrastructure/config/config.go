@@ -17,7 +17,8 @@ type Config struct {
 	LogFormat string // json, text
 
 	// Database
-	DatabaseURL string
+	DatabaseURL          string
+	AnalyticsDatabaseURL string // Optional: separate store for traces/spans/analytics
 
 	// JWT
 	JWTSecret     string
@@ -38,7 +39,8 @@ func Load() *Config {
 		FrontendURL:        getEnv("FRONTEND_URL", "http://localhost:3000"),
 		LogLevel:           getEnv("LOG_LEVEL", "info"),
 		LogFormat:          getEnv("LOG_FORMAT", "json"),
-		DatabaseURL:        getEnv("DATABASE_URL", "sqlite://./data/lelemon.db"),
+		DatabaseURL:          getEnv("DATABASE_URL", "sqlite://./data/lelemon.db"),
+		AnalyticsDatabaseURL: getEnv("ANALYTICS_DATABASE_URL", ""),
 		JWTSecret:          getEnv("JWT_SECRET", "change-me-in-production-please"),
 		JWTExpiration:      getEnvDuration("JWT_EXPIRATION", 24*7*time.Hour), // 7 days
 		GoogleClientID:     getEnv("GOOGLE_CLIENT_ID", ""),

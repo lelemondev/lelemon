@@ -20,14 +20,15 @@ import (
 
 // RouterConfig holds the dependencies for the router
 type RouterConfig struct {
-	Store        repository.Store
-	IngestSvc    *ingest.Service
-	TraceSvc     *trace.Service
-	AnalyticsSvc *analytics.Service
-	ProjectSvc   *project.Service
-	AuthSvc      *appauth.Service
-	JWTService   *auth.JWTService
-	FrontendURL  string
+	PrimaryStore   repository.Store // users, projects (API key auth)
+	AnalyticsStore repository.Store // traces, spans (health checks)
+	IngestSvc      *ingest.Service
+	TraceSvc       *trace.Service
+	AnalyticsSvc   *analytics.Service
+	ProjectSvc     *project.Service
+	AuthSvc        *appauth.Service
+	JWTService     *auth.JWTService
+	FrontendURL    string
 }
 
 // NewRouter creates a new HTTP router with all routes configured
@@ -41,7 +42,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	r.Use(corsMiddleware)
 
 	// Health checks (no auth required)
-	healthHandler := handler.NewHealthHandler(cfg.Store)
+	healthHandler := handler.NewHealthHandler(cfg.PrimaryStore, cfg.AnalyticsStore)
 	r.Get("/health", healthHandler.Handle)
 	r.Get("/health/live", handler.LivenessHandler)
 	r.Get("/health/ready", healthHandler.ReadinessHandler)
@@ -67,7 +68,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 
 		// Ingest endpoint (no rate limit - SDK already batches)
 		r.Group(func(r chi.Router) {
-			r.Use(middleware.APIKeyAuth(cfg.Store))
+			r.Use(middleware.APIKeyAuth(cfg.PrimaryStore))
 
 			ingestHandler := handler.NewIngestHandler(cfg.IngestSvc)
 			r.Post("/ingest", ingestHandler.Handle)
@@ -75,7 +76,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 
 		// API Key authenticated routes (rate limited)
 		r.Group(func(r chi.Router) {
-			r.Use(middleware.APIKeyAuth(cfg.Store))
+			r.Use(middleware.APIKeyAuth(cfg.PrimaryStore))
 			r.Use(middleware.RateLimit(rateLimiter))
 
 			// Traces

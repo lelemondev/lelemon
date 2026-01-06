@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, createContext, useContext, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -9,6 +9,10 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { ProjectProvider } from '@/lib/project-context';
 import { ProjectSelector } from '@/components/project-selector';
 import { LemonIcon } from '@/components/lemon-icon';
+
+// Sidebar context for children to know if collapsed
+const SidebarContext = createContext({ collapsed: false, setCollapsed: (_: boolean) => {} });
+export const useSidebar = () => useContext(SidebarContext);
 
 const navigation = [
   {
@@ -69,6 +73,54 @@ export default function DashboardLayout({
   const { logout, isAuthenticated, isLoading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // User's manual preference (persisted)
+  const [userCollapsed, setUserCollapsed] = useState(false);
+  // Temporary auto-collapse for trace detail view
+  const [autoCollapsed, setAutoCollapsed] = useState(false);
+
+  // Detect if we're on a trace detail page
+  const isTraceDetailPage = pathname.startsWith('/dashboard/traces/') && pathname !== '/dashboard/traces';
+
+  // Load user's sidebar preference from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem('sidebar-collapsed');
+    if (stored !== null) {
+      setUserCollapsed(stored === 'true');
+    }
+  }, []);
+
+  // Auto-collapse when entering trace detail, restore when leaving
+  useEffect(() => {
+    if (isTraceDetailPage && !userCollapsed) {
+      setAutoCollapsed(true);
+    } else {
+      setAutoCollapsed(false);
+    }
+  }, [isTraceDetailPage, userCollapsed]);
+
+  // Effective collapsed state: user preference OR auto-collapse
+  const sidebarCollapsed = userCollapsed || autoCollapsed;
+
+  // Toggle user preference (persisted)
+  const toggleSidebarCollapsed = () => {
+    const newValue = !userCollapsed;
+    setUserCollapsed(newValue);
+    localStorage.setItem('sidebar-collapsed', String(newValue));
+    // If manually expanding while on detail page, cancel auto-collapse
+    if (!newValue) {
+      setAutoCollapsed(false);
+    }
+  };
+
+  // Context value for children
+  const sidebarContextValue = useMemo(() => ({
+    collapsed: sidebarCollapsed,
+    setCollapsed: (value: boolean) => {
+      setUserCollapsed(value);
+      localStorage.setItem('sidebar-collapsed', String(value));
+    }
+  }), [sidebarCollapsed]);
+
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -90,130 +142,177 @@ export default function DashboardLayout({
     return null;
   }
 
+  // Sidebar width constants
+  const sidebarWidth = sidebarCollapsed ? 'w-16' : 'w-60';
+  const mainMargin = sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-60';
+
   return (
     <ProjectProvider>
-      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-        {/* Mobile header */}
-        <div className="lg:hidden fixed top-0 left-0 right-0 z-40 h-16 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-4">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-          >
-            <svg className="w-6 h-6 text-zinc-600 dark:text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-            </svg>
-          </button>
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <LemonIcon className="w-7 h-7" />
-            <span className="font-bold text-lg text-zinc-900 dark:text-white">Lelemon</span>
-          </Link>
-          <div className="w-10" />
-        </div>
-
-        {/* Mobile sidebar overlay */}
-        {sidebarOpen && (
-          <div
-            className="lg:hidden fixed inset-0 z-40 bg-black/50"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-
-        {/* Sidebar */}
-        <aside className={cn(
-          "fixed left-0 top-0 bottom-0 w-64 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 flex flex-col z-50 transition-transform duration-200",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        )}>
-          {/* Logo */}
-          <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
-            <Link href="/dashboard" className="flex items-center gap-2.5 group" onClick={() => setSidebarOpen(false)}>
-              <LemonIcon className="w-8 h-8 transition-transform group-hover:rotate-12" />
-              <span className="font-bold text-xl text-zinc-900 dark:text-white">Lelemon</span>
-            </Link>
+      <SidebarContext.Provider value={sidebarContextValue}>
+        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+          {/* Mobile header */}
+          <div className="lg:hidden fixed top-0 left-0 right-0 z-40 h-14 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-4">
             <button
-              onClick={() => setSidebarOpen(false)}
-              className="lg:hidden p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+              onClick={() => setSidebarOpen(true)}
+              className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
             >
-              <svg className="w-5 h-5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              <svg className="w-5 h-5 text-zinc-600 dark:text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
               </svg>
             </button>
+            <Link href="/dashboard" className="flex items-center gap-2">
+              <LemonIcon className="w-6 h-6" />
+              <span className="font-semibold text-zinc-900 dark:text-white">Lelemon</span>
+            </Link>
+            <div className="w-9" />
           </div>
 
-          {/* Project Selector */}
-          <ProjectSelector />
+          {/* Mobile sidebar overlay */}
+          {sidebarOpen && (
+            <div
+              className="lg:hidden fixed inset-0 z-40 bg-black/50"
+              onClick={() => setSidebarOpen(false)}
+            />
+          )}
 
-          {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-1">
-          {navigation.map((item) => {
-            const isActive = pathname === item.href ||
-              (item.href !== '/dashboard' && pathname.startsWith(item.href));
-
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
+          {/* Sidebar */}
+          <aside className={cn(
+            "fixed left-0 top-0 bottom-0 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 flex flex-col z-50 transition-all duration-200",
+            sidebarWidth,
+            sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          )}>
+            {/* Logo */}
+            <div className={cn(
+              "h-14 border-b border-zinc-200 dark:border-zinc-800 flex items-center",
+              sidebarCollapsed ? "justify-center px-2" : "justify-between px-4"
+            )}>
+              <Link href="/dashboard" className="flex items-center gap-2 group" onClick={() => setSidebarOpen(false)}>
+                <LemonIcon className={cn("transition-transform group-hover:rotate-12", sidebarCollapsed ? "w-7 h-7" : "w-7 h-7")} />
+                {!sidebarCollapsed && (
+                  <span className="font-bold text-lg text-zinc-900 dark:text-white">Lelemon</span>
+                )}
+              </Link>
+              <button
                 onClick={() => setSidebarOpen(false)}
+                className="lg:hidden p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+              >
+                <svg className="w-4 h-4 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Project Selector - only when expanded */}
+            {!sidebarCollapsed && <ProjectSelector />}
+
+            {/* Navigation */}
+            <nav className={cn("flex-1 py-3 space-y-0.5", sidebarCollapsed ? "px-2" : "px-3")}>
+              {navigation.map((item) => {
+                const isActive = pathname === item.href ||
+                  (item.href !== '/dashboard' && pathname.startsWith(item.href));
+
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    onClick={() => setSidebarOpen(false)}
+                    title={sidebarCollapsed ? item.name : undefined}
+                    className={cn(
+                      'flex items-center rounded-lg text-sm font-medium transition-all',
+                      sidebarCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2.5',
+                      isActive
+                        ? 'bg-amber-500/10 text-zinc-900 dark:text-white'
+                        : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white'
+                    )}
+                  >
+                    <span className={cn(
+                      'transition-colors flex-shrink-0',
+                      isActive ? 'text-amber-500' : 'text-zinc-400 dark:text-zinc-500'
+                    )}>
+                      {item.icon}
+                    </span>
+                    {!sidebarCollapsed && item.name}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            {/* Bottom section */}
+            <div className={cn("border-t border-zinc-200 dark:border-zinc-800", sidebarCollapsed ? "p-2" : "p-3")}>
+              {/* Theme toggle */}
+              {!sidebarCollapsed ? (
+                <div className="flex items-center justify-between px-3 py-2 mb-1">
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400">Theme</span>
+                  <ThemeToggle />
+                </div>
+              ) : (
+                <div className="flex justify-center py-2 mb-1">
+                  <ThemeToggle />
+                </div>
+              )}
+
+              {/* Account */}
+              <Link
+                href="/dashboard/account"
+                onClick={() => setSidebarOpen(false)}
+                title={sidebarCollapsed ? 'Account' : undefined}
                 className={cn(
-                  'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all',
-                  isActive
+                  'flex items-center rounded-lg text-sm font-medium transition-all',
+                  sidebarCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2.5',
+                  pathname === '/dashboard/account'
                     ? 'bg-amber-500/10 text-zinc-900 dark:text-white'
                     : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white'
                 )}
               >
-                <span className={cn(
-                  'transition-colors',
-                  isActive ? 'text-amber-500' : 'text-zinc-400 dark:text-zinc-500'
-                )}>
-                  {item.icon}
-                </span>
-                {item.name}
+                <svg className={cn('w-5 h-5 flex-shrink-0', pathname === '/dashboard/account' ? 'text-amber-500' : 'text-zinc-400 dark:text-zinc-500')} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                {!sidebarCollapsed && 'Account'}
               </Link>
-            );
-          })}
-        </nav>
 
-        {/* Bottom section */}
-        <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 space-y-1">
-          <div className="flex items-center justify-between px-4 py-2">
-            <span className="text-sm text-zinc-500 dark:text-zinc-400">Theme</span>
-            <ThemeToggle />
-          </div>
-          <Link
-            href="/dashboard/account"
-            onClick={() => setSidebarOpen(false)}
-            className={cn(
-              'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all',
-              pathname === '/dashboard/account'
-                ? 'bg-amber-500/10 text-zinc-900 dark:text-white'
-                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white'
-            )}
-          >
-            <svg className={cn('w-5 h-5', pathname === '/dashboard/account' ? 'text-amber-500' : 'text-zinc-400 dark:text-zinc-500')} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            Account
-          </Link>
-          <div>
+              {/* Logout */}
+              <button
+                type="button"
+                onClick={logout}
+                title={sidebarCollapsed ? 'Logout' : undefined}
+                className={cn(
+                  'w-full flex items-center rounded-lg text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400 transition-all',
+                  sidebarCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2.5'
+                )}
+              >
+                <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                </svg>
+                {!sidebarCollapsed && 'Logout'}
+              </button>
+
+            </div>
+
+            {/* Collapse toggle - floating button on sidebar edge (desktop only) */}
             <button
-              type="button" onClick={logout}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400 transition-all"
+              type="button"
+              onClick={toggleSidebarCollapsed}
+              className="hidden lg:flex absolute -right-3 top-20 z-10 w-6 h-6 items-center justify-center rounded-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-700 hover:scale-110 transition-all"
+              title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+              <svg
+                className={cn("w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 transition-transform", sidebarCollapsed && "rotate-180")}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
               </svg>
-              Logout
             </button>
-          </div>
-        </div>
-        </aside>
+          </aside>
 
-        {/* Main content */}
-        <main className="lg:ml-64 h-screen pt-16 lg:pt-0 flex flex-col">
-          <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">
+          {/* Main content - no padding, full height */}
+          <main className={cn("h-screen pt-14 lg:pt-0 flex flex-col transition-all duration-200", mainMargin)}>
             {children}
-          </div>
-        </main>
-      </div>
+          </main>
+        </div>
+      </SidebarContext.Provider>
     </ProjectProvider>
   );
 }

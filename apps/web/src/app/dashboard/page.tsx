@@ -97,7 +97,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 overflow-auto h-full">
       <div>
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Overview</h1>
         <p className="text-zinc-500 dark:text-zinc-400 mt-1">
@@ -111,11 +111,11 @@ export default function DashboardPage() {
         </StatCard>
 
         <StatCard title="Total Tokens" isLoading={isLoading}>
-          {stats?.totalTokens ? `${(stats.totalTokens / 1000).toFixed(1)}k` : '0'}
+          {stats?.totalTokens && stats.totalTokens > 0 ? `${(stats.totalTokens / 1000).toFixed(1)}k` : '-'}
         </StatCard>
 
         <StatCard title="Total Cost" isLoading={isLoading} className="text-amber-600 dark:text-amber-400">
-          ${stats?.totalCostUsd?.toFixed(2) ?? '0.00'}
+          {stats?.totalCostUsd && stats.totalCostUsd > 0 ? `$${stats.totalCostUsd.toFixed(2)}` : '-'}
         </StatCard>
 
         <StatCard
@@ -224,10 +224,16 @@ function TraceList({ traces }: { traces: Trace[] }) {
           </div>
           <div className="flex items-center gap-4 sm:gap-8 text-sm text-zinc-500 dark:text-zinc-400">
             <span className="hidden sm:inline w-16 text-right">{formatDuration(trace.totalDurationMs)}</span>
-            <span className="hidden sm:inline w-20 text-right">{trace.totalTokens.toLocaleString()} tok</span>
-            <span className="w-14 sm:w-16 text-right font-mono text-amber-600 dark:text-amber-400">
-              ${trace.totalCostUsd.toFixed(3)}
-            </span>
+            {trace.totalTokens > 0 && (
+              <span className="hidden sm:inline w-20 text-right">{trace.totalTokens.toLocaleString()} tok</span>
+            )}
+            {trace.totalCostUsd > 0 ? (
+              <span className="w-14 sm:w-16 text-right font-mono text-amber-600 dark:text-amber-400">
+                ${trace.totalCostUsd.toFixed(3)}
+              </span>
+            ) : (
+              <span className="w-14 sm:w-16 text-right text-zinc-400">-</span>
+            )}
             <Badge
               variant={
                 trace.status === 'completed' ? 'default' :

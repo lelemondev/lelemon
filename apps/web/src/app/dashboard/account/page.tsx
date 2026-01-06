@@ -9,7 +9,7 @@ export default function AccountPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-8 max-w-2xl">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-8 max-w-2xl overflow-auto h-full">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Account</h1>
           <p className="text-zinc-500 dark:text-zinc-400 mt-1">
@@ -22,7 +22,7 @@ export default function AccountPage() {
   }
 
   return (
-    <div className="space-y-8 max-w-2xl">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-8 max-w-2xl overflow-auto h-full">
       <div>
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Account</h1>
         <p className="text-zinc-500 dark:text-zinc-400 mt-1">

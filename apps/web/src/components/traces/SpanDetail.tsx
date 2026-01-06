@@ -790,47 +790,66 @@ export function SpanDetail({ span, allSpans, onClose }: SpanDetailProps) {
       </div>
       )}
 
-      {/* Model Parameters & Context Stats */}
-      {span.type === 'llm' && (
+      {/* Model Parameters & Context Stats - only show when we have real data */}
+      {span.type === 'llm' && (hasModelParams || hasContextStats) && (
         <div className="px-6 py-3 border-b border-zinc-200 dark:border-zinc-700 flex flex-wrap gap-4">
-          {/* Model Parameters - show real data or mock for demo */}
-          <div className="flex items-center gap-3 px-3 py-1.5 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-lg">
-            <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Params:</span>
-            <div className="flex items-center gap-3 text-xs">
-              <span className="text-zinc-700 dark:text-zinc-300">
-                temp=<span className="font-mono text-blue-600 dark:text-blue-400">{modelParams.temperature ?? 1}</span>
-              </span>
-              <span className="text-zinc-700 dark:text-zinc-300">
-                max=<span className="font-mono text-blue-600 dark:text-blue-400">{(modelParams.maxTokens ?? 8192).toLocaleString()}</span>
-              </span>
-              {(modelParams.topP ?? 0.9) !== undefined && (
-                <span className="text-zinc-700 dark:text-zinc-300">
-                  top_p=<span className="font-mono text-blue-600 dark:text-blue-400">{modelParams.topP ?? 0.9}</span>
-                </span>
-              )}
+          {/* Model Parameters - only show if we extracted real data */}
+          {hasModelParams && (
+            <div className="flex items-center gap-3 px-3 py-1.5 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-lg">
+              <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Params:</span>
+              <div className="flex items-center gap-3 text-xs">
+                {modelParams.temperature !== undefined && (
+                  <span className="text-zinc-700 dark:text-zinc-300">
+                    temp=<span className="font-mono text-blue-600 dark:text-blue-400">{modelParams.temperature}</span>
+                  </span>
+                )}
+                {modelParams.maxTokens !== undefined && (
+                  <span className="text-zinc-700 dark:text-zinc-300">
+                    max=<span className="font-mono text-blue-600 dark:text-blue-400">{modelParams.maxTokens.toLocaleString()}</span>
+                  </span>
+                )}
+                {modelParams.topP !== undefined && (
+                  <span className="text-zinc-700 dark:text-zinc-300">
+                    top_p=<span className="font-mono text-blue-600 dark:text-blue-400">{modelParams.topP}</span>
+                  </span>
+                )}
+                {modelParams.topK !== undefined && (
+                  <span className="text-zinc-700 dark:text-zinc-300">
+                    top_k=<span className="font-mono text-blue-600 dark:text-blue-400">{modelParams.topK}</span>
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Context Stats - show real data or mock for demo */}
-          <div className="flex items-center gap-3 px-3 py-1.5 bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/20 rounded-lg">
-            <span className="text-xs font-medium text-purple-600 dark:text-purple-400">Context:</span>
-            <div className="flex items-center gap-3 text-xs">
-              <span className="text-zinc-700 dark:text-zinc-300">
-                <span className="font-mono text-purple-600 dark:text-purple-400">{contextStats.messageCount || 3}</span> msgs
-              </span>
-              <span className="text-zinc-700 dark:text-zinc-300">
-                sys: <span className="font-mono text-purple-600 dark:text-purple-400">{formatChars(contextStats.systemChars || 2450)}</span>
-              </span>
-              <span className="text-zinc-700 dark:text-zinc-300">
-                total: <span className="font-mono text-purple-600 dark:text-purple-400">{formatChars(contextStats.totalChars || 4820)}</span>
-              </span>
-              {(contextStats.toolsCount || 5) > 0 && (
-                <span className="text-zinc-700 dark:text-zinc-300">
-                  <span className="font-mono text-purple-600 dark:text-purple-400">{contextStats.toolsCount || 5}</span> tools
-                </span>
-              )}
+          {/* Context Stats - only show if we have real data */}
+          {hasContextStats && (
+            <div className="flex items-center gap-3 px-3 py-1.5 bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/20 rounded-lg">
+              <span className="text-xs font-medium text-purple-600 dark:text-purple-400">Context:</span>
+              <div className="flex items-center gap-3 text-xs">
+                {contextStats.messageCount > 0 && (
+                  <span className="text-zinc-700 dark:text-zinc-300">
+                    <span className="font-mono text-purple-600 dark:text-purple-400">{contextStats.messageCount}</span> msgs
+                  </span>
+                )}
+                {contextStats.systemChars > 0 && (
+                  <span className="text-zinc-700 dark:text-zinc-300">
+                    sys: <span className="font-mono text-purple-600 dark:text-purple-400">{formatChars(contextStats.systemChars)}</span>
+                  </span>
+                )}
+                {contextStats.totalChars > 0 && (
+                  <span className="text-zinc-700 dark:text-zinc-300">
+                    total: <span className="font-mono text-purple-600 dark:text-purple-400">{formatChars(contextStats.totalChars)}</span>
+                  </span>
+                )}
+                {contextStats.toolsCount > 0 && (
+                  <span className="text-zinc-700 dark:text-zinc-300">
+                    <span className="font-mono text-purple-600 dark:text-purple-400">{contextStats.toolsCount}</span> tools
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 

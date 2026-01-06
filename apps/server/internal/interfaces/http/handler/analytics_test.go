@@ -169,12 +169,12 @@ func TestHealth(t *testing.T) {
 		if !ok {
 			t.Fatal("expected checks object in response")
 		}
-		db, ok := checks["database"].(map[string]any)
+		primary, ok := checks["primary"].(map[string]any)
 		if !ok {
-			t.Fatal("expected database object in checks")
+			t.Fatal("expected primary object in checks")
 		}
-		if db["status"] != "ok" {
-			t.Errorf("expected database status 'ok', got '%v'", db["status"])
+		if primary["status"] != "ok" {
+			t.Errorf("expected primary status 'ok', got '%v'", primary["status"])
 		}
 	})
 

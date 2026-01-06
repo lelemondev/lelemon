@@ -106,12 +106,12 @@ export default function TraceDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Header - Compact */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex-shrink-0">
         <div className="flex items-center gap-3">
           <Link href="/dashboard/traces">
-            <Button variant="ghost" size="sm" className="h-8">
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
               </svg>
@@ -119,7 +119,7 @@ export default function TraceDetailPage({ params }: { params: Promise<{ id: stri
           </Link>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold text-zinc-900 dark:text-white">
+              <h1 className="text-lg font-bold text-zinc-900 dark:text-white">
                 Trace {id.slice(0, 8)}
               </h1>
               {isPolling && (
@@ -139,6 +139,7 @@ export default function TraceDetailPage({ params }: { params: Promise<{ id: stri
                     ? 'destructive'
                     : 'secondary'
                 }
+                className="text-xs"
               >
                 {trace.status}
               </Badge>
@@ -148,6 +149,34 @@ export default function TraceDetailPage({ params }: { params: Promise<{ id: stri
             </p>
           </div>
         </div>
+
+        {/* Stats inline in header */}
+        <div className="hidden md:flex items-center gap-4 text-sm">
+          <div className="text-right">
+            <span className="text-zinc-500 dark:text-zinc-400">Duration</span>
+            <span className="ml-2 font-semibold text-zinc-900 dark:text-white">{formatDuration(trace.totalDurationMs ?? 0)}</span>
+          </div>
+          <div className="w-px h-4 bg-zinc-300 dark:bg-zinc-700" />
+          <div className="text-right">
+            <span className="text-zinc-500 dark:text-zinc-400">Spans</span>
+            <span className="ml-2 font-semibold text-zinc-900 dark:text-white">{trace.totalSpans ?? 0}</span>
+          </div>
+          <div className="w-px h-4 bg-zinc-300 dark:bg-zinc-700" />
+          <div className="text-right">
+            <span className="text-zinc-500 dark:text-zinc-400">Tokens</span>
+            <span className="ml-2 font-semibold text-zinc-900 dark:text-white">
+              {trace.totalTokens && trace.totalTokens > 0 ? trace.totalTokens.toLocaleString() : '-'}
+            </span>
+          </div>
+          <div className="w-px h-4 bg-zinc-300 dark:bg-zinc-700" />
+          <div className="text-right">
+            <span className="text-zinc-500 dark:text-zinc-400">Cost</span>
+            <span className="ml-2 font-semibold text-amber-600 dark:text-amber-400">
+              {trace.totalCostUsd && trace.totalCostUsd > 0 ? `$${trace.totalCostUsd.toFixed(4)}` : '-'}
+            </span>
+          </div>
+        </div>
+
         <div className="flex items-center gap-2">
           {trace.tags?.map((tag) => (
             <Badge key={tag} variant="secondary" className="text-xs">
@@ -157,30 +186,7 @@ export default function TraceDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      {/* Summary Stats - Inline compact */}
-      <div className="flex items-center gap-6 mb-4 px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg border border-zinc-200 dark:border-zinc-700">
-        <div>
-          <span className="text-xs text-zinc-500 dark:text-zinc-400 block">Duration</span>
-          <span className="text-lg font-bold text-zinc-900 dark:text-white">{formatDuration(trace.totalDurationMs ?? 0)}</span>
-        </div>
-        <div className="w-px h-8 bg-zinc-200 dark:bg-zinc-700" />
-        <div>
-          <span className="text-xs text-zinc-500 dark:text-zinc-400 block">Spans</span>
-          <span className="text-lg font-bold text-zinc-900 dark:text-white">{trace.totalSpans ?? 0}</span>
-        </div>
-        <div className="w-px h-8 bg-zinc-200 dark:bg-zinc-700" />
-        <div>
-          <span className="text-xs text-zinc-500 dark:text-zinc-400 block">Tokens</span>
-          <span className="text-lg font-bold text-zinc-900 dark:text-white">{(trace.totalTokens ?? 0).toLocaleString()}</span>
-        </div>
-        <div className="w-px h-8 bg-zinc-200 dark:bg-zinc-700" />
-        <div>
-          <span className="text-xs text-zinc-500 dark:text-zinc-400 block">Cost</span>
-          <span className="text-lg font-bold text-amber-600 dark:text-amber-400">${(trace.totalCostUsd ?? 0).toFixed(4)}</span>
-        </div>
-      </div>
-
-      {/* Trace Viewer (Tree + Detail) - Fill remaining space */}
+      {/* Trace Viewer (Tree + Detail) - Fill remaining space, no gap */}
       <div className="flex-1 min-h-0">
         <TraceViewer trace={trace} />
       </div>

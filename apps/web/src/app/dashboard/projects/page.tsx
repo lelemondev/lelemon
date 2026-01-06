@@ -73,7 +73,8 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="space-y-8">      {newApiKey && (
+    <div className="p-4 sm:p-6 lg:p-8 space-y-8 overflow-auto h-full">
+      {newApiKey && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <Card className="w-full max-w-lg mx-4 border-amber-500 shadow-2xl">
             <CardHeader className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 dark:from-amber-500/5 dark:to-orange-500/5 border-b border-zinc-200 dark:border-zinc-800">
