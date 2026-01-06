@@ -1,0 +1,46 @@
+# Lelemon - Full Stack with SQLite (Default, lightweight)
+# Use this for: development, small deployments, single-server setups
+# RAM usage: ~100MB (backend ~50MB + frontend ~50MB)
+
+services:
+  # Go Backend API
+  lelemon-api:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - lelemon_data:/data
+    environment:
+      - PORT=8080
+      - DATABASE_URL=sqlite:///data/lelemon.db
+      - LOG_LEVEL=info
+      - LOG_FORMAT=json
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      # Optional: Google OAuth
+      # - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      # - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # Next.js Frontend Dashboard
+  lelemon-web:
+    build:
+      context: ../web
+      args:
+        # API URL for browser access (baked into JS at build time)
+        - NEXT_PUBLIC_API_URL=http://localhost:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      lelemon-api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  lelemon_data:

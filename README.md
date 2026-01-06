@@ -1,196 +1,143 @@
-# 🍋 Lelemon
+# Lelemon
 
-**LLM Observability for AI Agents**
+**Open-source LLM Observability Platform**
 
-Track, debug, and optimize your LLM applications with minimal setup.
+Track, debug, and optimize your AI agents with minimal setup. Self-hostable alternative to Langfuse/Arize.
 
 ---
 
 ## Features
 
-- **Trace Everything** - LLM calls, tool usage, retrieval operations
-- **Cost Tracking** - Automatic cost calculation for all major providers
+- **Hierarchical Tracing** - Agent workflows, LLM calls, tool usage, retrieval operations
+- **Cost Tracking** - Automatic cost calculation for OpenAI, Anthropic, Gemini, Bedrock
+- **High Performance** - Go backend with SQLite/PostgreSQL/ClickHouse support
 - **Developer-First** - Clean SDK, dark mode dashboard, zero bloat
-- **Multi-Tenant** - Secure API key isolation per project
+- **Self-Hosted** - Run on your infrastructure, own your data
+
+## Architecture
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Your App  │────▶│  Go Server  │────▶│  Dashboard  │
+│ (@lelemondev│     │   (API)     │     │  (Next.js)  │
+│    /sdk)    │     └──────┬──────┘     └─────────────┘
+└─────────────┘            │
+                    ┌──────┴──────┐
+                    │  Database   │
+                    │ SQLite/PG/  │
+                    │ ClickHouse  │
+                    └─────────────┘
+```
 
 ## Quick Start
 
 ### 1. Install the SDK
 
 ```bash
-npm install @lelemon/sdk
-# or
-yarn add @lelemon/sdk
+npm install @lelemondev/sdk
 ```
 
-### 2. Initialize
+### 2. Instrument Your Code
 
 ```typescript
-import { LLMTracer } from '@lelemon/sdk';
+import { init, observe } from '@lelemondev/sdk';
+import Anthropic from '@anthropic-ai/sdk';
 
-const tracer = new LLMTracer({
+init({
   apiKey: process.env.LELEMON_API_KEY,
+  endpoint: 'http://localhost:8080', // your server
+});
+
+// Wrap your LLM client - all calls are traced automatically
+const client = observe(new Anthropic());
+
+const response = await client.messages.create({
+  model: 'claude-sonnet-4-20250514',
+  messages: [{ role: 'user', content: 'Hello!' }],
 });
 ```
 
-### 3. Trace Your LLM Calls
+### 3. View Traces
 
-```typescript
-// Start a trace (groups related operations)
-const trace = await tracer.startTrace({
-  sessionId: 'conversation-123',
-  userId: 'user-456',
-});
-
-// Record a span (single operation)
-const span = trace.startSpan({
-  type: 'llm',
-  name: 'chat-completion',
-  input: { messages },
-});
-
-// Make your LLM call
-const response = await openai.chat.completions.create({
-  model: 'gpt-4',
-  messages,
-});
-
-// End the span with results
-span.end({
-  output: response.choices[0].message,
-  model: response.model,
-  inputTokens: response.usage.prompt_tokens,
-  outputTokens: response.usage.completion_tokens,
-});
-
-// End the trace
-await trace.end();
-```
-
-### 4. View in Dashboard
-
-Open your Lelemon dashboard to see traces, spans, costs, and analytics.
-
----
-
-## SDK Reference
-
-### LLMTracer
-
-```typescript
-const tracer = new LLMTracer({
-  apiKey: string,          // Required: Your API key (le_xxx)
-  endpoint?: string,       // Optional: Custom API endpoint
-  debug?: boolean,         // Optional: Enable debug logging
-  batchSize?: number,      // Optional: Spans per batch (default: 10)
-  flushInterval?: number,  // Optional: Batch interval ms (default: 1000)
-});
-
-// Methods
-await tracer.startTrace(options): Promise<Trace>
-await tracer.flush(): Promise<void>
-tracer.isEnabled(): boolean
-```
-
-### Trace
-
-```typescript
-const trace = await tracer.startTrace({
-  sessionId?: string,      // Group related traces
-  userId?: string,         // End user identifier
-  metadata?: object,       // Any custom data
-  tags?: string[],         // Filterable tags
-});
-
-// Methods
-trace.startSpan(options): Span
-trace.setMetadata(key, value): void
-trace.addTag(tag): void
-await trace.end({ status?: 'completed' | 'error' }): Promise<void>
-```
-
-### Span
-
-```typescript
-const span = trace.startSpan({
-  type: 'llm' | 'tool' | 'retrieval' | 'custom',
-  name: string,            // e.g., 'openai.chat', 'search_documents'
-  input?: any,             // Request data
-  metadata?: object,       // Custom data
-});
-
-// Methods
-span.startSpan(options): Span  // Create child span
-span.end({
-  output?: any,
-  status?: 'success' | 'error',
-  errorMessage?: string,
-  model?: string,
-  provider?: string,
-  inputTokens?: number,
-  outputTokens?: number,
-  durationMs?: number,     // Auto-calculated if not provided
-}): void
-span.setError(error: Error): void
-```
-
----
-
-## Supported Providers
-
-Cost calculation is built-in for:
-
-| Provider | Models |
-|----------|--------|
-| OpenAI | gpt-4, gpt-4-turbo, gpt-4o, gpt-4o-mini, gpt-3.5-turbo, o1-preview, o1-mini |
-| Anthropic | claude-3-opus, claude-3-sonnet, claude-3-5-sonnet, claude-3-haiku |
-| AWS Bedrock | All Claude models via Bedrock |
-| Google | gemini-1.5-pro, gemini-1.5-flash, gemini-2.0-flash |
-
-Unknown models use a default pricing estimate.
+Open the dashboard to see your traces, costs, and analytics.
 
 ---
 
 ## Self-Hosting
 
-### Prerequisites
-
-- Node.js 20+
-- PostgreSQL database (Neon recommended)
-
-### Setup
+### Option 1: Docker Compose (Recommended)
 
 ```bash
 # Clone
-git clone https://github.com/your-org/lelemon.git
-cd lelemon
+git clone https://github.com/lelemondev/lelemon.git
+cd lelemon/apps/server
 
-# Install
-yarn install
+# Start with SQLite (simplest)
+docker-compose up -d
 
-# Configure
-cp apps/web/.env.example apps/web/.env.local
-# Edit .env.local with your DATABASE_URL
+# Or with PostgreSQL
+docker-compose -f docker-compose.postgres.yml up -d
 
-# Setup database
-cd apps/web
-yarn db:push
-
-# Run
-yarn dev
+# Or with ClickHouse (high volume)
+docker-compose -f docker-compose.clickhouse.yml up -d
 ```
 
-### Deploy to Vercel
+### Option 2: Manual Setup
 
 ```bash
-# Install Vercel CLI
-npm i -g vercel
+# Backend
+cd apps/server
+go build -o lelemon ./cmd/server
+./lelemon
 
-# Deploy
-vercel
+# Dashboard
+cd apps/web
+yarn install
+yarn build
+yarn start
+```
 
-# Set environment variables in Vercel dashboard:
-# - DATABASE_URL
+### Environment Variables
+
+```bash
+# Server (apps/server)
+DATABASE_URL=sqlite://./data/lelemon.db  # or postgres:// or clickhouse://
+JWT_SECRET=your-secret-key
+PORT=8080
+
+# Dashboard (apps/web)
+NEXT_PUBLIC_API_URL=http://localhost:8080
+```
+
+---
+
+## SDK
+
+The TypeScript SDK is maintained in a separate repository:
+
+**[@lelemondev/sdk](https://github.com/lelemondev/sdk)** - Zero-dependency, tree-shakeable SDK
+
+### Supported Providers
+
+| Provider | Auto-detected |
+|----------|---------------|
+| OpenAI | Yes |
+| Anthropic | Yes |
+| Google Gemini | Yes |
+| AWS Bedrock | Yes |
+| OpenRouter | Yes |
+
+### Framework Integrations
+
+```typescript
+// Next.js
+import { withLelemon } from '@lelemondev/sdk/next';
+
+// Express
+import { lelemonMiddleware } from '@lelemondev/sdk/express';
+
+// AWS Lambda
+import { withLelemon } from '@lelemondev/sdk/lambda';
 ```
 
 ---
@@ -199,12 +146,12 @@ vercel
 
 ```
 lelemon/
-├── apps/web/           # Next.js dashboard + API
-│   ├── src/app/api/    # REST API routes
-│   ├── src/app/dashboard/  # Dashboard UI
-│   └── src/db/         # Drizzle schema
-├── packages/sdk/       # @lelemon/sdk npm package
-└── package.json        # Turborepo workspace
+├── apps/
+│   ├── server/      # Go backend (API, ingestion, auth)
+│   ├── web/         # Next.js dashboard
+│   └── playground/  # SDK testing app
+└── docs/
+    └── ROADMAP.md   # Development roadmap
 ```
 
 ---
@@ -212,114 +159,43 @@ lelemon/
 ## Development
 
 ```bash
-# Install dependencies
+# Install frontend dependencies
 yarn install
 
-# Run all in dev mode
+# Run dashboard in dev mode
 yarn dev
 
-# Build everything
-yarn build
-
-# Run specific app
-cd apps/web && yarn dev
-
-# Build SDK only
-cd packages/sdk && yarn build
+# Run server
+cd apps/server && go run ./cmd/server
 ```
 
 ---
 
-## API Reference
+## Roadmap
 
-### Authentication
+See [docs/ROADMAP.md](docs/ROADMAP.md) for the full roadmap including:
 
-All API requests require a Bearer token:
-
-```
-Authorization: Bearer le_your_api_key
-```
-
-### Endpoints
-
-#### Create Trace
-```http
-POST /api/v1/traces
-Content-Type: application/json
-
-{
-  "sessionId": "session-123",
-  "userId": "user-456",
-  "metadata": { "source": "api" },
-  "tags": ["production"]
-}
-
-Response: { "id": "trace-uuid" }
-```
-
-#### Add Span
-```http
-POST /api/v1/traces/:traceId/spans
-Content-Type: application/json
-
-{
-  "type": "llm",
-  "name": "chat-completion",
-  "input": { "messages": [...] },
-  "output": { "content": "..." },
-  "model": "gpt-4",
-  "inputTokens": 150,
-  "outputTokens": 50,
-  "durationMs": 1200
-}
-
-Response: { "id": "span-uuid" }
-```
-
-#### List Traces
-```http
-GET /api/v1/traces?sessionId=xxx&limit=50&offset=0
-
-Response: {
-  "data": [...],
-  "total": 100,
-  "limit": 50,
-  "offset": 0
-}
-```
-
-#### Get Analytics
-```http
-GET /api/v1/analytics/summary?from=2024-01-01&to=2024-01-31
-
-Response: {
-  "totalTraces": 1000,
-  "totalSpans": 5000,
-  "totalTokens": 500000,
-  "totalCostUsd": 15.50,
-  "avgDurationMs": 1500,
-  "errorRate": 2.5
-}
-```
-
----
-
-## License
-
-MIT
+- Hierarchical tracing with `withTrace()` API
+- Extended thinking & tool use visualization
+- Vercel AI SDK integration
+- LangChain/LlamaIndex integrations
 
 ---
 
 ## Contributing
 
-Contributions welcome! Please read our contributing guidelines first.
-
-1. Fork the repo
-2. Create a feature branch
-3. Make your changes
-4. Run `yarn build` and `yarn lint`
-5. Submit a PR
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 
-Built with 💛 for developers who ship AI products.
+## License
+
+[AGPL-3.0](LICENSE) - You can self-host freely. If you modify and offer as a service, you must open-source your changes.
+
+---
+
+## Links
+
+- **SDK**: [@lelemondev/sdk](https://github.com/lelemondev/sdk)
+- **Documentation**: Coming soon
+- **Discord**: Coming soon

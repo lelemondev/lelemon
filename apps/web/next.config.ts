@@ -2,10 +2,14 @@ import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV === 'development';
 
-// In development, allow localhost connections for Supabase local
+// API URL for CSP (allow connections to the backend)
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+
+// In development, allow localhost connections for local API
+// In production, allow the configured API URL
 const connectSrc = isDev
-  ? "'self' http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:* https://www.google-analytics.com https://*.supabase.co wss://*.supabase.co"
-  : "'self' https://www.google-analytics.com https://*.supabase.co wss://*.supabase.co";
+  ? "'self' http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:* https://www.google-analytics.com"
+  : `'self' ${apiUrl} https://www.google-analytics.com`;
 
 const securityHeaders = [
   {
@@ -53,7 +57,13 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   reactCompiler: true,
+  // Workaround for Next.js 16 + React 19 global-error prerender bug
+  // See: https://github.com/vercel/next.js/issues/85668
+  experimental: {
+    staticGenerationRetryCount: 0,
+  },
   async headers() {
     return [
       {

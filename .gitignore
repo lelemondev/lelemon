@@ -39,6 +39,14 @@ coverage/
 # Misc
 *.tsbuildinfo
 
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+__debug_bin*
+
 # Claude Code local files (personal settings, not for team)
 .claude/settings.local.json
 .claude/CLAUDE.local.md

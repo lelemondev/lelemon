@@ -2,19 +2,19 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/lib/auth-context';
 import { LemonIcon } from '@/components/lemon-icon';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
 export default function SignupPage() {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  const supabase = createClient();
+  const { register } = useAuth();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,90 +32,25 @@ export default function SignupPage() {
 
     setLoading(true);
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-    } else {
-      setSuccess(true);
+    try {
+      await register(email, password, name);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Registration failed');
       setLoading(false);
     }
   };
 
-  const handleGoogleSignup = async () => {
-    setError(null);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-
-    if (error) {
-      setError(error.message);
-    }
+  const handleGoogleSignup = () => {
+    window.location.href = `${API_URL}/api/v1/auth/google`;
   };
-
-  
-  if (success) {
-    return (
-      <div className="min-h-screen bg-[#FAFDF7] flex flex-col">
-        {/* Background elements */}
-        <div className="fixed inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-[#FACC15]/20 via-[#FEF08A]/10 to-transparent rounded-full blur-3xl" />
-          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-[#FACC15]/10 to-transparent rounded-full blur-3xl" />
-        </div>
-
-        {/* Header */}
-        <header className="relative z-10 p-6">
-          <Link href="/" className="inline-flex items-center gap-2.5 group">
-            <LemonIcon className="w-9 h-9 transition-transform group-hover:rotate-12 group-hover:scale-110" />
-            <span className="font-bold text-xl tracking-tight text-[#18181B]">Lelemon</span>
-          </Link>
-        </header>
-
-        {/* Main */}
-        <main className="relative z-10 flex-1 flex items-center justify-center px-6 py-12">
-          <div className="w-full max-w-md text-center">
-            <div className="bg-white rounded-2xl shadow-xl shadow-[#FACC15]/10 border border-[#18181B]/5 p-8">
-              <div className="w-16 h-16 rounded-full bg-[#FACC15]/20 flex items-center justify-center mx-auto mb-6">
-                <svg className="w-8 h-8 text-[#A16207]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <h1 className="text-2xl font-bold text-[#18181B] mb-2">Check your email</h1>
-              <p className="text-[#71717A] mb-6">
-                We&apos;ve sent a confirmation link to <strong className="text-[#18181B]">{email}</strong>
-              </p>
-              <Link
-                href="/login"
-                className="inline-flex items-center gap-2 text-[#A16207] font-medium hover:underline"
-              >
-                Back to login
-              </Link>
-            </div>
-          </div>
-        </main>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#FAFDF7] flex flex-col">
-      {/* Background elements */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-[#FACC15]/20 via-[#FEF08A]/10 to-transparent rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-[#FACC15]/10 to-transparent rounded-full blur-3xl" />
       </div>
 
-      {/* Header */}
       <header className="relative z-10 p-6">
         <Link href="/" className="inline-flex items-center gap-2.5 group">
           <LemonIcon className="w-9 h-9 transition-transform group-hover:rotate-12 group-hover:scale-110" />
@@ -123,17 +58,14 @@ export default function SignupPage() {
         </Link>
       </header>
 
-      {/* Main */}
       <main className="relative z-10 flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-md">
-          {/* Card */}
           <div className="bg-white rounded-2xl shadow-xl shadow-[#FACC15]/10 border border-[#18181B]/5 p-8">
             <div className="text-center mb-8">
               <h1 className="text-2xl font-bold text-[#18181B] mb-2">Create your account</h1>
               <p className="text-[#71717A]">Start tracing your LLMs today</p>
             </div>
 
-            {/* OAuth Buttons */}
             <div className="mb-6">
               <button
                 onClick={handleGoogleSignup}
@@ -149,7 +81,6 @@ export default function SignupPage() {
               </button>
             </div>
 
-            {/* Divider */}
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-[#18181B]/10" />
@@ -159,13 +90,27 @@ export default function SignupPage() {
               </div>
             </div>
 
-            {/* Form */}
             <form onSubmit={handleSignup} className="space-y-4">
               {error && (
                 <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">
                   {error}
                 </div>
               )}
+
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-[#18181B] mb-2">
+                  Name
+                </label>
+                <input
+                  id="name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 rounded-xl border border-[#18181B]/10 bg-[#F4F4F5] focus:bg-white focus:border-[#FACC15] focus:ring-2 focus:ring-[#FACC15]/20 outline-none transition-all text-[#18181B] placeholder:text-[#A1A1AA]"
+                  placeholder="Your name"
+                />
+              </div>
 
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-[#18181B] mb-2">
@@ -193,7 +138,7 @@ export default function SignupPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   className="w-full px-4 py-3 rounded-xl border border-[#18181B]/10 bg-[#F4F4F5] focus:bg-white focus:border-[#FACC15] focus:ring-2 focus:ring-[#FACC15]/20 outline-none transition-all text-[#18181B] placeholder:text-[#A1A1AA]"
-                  placeholder="••••••••"
+                  placeholder="Min 6 characters"
                 />
               </div>
 
@@ -208,7 +153,7 @@ export default function SignupPage() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   className="w-full px-4 py-3 rounded-xl border border-[#18181B]/10 bg-[#F4F4F5] focus:bg-white focus:border-[#FACC15] focus:ring-2 focus:ring-[#FACC15]/20 outline-none transition-all text-[#18181B] placeholder:text-[#A1A1AA]"
-                  placeholder="••••••••"
+                  placeholder="Repeat password"
                 />
               </div>
 
@@ -221,7 +166,6 @@ export default function SignupPage() {
               </button>
             </form>
 
-            {/* Footer */}
             <p className="mt-6 text-center text-sm text-[#71717A]">
               Already have an account?{' '}
               <Link href="/login" className="text-[#A16207] font-medium hover:underline">

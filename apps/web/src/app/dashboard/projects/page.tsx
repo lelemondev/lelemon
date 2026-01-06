@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useProject } from '@/lib/project-context';
+import { dashboardAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,20 +23,12 @@ export default function ProjectsPage() {
 
     setCreating(true);
     try {
-      const response = await fetch('/api/v1/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newProjectName }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setNewProjectName('');
-        setShowCreateForm(false);
-        await refreshProjects();
-        if (data.apiKey) {
-          setNewApiKey(data.apiKey);
-        }
+      const project = await dashboardAPI.createProject(newProjectName.trim());
+      setNewProjectName('');
+      setShowCreateForm(false);
+      await refreshProjects();
+      if (project.apiKey) {
+        setNewApiKey(project.apiKey);
       }
     } catch (error) {
       console.error('Failed to create project:', error);

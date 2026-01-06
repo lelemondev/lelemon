@@ -2,61 +2,42 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/lib/auth-context';
 import { LemonIcon } from '@/components/lemon-icon';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  const supabase = createClient();
+  const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      setError(error.message);
+    try {
+      await login(email, password);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed');
       setLoading(false);
-    } else {
-      router.push('/dashboard');
-      router.refresh();
     }
   };
 
-  const handleGoogleLogin = async () => {
-    setError(null);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-
-    if (error) {
-      setError(error.message);
-    }
+  const handleGoogleLogin = () => {
+    window.location.href = `${API_URL}/api/v1/auth/google`;
   };
 
-  
   return (
     <div className="min-h-screen bg-[#FAFDF7] flex flex-col">
-      {/* Background elements */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-[#FACC15]/15 via-[#FEF08A]/8 to-transparent rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-[#FACC15]/8 to-transparent rounded-full blur-3xl" />
       </div>
 
-      {/* Header */}
       <header className="relative z-10 p-6">
         <Link href="/" className="inline-flex items-center gap-2.5 group">
           <LemonIcon className="w-9 h-9 transition-transform group-hover:rotate-12 group-hover:scale-110" />
@@ -64,17 +45,14 @@ export default function LoginPage() {
         </Link>
       </header>
 
-      {/* Main */}
       <main className="relative z-10 flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-md">
-          {/* Card */}
           <div className="bg-white rounded-2xl shadow-xl shadow-[#FACC15]/10 border border-[#18181B]/5 p-8">
             <div className="text-center mb-8">
               <h1 className="text-2xl font-bold text-[#18181B] mb-2">Welcome back</h1>
               <p className="text-[#71717A]">Sign in to your account</p>
             </div>
 
-            {/* OAuth Buttons */}
             <div className="mb-6">
               <button
                 onClick={handleGoogleLogin}
@@ -90,7 +68,6 @@ export default function LoginPage() {
               </button>
             </div>
 
-            {/* Divider */}
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-[#18181B]/10" />
@@ -100,7 +77,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Form */}
             <form onSubmit={handleLogin} className="space-y-4">
               {error && (
                 <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">
@@ -134,7 +110,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   className="w-full px-4 py-3 rounded-xl border border-[#18181B]/10 bg-[#F4F4F5] focus:bg-white focus:border-[#FACC15] focus:ring-2 focus:ring-[#FACC15]/20 outline-none transition-all text-[#18181B] placeholder:text-[#A1A1AA]"
-                  placeholder="••••••••"
+                  placeholder="********"
                 />
               </div>
 
@@ -147,7 +123,6 @@ export default function LoginPage() {
               </button>
             </form>
 
-            {/* Footer */}
             <p className="mt-6 text-center text-sm text-[#71717A]">
               Don&apos;t have an account?{' '}
               <Link href="/signup" className="text-[#A16207] font-medium hover:underline">

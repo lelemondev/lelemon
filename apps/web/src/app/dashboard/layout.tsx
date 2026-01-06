@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { signOut } from '@/app/actions/auth';
+import { useAuth } from '@/lib/auth-context';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ProjectProvider } from '@/lib/project-context';
 import { ProjectSelector } from '@/components/project-selector';
@@ -65,7 +65,30 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { logout, isAuthenticated, isLoading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [isAuthenticated, isLoading, router]);
+
+  // Show loading state while checking auth
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500" />
+      </div>
+    );
+  }
+
+  // Don't render dashboard if not authenticated
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <ProjectProvider>
@@ -170,9 +193,9 @@ export default function DashboardLayout({
             </svg>
             Account
           </Link>
-          <form action={signOut}>
+          <div>
             <button
-              type="submit"
+              type="button" onClick={logout}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400 transition-all"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -180,13 +203,13 @@ export default function DashboardLayout({
               </svg>
               Logout
             </button>
-          </form>
+          </div>
         </div>
         </aside>
 
         {/* Main content */}
-        <main className="lg:ml-64 min-h-screen pt-16 lg:pt-0">
-          <div className="p-4 sm:p-6 lg:p-8">
+        <main className="lg:ml-64 h-screen pt-16 lg:pt-0 flex flex-col">
+          <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">
             {children}
           </div>
         </main>

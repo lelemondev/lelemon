@@ -1,27 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useProject } from '@/lib/project-context';
+import { dashboardAPI, Stats, Trace } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-
-interface Stats {
-  totalTraces: number;
-  totalTokens: number;
-  totalCostUsd: number;
-  errorRate: number;
-}
-
-interface RecentTrace {
-  id: string;
-  sessionId: string | null;
-  totalDurationMs: number;
-  totalTokens: number;
-  totalCostUsd: string;
-  status: 'active' | 'completed' | 'error';
-  createdAt: string;
-}
 
 function formatDuration(ms: number): string {
   if (ms === 0) return '-';
@@ -44,10 +28,10 @@ function formatRelativeTime(dateString: string): string {
 export default function DashboardPage() {
   const { currentProject, isLoading: projectLoading } = useProject();
   const [stats, setStats] = useState<Stats | null>(null);
-  const [recentTraces, setRecentTraces] = useState<RecentTrace[]>([]);
+  const [recentTraces, setRecentTraces] = useState<Trace[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchData = useCallback(async () => {
     if (!currentProject) {
       setStats(null);
       setRecentTraces([]);
@@ -55,32 +39,25 @@ export default function DashboardPage() {
       return;
     }
 
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        const [statsRes, tracesRes] = await Promise.all([
-          fetch(`/api/v1/dashboard/stats?projectId=${currentProject.id}`),
-          fetch(`/api/v1/dashboard/traces?projectId=${currentProject.id}`),
-        ]);
+    setIsLoading(true);
+    try {
+      const [statsData, tracesData] = await Promise.all([
+        dashboardAPI.getStats(currentProject.id),
+        dashboardAPI.getTraces(currentProject.id, { limit: 5 }),
+      ]);
 
-        if (statsRes.ok) {
-          const statsData = await statsRes.json();
-          setStats(statsData);
-        }
-
-        if (tracesRes.ok) {
-          const tracesData = await tracesRes.json();
-          setRecentTraces(tracesData.slice(0, 5));
-        }
-      } catch (error) {
-        console.error('Failed to fetch dashboard data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
+      setStats(statsData);
+      setRecentTraces(tracesData.data);
+    } catch (error) {
+      console.error('Failed to fetch dashboard data:', error);
+    } finally {
+      setIsLoading(false);
+    }
   }, [currentProject]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   if (projectLoading) {
     return (
@@ -121,7 +98,6 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Overview</h1>
         <p className="text-zinc-500 dark:text-zinc-400 mt-1">
@@ -129,58 +105,28 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
-          <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Total Traces</p>
-          {isLoading ? (
-            <div className="h-9 w-24 bg-zinc-200 dark:bg-zinc-700 rounded mt-2 animate-pulse" />
-          ) : (
-            <p className="text-3xl font-bold text-zinc-900 dark:text-white mt-2">
-              {stats?.totalTraces.toLocaleString() ?? '0'}
-            </p>
-          )}
-        </div>
+        <StatCard title="Total Traces" isLoading={isLoading}>
+          {stats?.totalTraces.toLocaleString() ?? '0'}
+        </StatCard>
 
-        <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
-          <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Total Tokens</p>
-          {isLoading ? (
-            <div className="h-9 w-24 bg-zinc-200 dark:bg-zinc-700 rounded mt-2 animate-pulse" />
-          ) : (
-            <p className="text-3xl font-bold text-zinc-900 dark:text-white mt-2">
-              {stats?.totalTokens ? `${(stats.totalTokens / 1000).toFixed(1)}k` : '0'}
-            </p>
-          )}
-        </div>
+        <StatCard title="Total Tokens" isLoading={isLoading}>
+          {stats?.totalTokens ? `${(stats.totalTokens / 1000).toFixed(1)}k` : '0'}
+        </StatCard>
 
-        <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
-          <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Total Cost</p>
-          {isLoading ? (
-            <div className="h-9 w-24 bg-zinc-200 dark:bg-zinc-700 rounded mt-2 animate-pulse" />
-          ) : (
-            <p className="text-3xl font-bold text-amber-600 dark:text-amber-400 mt-2">
-              ${stats?.totalCostUsd?.toFixed(2) ?? '0.00'}
-            </p>
-          )}
-        </div>
+        <StatCard title="Total Cost" isLoading={isLoading} className="text-amber-600 dark:text-amber-400">
+          ${stats?.totalCostUsd?.toFixed(2) ?? '0.00'}
+        </StatCard>
 
-        <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
-          <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Error Rate</p>
-          {isLoading ? (
-            <div className="h-9 w-24 bg-zinc-200 dark:bg-zinc-700 rounded mt-2 animate-pulse" />
-          ) : (
-            <p className={`text-3xl font-bold mt-2 ${
-              (stats?.errorRate ?? 0) > 5
-                ? 'text-red-600 dark:text-red-400'
-                : 'text-emerald-600 dark:text-emerald-400'
-            }`}>
-              {stats?.errorRate?.toFixed(1) ?? '0'}%
-            </p>
-          )}
-        </div>
+        <StatCard
+          title="Error Rate"
+          isLoading={isLoading}
+          className={(stats?.errorRate ?? 0) > 5 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}
+        >
+          {stats?.errorRate?.toFixed(1) ?? '0'}%
+        </StatCard>
       </div>
 
-      {/* Recent Traces */}
       <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
         <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Recent Traces</h2>
@@ -193,71 +139,107 @@ export default function DashboardPage() {
             </Button>
           </Link>
         </div>
+
         {isLoading ? (
-          <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="px-6 py-4">
-                <div className="h-10 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse" />
-              </div>
-            ))}
-          </div>
+          <LoadingTraces />
         ) : recentTraces.length === 0 ? (
-          <div className="p-12 text-center">
-            <p className="text-zinc-500 dark:text-zinc-400 mb-4">
-              No traces yet. Start by sending traces from your application.
-            </p>
-            <Link href="/dashboard/config">
-              <Button variant="outline" size="sm">
-                Get your API Key
-              </Button>
-            </Link>
-          </div>
+          <EmptyTraces />
         ) : (
-          <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
-            {recentTraces.map((trace) => (
-              <Link
-                key={trace.id}
-                href={`/dashboard/traces/${trace.id}`}
-                className="px-6 py-4 flex items-center justify-between hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`w-2 h-2 rounded-full ${
-                    trace.status === 'completed' ? 'bg-emerald-500' :
-                    trace.status === 'error' ? 'bg-red-500' : 'bg-amber-500'
-                  }`} />
-                  <div>
-                    <p className="text-sm font-medium text-zinc-900 dark:text-white">
-                      {formatRelativeTime(trace.createdAt)}
-                    </p>
-                    <p className="text-xs text-zinc-400 dark:text-zinc-500 font-mono">
-                      {trace.sessionId?.slice(0, 16) || trace.id.slice(0, 8)}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4 sm:gap-8 text-sm text-zinc-500 dark:text-zinc-400">
-                  <span className="hidden sm:inline w-16 text-right">{formatDuration(trace.totalDurationMs)}</span>
-                  <span className="hidden sm:inline w-20 text-right">{trace.totalTokens.toLocaleString()} tok</span>
-                  <span className="w-14 sm:w-16 text-right font-mono text-amber-600 dark:text-amber-400">
-                    ${parseFloat(trace.totalCostUsd).toFixed(3)}
-                  </span>
-                  <Badge
-                    variant={
-                      trace.status === 'completed'
-                        ? 'default'
-                        : trace.status === 'error'
-                        ? 'destructive'
-                        : 'secondary'
-                    }
-                    className="text-xs w-16 sm:w-20 justify-center"
-                  >
-                    {trace.status}
-                  </Badge>
-                </div>
-              </Link>
-            ))}
-          </div>
+          <TraceList traces={recentTraces} />
         )}
       </div>
+    </div>
+  );
+}
+
+function StatCard({ title, isLoading, className, children }: {
+  title: string;
+  isLoading: boolean;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+      <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">{title}</p>
+      {isLoading ? (
+        <div className="h-9 w-24 bg-zinc-200 dark:bg-zinc-700 rounded mt-2 animate-pulse" />
+      ) : (
+        <p className={`text-3xl font-bold mt-2 ${className ?? 'text-zinc-900 dark:text-white'}`}>
+          {children}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function LoadingTraces() {
+  return (
+    <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className="px-6 py-4">
+          <div className="h-10 bg-zinc-200 dark:bg-zinc-700 rounded animate-pulse" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EmptyTraces() {
+  return (
+    <div className="p-12 text-center">
+      <p className="text-zinc-500 dark:text-zinc-400 mb-4">
+        No traces yet. Start by sending traces from your application.
+      </p>
+      <Link href="/dashboard/config">
+        <Button variant="outline" size="sm">
+          Get your API Key
+        </Button>
+      </Link>
+    </div>
+  );
+}
+
+function TraceList({ traces }: { traces: Trace[] }) {
+  return (
+    <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
+      {traces.map((trace) => (
+        <Link
+          key={trace.id}
+          href={`/dashboard/traces/${trace.id}`}
+          className="px-6 py-4 flex items-center justify-between hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+        >
+          <div className="flex items-center gap-4">
+            <div className={`w-2 h-2 rounded-full ${
+              trace.status === 'completed' ? 'bg-emerald-500' :
+              trace.status === 'error' ? 'bg-red-500' : 'bg-amber-500'
+            }`} />
+            <div>
+              <p className="text-sm font-medium text-zinc-900 dark:text-white">
+                {formatRelativeTime(trace.createdAt)}
+              </p>
+              <p className="text-xs text-zinc-400 dark:text-zinc-500 font-mono">
+                {trace.sessionId?.slice(0, 16) || trace.id.slice(0, 8)}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 sm:gap-8 text-sm text-zinc-500 dark:text-zinc-400">
+            <span className="hidden sm:inline w-16 text-right">{formatDuration(trace.totalDurationMs)}</span>
+            <span className="hidden sm:inline w-20 text-right">{trace.totalTokens.toLocaleString()} tok</span>
+            <span className="w-14 sm:w-16 text-right font-mono text-amber-600 dark:text-amber-400">
+              ${trace.totalCostUsd.toFixed(3)}
+            </span>
+            <Badge
+              variant={
+                trace.status === 'completed' ? 'default' :
+                trace.status === 'error' ? 'destructive' : 'secondary'
+              }
+              className="text-xs w-16 sm:w-20 justify-center"
+            >
+              {trace.status}
+            </Badge>
+          </div>
+        </Link>
+      ))}
     </div>
   );
 }

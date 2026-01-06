@@ -1,28 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
 export default function AccountPage() {
-  const [user, setUser] = useState<{ email: string; created_at: string } | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const supabase = createClient();
-
-  useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUser({
-          email: user.email || '',
-          created_at: user.created_at,
-        });
-      }
-      setIsLoading(false);
-    };
-    getUser();
-  }, [supabase]);
+  const { user, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -53,13 +36,17 @@ export default function AccountPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
+            <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">Name</p>
+            <p className="text-zinc-900 dark:text-white">{user?.name || '-'}</p>
+          </div>
+          <div>
             <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">Email</p>
-            <p className="text-zinc-900 dark:text-white">{user?.email}</p>
+            <p className="text-zinc-900 dark:text-white">{user?.email || '-'}</p>
           </div>
           <div>
             <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">Member since</p>
             <p className="text-zinc-900 dark:text-white">
-              {user?.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}
+              {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-'}
             </p>
           </div>
         </CardContent>

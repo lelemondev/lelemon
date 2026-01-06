@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useProject } from '@/lib/project-context';
+import { dashboardAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -57,6 +58,11 @@ function ConfigPageContent() {
   const [savingName, setSavingName] = useState(false);
   const [nameChanged, setNameChanged] = useState(false);
 
+  // State for delete all traces
+  const [showDeleteTracesModal, setShowDeleteTracesModal] = useState(false);
+  const [deletingTraces, setDeletingTraces] = useState(false);
+  const [deleteTracesConfirmText, setDeleteTracesConfirmText] = useState('');
+
   // Initialize project name
   useEffect(() => {
     if (currentProject) {
@@ -92,15 +98,9 @@ function ConfigPageContent() {
     if (!currentProject) return;
     setRotating(true);
     try {
-      const response = await fetch('/api/v1/projects/api-key', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId: currentProject.id }),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setNewApiKey(data.apiKey);
-      }
+      const result = await dashboardAPI.rotateProjectAPIKey(currentProject.id);
+      setNewApiKey(result.apiKey);
+      await refreshProjects();
     } catch (error) {
       console.error('Failed to rotate API key:', error);
     } finally {
@@ -124,21 +124,34 @@ function ConfigPageContent() {
     if (!currentProject || !projectName.trim() || projectName === currentProject.name) return;
     setSavingName(true);
     try {
-      const response = await fetch('/api/v1/projects', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: currentProject.id, name: projectName.trim() }),
-      });
-      if (response.ok) {
-        await refreshProjects();
-        setNameChanged(true);
-        setTimeout(() => setNameChanged(false), 2000);
-      }
+      await dashboardAPI.updateProject(currentProject.id, { name: projectName.trim() });
+      await refreshProjects();
+      setNameChanged(true);
+      setTimeout(() => setNameChanged(false), 2000);
     } catch (error) {
       console.error('Failed to update project name:', error);
     } finally {
       setSavingName(false);
     }
+  };
+
+  const handleDeleteAllTraces = async () => {
+    if (!currentProject || deleteTracesConfirmText !== 'delete all') return;
+    setDeletingTraces(true);
+    try {
+      await dashboardAPI.deleteAllTraces(currentProject.id);
+      setShowDeleteTracesModal(false);
+      setDeleteTracesConfirmText('');
+    } catch (error) {
+      console.error('Failed to delete traces:', error);
+    } finally {
+      setDeletingTraces(false);
+    }
+  };
+
+  const handleCloseDeleteTracesModal = () => {
+    setShowDeleteTracesModal(false);
+    setDeleteTracesConfirmText('');
   };
 
   if (isLoading) {
@@ -270,6 +283,58 @@ function ConfigPageContent() {
         </div>
       )}
 
+      {/* Delete All Traces Confirmation Modal */}
+      {showDeleteTracesModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <Card className="w-full max-w-lg mx-4 border-red-500 shadow-2xl">
+            <CardHeader className="bg-gradient-to-r from-red-500/10 to-red-600/10 dark:from-red-500/5 dark:to-red-600/5 border-b border-zinc-200 dark:border-zinc-800">
+              <CardTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+                Delete All Traces
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 pt-6">
+              <div className="p-4 bg-red-50 dark:bg-red-500/10 rounded-lg border border-red-200 dark:border-red-500/20">
+                <p className="text-sm text-red-700 dark:text-red-300">
+                  This action is <strong>irreversible</strong>. All trace data including spans, tokens, and cost information will be permanently deleted.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  Type <span className="font-mono bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">delete all</span> to confirm
+                </label>
+                <Input
+                  value={deleteTracesConfirmText}
+                  onChange={(e) => setDeleteTracesConfirmText(e.target.value)}
+                  placeholder="delete all"
+                  className="font-mono"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleCloseDeleteTracesModal}
+                  variant="outline"
+                  className="flex-1 cursor-pointer"
+                  disabled={deletingTraces}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleDeleteAllTraces}
+                  variant="destructive"
+                  disabled={deleteTracesConfirmText !== 'delete all' || deletingTraces}
+                  className="flex-1 cursor-pointer"
+                >
+                  {deletingTraces ? 'Deleting...' : 'Delete All Traces'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Project Settings</h1>
@@ -324,7 +389,7 @@ function ConfigPageContent() {
             <CardContent>
               <div className="flex gap-2">
                 <Input
-                  value={currentProject.apiKeyHint ? currentProject.apiKeyHint + '•'.repeat(20) : '•'.repeat(32)}
+                  value={currentProject.apiKeyHint || '•'.repeat(32)}
                   readOnly
                   className="font-mono text-sm flex-1"
                 />
@@ -351,7 +416,13 @@ function ConfigPageContent() {
                   <p className="font-medium text-zinc-900 dark:text-white">Delete all traces</p>
                   <p className="text-sm text-zinc-500 dark:text-zinc-400">Permanently delete all trace data.</p>
                 </div>
-                <Button variant="destructive" disabled className="cursor-not-allowed">Delete All</Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowDeleteTracesModal(true)}
+                  className="cursor-pointer"
+                >
+                  Delete All
+                </Button>
               </div>
               <div className="flex items-center justify-between gap-4">
                 <div>

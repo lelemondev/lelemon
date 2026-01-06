@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useProject } from '@/lib/project-context';
+import { dashboardAPI, Session } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,20 +16,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-
-interface Session {
-  sessionId: string;
-  userId: string | null;
-  traceCount: number;
-  totalTokens: number;
-  totalCostUsd: string;
-  totalDurationMs: number;
-  totalSpans: number;
-  hasError: boolean;
-  hasActive: boolean;
-  firstTraceAt: string;
-  lastTraceAt: string;
-}
 
 function formatRelativeTime(dateString: string): string {
   const date = new Date(dateString);
@@ -49,47 +36,68 @@ function formatDuration(ms: number): string {
   return `${(ms / 60000).toFixed(1)}m`;
 }
 
-export default function SessionsPage() {
+function SessionsPageContent() {
   const { currentProject } = useProject();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
 
-  // Fetch sessions
+  // Polling interval in ms
+  const POLLING_INTERVAL = 5000;
+
+  // Fetch sessions when project ID changes, with polling
+  const projectId = currentProject?.id;
   useEffect(() => {
-    if (!currentProject) {
+    if (!projectId) {
       setSessions([]);
       setIsLoading(false);
       return;
     }
 
-    const fetchSessions = async () => {
-      setIsLoading(true);
+    let isMounted = true;
+
+    const fetchSessions = async (showLoading = false) => {
+      if (showLoading) setIsLoading(true);
       try {
-        const response = await fetch(`/api/v1/dashboard/sessions?projectId=${currentProject.id}`);
-        if (response.ok) {
-          const data = await response.json();
-          setSessions(data);
+        const result = await dashboardAPI.getSessions(projectId, { limit: 100 });
+        if (isMounted) {
+          setSessions(result.data);
         }
       } catch (error) {
         console.error('Failed to fetch sessions:', error);
       } finally {
-        setIsLoading(false);
+        if (isMounted && showLoading) {
+          setIsLoading(false);
+        }
       }
     };
 
-    fetchSessions();
-  }, [currentProject]);
+    // Initial fetch with loading state
+    fetchSessions(true);
+
+    // Set up polling
+    const intervalId = setInterval(() => {
+      fetchSessions(false);
+    }, POLLING_INTERVAL);
+
+    // Cleanup on unmount
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
+  }, [projectId]);
 
   // Filter sessions by search
-  const filteredSessions = sessions.filter((session) => {
-    if (!search) return true;
-    const searchLower = search.toLowerCase();
-    return (
-      session.sessionId.toLowerCase().includes(searchLower) ||
-      session.userId?.toLowerCase().includes(searchLower)
-    );
-  });
+  const filteredSessions = useMemo(() => {
+    return sessions.filter((session) => {
+      if (!search) return true;
+      const searchLower = search.toLowerCase();
+      return (
+        session.sessionId.toLowerCase().includes(searchLower) ||
+        session.userId?.toLowerCase().includes(searchLower)
+      );
+    });
+  }, [sessions, search]);
 
   if (!currentProject) {
     return (
@@ -211,7 +219,7 @@ export default function SessionsPage() {
                       {session.totalTokens.toLocaleString()}
                     </TableCell>
                     <TableCell className="text-right font-mono text-amber-600 dark:text-amber-400">
-                      ${parseFloat(session.totalCostUsd || '0').toFixed(4)}
+                      ${session.totalCostUsd.toFixed(4)}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell text-right text-zinc-600 dark:text-zinc-400">
                       {formatDuration(session.totalDurationMs)}
@@ -252,5 +260,29 @@ export default function SessionsPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function SessionsPageFallback() {
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Sessions</h1>
+          <p className="text-zinc-500 dark:text-zinc-400 mt-1">
+            View conversations grouped by session.
+          </p>
+        </div>
+      </div>
+      <div className="h-48 bg-zinc-200 dark:bg-zinc-800 rounded-2xl animate-pulse" />
+    </div>
+  );
+}
+
+export default function SessionsPage() {
+  return (
+    <Suspense fallback={<SessionsPageFallback />}>
+      <SessionsPageContent />
+    </Suspense>
   );
 }
