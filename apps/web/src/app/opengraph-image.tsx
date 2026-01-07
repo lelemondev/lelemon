@@ -82,7 +82,7 @@ export default async function Image() {
             <span style={{ color: '#FACC15' }}>⚡</span> Zero config
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ color: '#22C55E' }}>📦</span> {'<'}2KB gzipped
+            <span style={{ color: '#22C55E' }}>📦</span> Super lightweight SDK
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ color: '#FACC15' }}>✓</span> No overhead

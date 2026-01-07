@@ -6,7 +6,7 @@ Lelemon helps developers trace, debug, and optimize their AI agents with zero ov
 
 ## Quick Facts
 
-- SDK size: <2KB gzipped
+- SDK: Super lightweight
 - Zero configuration required
 - Supports: OpenAI, Anthropic, Bedrock, Gemini
 - Real-time tracing of prompts, tool calls, and outputs

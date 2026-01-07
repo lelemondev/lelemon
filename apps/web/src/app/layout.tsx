@@ -20,11 +20,11 @@ const siteUrl = "https://lelemon.dev";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Lelemon - Lightweight LLM Observability",
+    default: "Lelemon | Open Source LLM Observability & Agent Tracing",
     template: "%s | Lelemon",
   },
   description:
-    "Trace your AI agents with zero overhead. Lelemon is a lightweight observability platform for LLMs — track prompts, decisions, and metrics in real-time. <2KB SDK, zero config.",
+    "Trace prompts, debug tool calls, and track costs in real-time. The lightweight, open-source alternative for OpenAI, Vercel AI SDK, and LangChain. Built in Go & ClickHouse.",
   keywords: [
     "LLM observability",
     "AI monitoring",
@@ -56,15 +56,15 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: siteUrl,
     siteName: "Lelemon",
-    title: "Lelemon - Lightweight LLM Observability",
+    title: "Lelemon | Open Source LLM Observability & Agent Tracing",
     description:
-      "Trace your AI agents with zero overhead. Track prompts, decisions, and metrics in real-time. <2KB SDK, zero config.",
+      "Trace prompts, debug tool calls, and track costs in real-time. The lightweight, open-source alternative for OpenAI, Vercel AI SDK, and LangChain. Built in Go & ClickHouse.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Lelemon - Lightweight LLM Observability",
+    title: "Lelemon | Open Source LLM Observability & Agent Tracing",
     description:
-      "Trace your AI agents with zero overhead. <2KB SDK, zero config.",
+      "Trace prompts, debug tool calls, and track costs in real-time. The lightweight, open-source alternative for OpenAI, Vercel AI SDK, and LangChain.",
     creator: "@lelemondev",
   },
   alternates: {

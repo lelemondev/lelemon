@@ -6,7 +6,7 @@ Lelemon is a lightweight LLM observability platform designed for developers buil
 
 ### Key Differentiators
 
-1. **Lightweight**: SDK is <2KB gzipped, zero dependencies
+1. **Lightweight**: Super lightweight SDK, zero dependencies
 2. **Zero Config**: Just wrap your client and it works
 3. **No Overhead**: Fire-and-forget architecture, doesn't slow down your app
 4. **Multi-Provider**: Works with OpenAI, Anthropic, AWS Bedrock, Google Gemini
@@ -133,7 +133,7 @@ Lelemon offers a generous free tier for individual developers. Visit https://lel
 
 ## Technical Specifications
 
-- **SDK Size**: <2KB gzipped
+- **SDK Size**: Super lightweight
 - **Dependencies**: Zero runtime dependencies
 - **Compatibility**: Node.js 18+, Edge Runtime, Browsers
 - **Data Retention**: Configurable per plan

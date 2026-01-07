@@ -50,6 +50,7 @@ const securityHeaders = [
       "font-src 'self' data:",
       `connect-src ${connectSrc}`,
       "frame-ancestors 'none'",
+      "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://player.cloudinary.com",
       "base-uri 'self'",
       "form-action 'self'",
     ].join('; '),
