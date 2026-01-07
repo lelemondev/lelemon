@@ -8,17 +8,17 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/lelemon/server/internal/application/analytics"
-	appauth "github.com/lelemon/server/internal/application/auth"
-	"github.com/lelemon/server/internal/application/ingest"
-	"github.com/lelemon/server/internal/application/project"
-	"github.com/lelemon/server/internal/application/trace"
-	"github.com/lelemon/server/internal/domain/service"
-	"github.com/lelemon/server/internal/infrastructure/auth"
-	"github.com/lelemon/server/internal/infrastructure/config"
-	"github.com/lelemon/server/internal/infrastructure/logger"
-	"github.com/lelemon/server/internal/infrastructure/store"
-	apphttp "github.com/lelemon/server/internal/interfaces/http"
+	"github.com/lelemon/server/pkg/application/analytics"
+	appauth "github.com/lelemon/server/pkg/application/auth"
+	"github.com/lelemon/server/pkg/application/ingest"
+	"github.com/lelemon/server/pkg/application/project"
+	"github.com/lelemon/server/pkg/application/trace"
+	"github.com/lelemon/server/pkg/domain/service"
+	"github.com/lelemon/server/pkg/infrastructure/auth"
+	"github.com/lelemon/server/pkg/infrastructure/config"
+	"github.com/lelemon/server/pkg/infrastructure/logger"
+	"github.com/lelemon/server/pkg/infrastructure/store"
+	apphttp "github.com/lelemon/server/pkg/interfaces/http"
 )
 
 func main() {
