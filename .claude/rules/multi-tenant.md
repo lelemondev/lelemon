@@ -1,61 +1,83 @@
 ---
-paths: "apps/web/src/app/api/**/*.ts"
+paths: "apps/server/pkg/**/*.go"
 ---
 
 # Multi-Tenant Isolation Rules
 
-## CRITICAL: Always Filter by projectId
+## CRITICAL: Always Filter by ProjectID
 
-Every database query in API routes MUST filter by the authenticated project:
+Every database query MUST filter by the authenticated project or user:
 
-```typescript
-// CORRECT
-const traces = await db.query.traces.findMany({
-  where: eq(traces.projectId, auth.projectId),
-});
+```go
+// CORRECT - Scoped to project
+traces, err := s.store.GetTracesByProject(ctx, projectID, filters)
 
 // WRONG - Exposes all tenants' data!
-const traces = await db.query.traces.findMany();
+traces, err := s.store.GetAllTraces(ctx)
 ```
 
 ## Authentication First
 
-Every API route handler must authenticate before any database operation:
+Every handler must authenticate before any database operation:
 
-```typescript
-export async function GET(request: NextRequest) {
-  // 1. ALWAYS authenticate first
-  const auth = await authenticate(request);
-  if (!auth) return unauthorized();
+```go
+func (h *Handler) GetTraces(w http.ResponseWriter, r *http.Request) {
+    // 1. ALWAYS authenticate first
+    projectID := middleware.GetProjectID(r.Context())
+    if projectID == "" {
+        http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+        return
+    }
 
-  // 2. Then use auth.projectId in queries
-  const data = await db.query.table.findMany({
-    where: eq(table.projectId, auth.projectId),
-  });
+    // 2. Then use projectID in queries
+    traces, err := h.service.GetTraces(r.Context(), projectID, filters)
 }
 ```
 
 ## Insert Operations
 
-When creating records, always include projectId:
+When creating records, always include projectID:
 
-```typescript
-await db.insert(traces).values({
-  projectId: auth.projectId,  // REQUIRED
-  ...data,
-});
+```go
+trace := &entity.Trace{
+    ID:        uuid.New().String(),
+    ProjectID: projectID,  // REQUIRED - from auth context
+    // ...other fields
+}
+err := s.store.CreateTrace(ctx, trace)
 ```
 
-## Never Trust Client Input for projectId
+## Never Trust Client Input for ProjectID
 
-```typescript
-// WRONG - Client could send any projectId
-const { projectId, ...data } = await request.json();
+```go
+// WRONG - Client could send any projectID
+var req struct {
+    ProjectID string `json:"project_id"`
+    Name      string `json:"name"`
+}
+json.NewDecoder(r.Body).Decode(&req)
 
-// CORRECT - Use authenticated projectId
-const data = await request.json();
-await db.insert(table).values({
-  projectId: auth.projectId,
-  ...data,
-});
+// CORRECT - Use authenticated projectID from context
+projectID := middleware.GetProjectID(r.Context())
+trace := &entity.Trace{
+    ProjectID: projectID,  // From auth, not request
+    Name:      req.Name,
+}
+```
+
+## Store Layer Enforcement
+
+All store methods should require projectID or userID:
+
+```go
+// Good - Explicit scope
+type Store interface {
+    GetTracesByProject(ctx context.Context, projectID string, filters Filters) ([]entity.Trace, error)
+    GetProjectsByUser(ctx context.Context, userID string) ([]entity.Project, error)
+}
+
+// Bad - No scope
+type Store interface {
+    GetAllTraces(ctx context.Context) ([]entity.Trace, error)
+}
 ```
