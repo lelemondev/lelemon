@@ -128,12 +128,6 @@ export default function LandingPage() {
               </div>
               <span className="font-bold text-xl tracking-tight">Lelemon</span>
             </Link>
-            <Link
-              href="/login"
-              className="text-sm px-5 py-2.5 rounded-full bg-[#FACC15] text-[#18181B] font-semibold hover:bg-[#EAB308] transition-all shadow-[0_2px_8px_-2px_rgba(250,204,21,0.35)]"
-            >
-              Sign in
-            </Link>
           </div>
         </header>
 
