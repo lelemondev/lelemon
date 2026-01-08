@@ -2,12 +2,8 @@
   "name": "lelemon",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "yarn@1.22.22",
+  "packageManager": "pnpm@9.15.4",
   "description": "LLM Observability Platform - Track, debug, and optimize your AI agents",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
@@ -16,14 +12,10 @@
     "clean": "turbo clean && rm -rf node_modules"
   },
   "devDependencies": {
-    "@types/react-syntax-highlighter": "^15.5.13",
     "turbo": "^2.7.2",
     "typescript": "^5.9.3"
   },
   "engines": {
     "node": ">=20.0.0"
-  },
-  "dependencies": {
-    "react-syntax-highlighter": "^16.1.0"
   }
 }
