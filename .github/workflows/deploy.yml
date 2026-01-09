@@ -27,11 +27,14 @@ jobs:
           script: |
             cd /opt/lelemon
 
+            # Pull latest config files (docker-compose, etc)
+            git pull origin main
+
             # Pull latest image
-            docker compose pull
+            docker compose -f docker-compose.prod.yml pull
 
             # Restart with new image
-            docker compose up -d
+            docker compose -f docker-compose.prod.yml up -d
 
             # Clean old images
             docker image prune -f
