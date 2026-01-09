@@ -10,7 +10,7 @@ func TestAnalytics(t *testing.T) {
 
 	// Setup
 	regResp := ts.Request("POST", "/api/v1/auth/register", map[string]string{
-		"email": "analytics@example.com", "password": "password123", "name": "Analytics User",
+		"email": "analytics@example.com", "password": "SecurePass123", "name": "Analytics User",
 	}, nil)
 	var auth AuthResponse
 	ParseJSON(t, regResp, &auth)
@@ -111,7 +111,7 @@ func TestCostCalculation(t *testing.T) {
 
 	// Setup
 	regResp := ts.Request("POST", "/api/v1/auth/register", map[string]string{
-		"email": "cost@example.com", "password": "password123", "name": "Cost User",
+		"email": "cost@example.com", "password": "SecurePass123", "name": "Cost User",
 	}, nil)
 	var auth AuthResponse
 	ParseJSON(t, regResp, &auth)

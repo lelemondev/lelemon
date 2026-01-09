@@ -10,7 +10,7 @@ func TestIngest(t *testing.T) {
 
 	// Setup: create user, get JWT, create project, get API key
 	regResp := ts.Request("POST", "/api/v1/auth/register", map[string]string{
-		"email": "ingest@example.com", "password": "password123", "name": "Ingest User",
+		"email": "ingest@example.com", "password": "SecurePass123", "name": "Ingest User",
 	}, nil)
 	var auth AuthResponse
 	ParseJSON(t, regResp, &auth)
@@ -139,7 +139,7 @@ func TestTraces(t *testing.T) {
 
 	// Setup
 	regResp := ts.Request("POST", "/api/v1/auth/register", map[string]string{
-		"email": "traces@example.com", "password": "password123", "name": "Traces User",
+		"email": "traces@example.com", "password": "SecurePass123", "name": "Traces User",
 	}, nil)
 	var auth AuthResponse
 	ParseJSON(t, regResp, &auth)

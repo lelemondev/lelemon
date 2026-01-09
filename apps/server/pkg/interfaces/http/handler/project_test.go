@@ -11,7 +11,7 @@ func TestProjectCRUD(t *testing.T) {
 	// Setup: create user and get JWT token
 	regResp := ts.Request("POST", "/api/v1/auth/register", map[string]string{
 		"email":    "projectuser@example.com",
-		"password": "password123",
+		"password": "SecurePass123",
 		"name":     "Project User",
 	}, nil)
 	var auth AuthResponse
@@ -109,13 +109,13 @@ func TestProjectIsolation(t *testing.T) {
 
 	// Create two users
 	reg1 := ts.Request("POST", "/api/v1/auth/register", map[string]string{
-		"email": "user1@example.com", "password": "password123", "name": "User 1",
+		"email": "user1@example.com", "password": "SecurePass123", "name": "User 1",
 	}, nil)
 	var auth1 AuthResponse
 	ParseJSON(t, reg1, &auth1)
 
 	reg2 := ts.Request("POST", "/api/v1/auth/register", map[string]string{
-		"email": "user2@example.com", "password": "password123", "name": "User 2",
+		"email": "user2@example.com", "password": "SecurePass123", "name": "User 2",
 	}, nil)
 	var auth2 AuthResponse
 	ParseJSON(t, reg2, &auth2)

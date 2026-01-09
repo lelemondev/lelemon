@@ -11,7 +11,7 @@ func TestRegister(t *testing.T) {
 	t.Run("successful registration", func(t *testing.T) {
 		resp := ts.Request("POST", "/api/v1/auth/register", map[string]string{
 			"email":    "test@example.com",
-			"password": "password123",
+			"password": "SecurePass123",
 			"name":     "Test User",
 		}, nil)
 
@@ -37,14 +37,14 @@ func TestRegister(t *testing.T) {
 		// First registration
 		ts.Request("POST", "/api/v1/auth/register", map[string]string{
 			"email":    "duplicate@example.com",
-			"password": "password123",
+			"password": "SecurePass123",
 			"name":     "User 1",
 		}, nil)
 
 		// Second registration with same email
 		resp := ts.Request("POST", "/api/v1/auth/register", map[string]string{
 			"email":    "duplicate@example.com",
-			"password": "password456",
+			"password": "SecurePass456",
 			"name":     "User 2",
 		}, nil)
 
@@ -82,14 +82,14 @@ func TestLogin(t *testing.T) {
 	// Setup: create a user first
 	ts.Request("POST", "/api/v1/auth/register", map[string]string{
 		"email":    "login@example.com",
-		"password": "password123",
+		"password": "SecurePass123",
 		"name":     "Login User",
 	}, nil)
 
 	t.Run("successful login", func(t *testing.T) {
 		resp := ts.Request("POST", "/api/v1/auth/login", map[string]string{
 			"email":    "login@example.com",
-			"password": "password123",
+			"password": "SecurePass123",
 		}, nil)
 
 		if resp.StatusCode != http.StatusOK {
@@ -118,7 +118,7 @@ func TestLogin(t *testing.T) {
 	t.Run("unknown email fails", func(t *testing.T) {
 		resp := ts.Request("POST", "/api/v1/auth/login", map[string]string{
 			"email":    "unknown@example.com",
-			"password": "password123",
+			"password": "SecurePass123",
 		}, nil)
 
 		if resp.StatusCode != http.StatusUnauthorized {
@@ -133,7 +133,7 @@ func TestMe(t *testing.T) {
 	// Setup: create a user and get token
 	regResp := ts.Request("POST", "/api/v1/auth/register", map[string]string{
 		"email":    "me@example.com",
-		"password": "password123",
+		"password": "SecurePass123",
 		"name":     "Me User",
 	}, nil)
 	var auth AuthResponse
