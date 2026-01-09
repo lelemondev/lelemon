@@ -105,37 +105,47 @@ function FeatureCheck({ children }: { children: React.ReactNode }) {
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-[#FAFDF7] text-[#18181B] overflow-hidden">
-      {/* Background elements */}
-      <div className="fixed inset-0 pointer-events-none">
-        {/* Subtle grid */}
-        <div className="absolute inset-0 opacity-[0.02]" style={{
+    <div className="min-h-screen bg-[#FAFDF7] text-[#18181B]">
+      {/* Background elements - simplified for mobile performance */}
+      <div className="fixed inset-0 pointer-events-none bg-[#FAFDF7] transform-gpu will-change-transform">
+        {/* Subtle grid - hidden on mobile for performance */}
+        <div className="hidden sm:block absolute inset-0 opacity-[0.02]" style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h60v60H0z' fill='none' stroke='%2318181B' stroke-width='0.5'/%3E%3C/svg%3E")`,
         }} />
-        {/* Gradient blobs - subtle */}
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-[#FACC15]/15 via-[#FEF08A]/8 to-transparent rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-[#FACC15]/8 to-transparent rounded-full blur-3xl" />
+        {/* Gradient blobs - reduced on mobile */}
+        <div className="absolute top-0 right-0 w-[300px] sm:w-[600px] h-[300px] sm:h-[600px] bg-gradient-to-bl from-[#FACC15]/10 sm:from-[#FACC15]/15 via-[#FEF08A]/5 sm:via-[#FEF08A]/8 to-transparent rounded-full blur-2xl sm:blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-[200px] sm:w-[400px] h-[200px] sm:h-[400px] bg-gradient-to-tr from-[#FACC15]/5 sm:from-[#FACC15]/8 to-transparent rounded-full blur-2xl sm:blur-3xl" />
       </div>
 
       {/* Content */}
       <div className="relative">
         {/* Header */}
-        <header className="fixed top-0 left-0 right-0 z-50 bg-[#FAFDF7]/80 backdrop-blur-md border-b border-[#18181B]/5">
-          <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2.5 group">
+        <header className="fixed top-0 left-0 right-0 z-50 bg-[#FAFDF7]/95 backdrop-blur-sm border-b border-[#18181B]/5 transform-gpu">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-2 sm:gap-2.5 group">
               <div className="relative">
-                <LemonIcon className="w-9 h-9 transition-transform group-hover:rotate-12 group-hover:scale-110" />
+                <LemonIcon className="w-8 h-8 sm:w-9 sm:h-9 transition-transform group-hover:rotate-12 group-hover:scale-110" />
               </div>
-              <span className="font-bold text-xl tracking-tight">Lelemon</span>
+              <span className="font-bold text-lg sm:text-xl tracking-tight">Lelemon</span>
+            </Link>
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-[#18181B] text-white text-sm font-medium rounded-full hover:bg-[#27272A] transition-colors"
+            >
+              <span className="hidden sm:inline">Sign In</span>
+              <span className="sm:hidden">Login</span>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
             </Link>
           </div>
         </header>
 
         {/* Hero Section */}
-        <section className="pt-32 pb-20 px-6">
+        <section className="pt-24 sm:pt-32 pb-12 sm:pb-20 px-4 sm:px-6">
           <div className="max-w-4xl mx-auto text-center">
             {/* Badges */}
-            <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-6 sm:mb-8">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#FACC15]/10 border border-[#FACC15]/20">
                 <span className="text-sm">🍋</span>
                 <span className="text-sm font-medium text-[#A16207]">LLM Observability</span>
@@ -156,12 +166,12 @@ export default function LandingPage() {
               </a>
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.1] mb-6">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.15] mb-4 sm:mb-6">
               Fresh, Open Source
               <br />
               <span className="relative inline-block">
                 LLM Observability
-                <svg className="absolute -bottom-2 left-0 w-full h-3 text-[#FACC15]" viewBox="0 0 200 12" fill="none">
+                <svg className="absolute -bottom-1 sm:-bottom-2 left-0 w-full h-2 sm:h-3 text-[#FACC15]" viewBox="0 0 200 12" fill="none">
                   <path d="M2 10C50 4 150 4 198 10" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
                 </svg>
               </span>
@@ -169,12 +179,12 @@ export default function LandingPage() {
               <span className="inline-block animate-bounce-slow">🍋</span>
             </h1>
 
-            <p className="text-xl text-[#3F3F46] leading-relaxed max-w-2xl mx-auto mb-8">
+            <p className="text-base sm:text-lg md:text-xl text-[#3F3F46] leading-relaxed max-w-2xl mx-auto mb-6 sm:mb-8 px-2 sm:px-0">
               Stop guessing what your agents are doing. Trace execution flows, debug tool calls, and control costs with zero latency overhead. Squeeze the best out of your stack.
             </p>
 
             {/* Lightness badges */}
-            <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 mb-10 text-sm">
+            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 mb-8 sm:mb-10 text-xs sm:text-sm">
               <span className="flex items-center gap-1.5 text-[#3F3F46]">
                 <svg className="w-4 h-4 text-[#FACC15]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -195,10 +205,10 @@ export default function LandingPage() {
               </span>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-8 sm:mb-10 px-4 sm:px-0">
               <a
                 href="#demo"
-                className="group inline-flex items-center gap-2 px-7 py-4 bg-[#FACC15] text-[#18181B] font-semibold rounded-full hover:bg-[#EAB308] transition-all shadow-[0_2px_12px_-4px_rgba(250,204,21,0.4)] hover:shadow-[0_4px_16px_-4px_rgba(250,204,21,0.5)] hover:-translate-y-0.5"
+                className="w-full sm:w-auto group inline-flex items-center justify-center gap-2 px-6 sm:px-7 py-3.5 sm:py-4 bg-[#FACC15] text-[#18181B] font-semibold rounded-full hover:bg-[#EAB308] transition-all shadow-[0_2px_12px_-4px_rgba(250,204,21,0.4)] hover:shadow-[0_4px_16px_-4px_rgba(250,204,21,0.5)] hover:-translate-y-0.5"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -210,7 +220,7 @@ export default function LandingPage() {
                 href="https://github.com/lelemondev/lelemon"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group inline-flex items-center gap-2 px-7 py-4 bg-white/80 backdrop-blur-sm border border-[#18181B]/10 hover:border-[#18181B]/20 hover:bg-white/95 text-[#18181B] font-semibold rounded-full shadow-[0_2px_8px_-2px_rgba(24,24,27,0.08)] hover:shadow-[0_4px_12px_-4px_rgba(24,24,27,0.12)] hover:-translate-y-0.5 transition-all duration-300 overflow-hidden"
+                className="w-full sm:w-auto group inline-flex items-center justify-center gap-2 px-6 sm:px-7 py-3.5 sm:py-4 bg-white border border-[#18181B]/10 hover:border-[#18181B]/20 hover:bg-white/95 text-[#18181B] font-semibold rounded-full shadow-[0_2px_8px_-2px_rgba(24,24,27,0.08)] hover:shadow-[0_4px_12px_-4px_rgba(24,24,27,0.12)] hover:-translate-y-0.5 transition-all duration-300"
               >
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                   <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
@@ -222,16 +232,16 @@ export default function LandingPage() {
         </section>
 
         {/* Features Split Section */}
-        <section className="py-24 px-6 bg-white border-b border-[#18181B]/5">
+        <section className="py-12 sm:py-24 px-4 sm:px-6 bg-white border-b border-[#18181B]/5">
           <div className="max-w-6xl mx-auto">
-            <div className="grid md:grid-cols-2 gap-12 lg:gap-20 items-center">
-              
+            <div className="grid md:grid-cols-2 gap-8 lg:gap-20 items-center">
+
               {/* Column 1: Features List */}
-              <div className="space-y-6">
-                <h2 className="text-4xl font-bold text-[#18181B] leading-snug">
+              <div className="space-y-4 sm:space-y-6">
+                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#18181B] leading-snug">
                   Unify, Observe, and Control Your LLMs
                 </h2>
-                <p className="text-lg text-[#71717A] leading-relaxed">
+                <p className="text-base sm:text-lg text-[#71717A] leading-relaxed">
                   Transform black-box AI agents into transparent systems. Lelemon provides complete visibility into every execution, allowing you to inspect prompts, tool calls, and model decisions effortlessly. Achieve zero latency with our asynchronous data ingestion and gain real-time cost control, from token counting to budget alerts. Simplify debugging, optimize performance, and manage your AI spend with confidence.
                 </p>
               </div>
@@ -239,29 +249,29 @@ export default function LandingPage() {
               {/* Column 2: Video (Centered with Gradient Background) */}
               <div className="flex items-center justify-center">
                 <div className="relative group w-full max-w-2xl">
-                  {/* Gradient Background Card */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-[#FACC15]/20 via-[#FEF08A]/30 to-white/40 rounded-3xl blur-2xl" />
-                  
-                  {/* Main Container */}
-                  <div className="relative bg-gradient-to-br from-[#FACC15]/10 via-white to-[#FEF08A]/10 p-6 rounded-3xl shadow-2xl border border-[#FACC15]/20">
-                    {/* Glow Effect */}
-                    <div className="absolute -inset-1 bg-gradient-to-r from-[#FACC15]/30 via-[#FEF08A]/20 to-[#FACC15]/30 rounded-3xl blur-xl opacity-60 group-hover:opacity-100 transition-opacity duration-700" />
-                    
-                    <div className="relative rounded-2xl overflow-hidden shadow-xl border border-white/50 bg-[#18181B] aspect-video">
-                    <iframe
-                      className="absolute inset-0 w-full h-full"
-                      src="https://player.cloudinary.com/embed/?cloud_name=dborlhema&public_id=lelemon-demo-ingles_e3gjvs&profile=cld-default"
-                      allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-                      allowFullScreen
-                      title="Lelemon Demo"
-                    ></iframe>
+                  {/* Gradient Background Card - simplified on mobile */}
+                  <div className="hidden sm:block absolute inset-0 bg-gradient-to-br from-[#FACC15]/20 via-[#FEF08A]/30 to-white/40 rounded-3xl blur-2xl" />
 
+                  {/* Main Container */}
+                  <div className="relative bg-gradient-to-br from-[#FACC15]/10 via-white to-[#FEF08A]/10 p-3 sm:p-6 rounded-2xl sm:rounded-3xl shadow-xl sm:shadow-2xl border border-[#FACC15]/20 transform-gpu">
+                    {/* Glow Effect - hidden on mobile */}
+                    <div className="hidden sm:block absolute -inset-1 bg-gradient-to-r from-[#FACC15]/30 via-[#FEF08A]/20 to-[#FACC15]/30 rounded-3xl blur-xl opacity-60 group-hover:opacity-100 transition-opacity duration-700" />
+
+                    <div className="relative rounded-xl sm:rounded-2xl overflow-hidden shadow-lg sm:shadow-xl border border-white/50 bg-[#18181B] aspect-video transform-gpu">
+                      <iframe
+                        className="absolute inset-0 w-full h-full"
+                        src="https://player.cloudinary.com/embed/?cloud_name=dborlhema&public_id=lelemon-demo-ingles_e3gjvs&profile=cld-default"
+                        allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+                        allowFullScreen
+                        title="Lelemon Demo"
+                        loading="lazy"
+                      ></iframe>
                     </div>
                   </div>
-                  
-                  {/* Decorative Elements */}
-                  <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-[#FACC15]/20 rounded-full blur-3xl -z-10" />
-                  <div className="absolute -top-8 -left-8 w-40 h-40 bg-[#FEF08A]/15 rounded-full blur-3xl -z-10" />
+
+                  {/* Decorative Elements - hidden on mobile */}
+                  <div className="hidden sm:block absolute -bottom-8 -right-8 w-32 h-32 bg-[#FACC15]/20 rounded-full blur-3xl -z-10" />
+                  <div className="hidden sm:block absolute -top-8 -left-8 w-40 h-40 bg-[#FEF08A]/15 rounded-full blur-3xl -z-10" />
                 </div>
               </div>
             </div>
@@ -269,30 +279,29 @@ export default function LandingPage() {
         </section>
 
         {/* Product/Dev Section */}
-        <section id="demo" className="py-24 px-6 bg-white">
+        <section id="demo" className="py-12 sm:py-24 px-4 sm:px-6 bg-white">
           <div className="max-w-6xl mx-auto">
-            <div className="grid lg:grid-cols-2 gap-16 lg:gap-20 items-center">
+            <div className="grid lg:grid-cols-2 gap-10 lg:gap-20 items-center">
               {/* Left - Code */}
-              <div className="order-2 lg:order-1 space-y-6">
-                <div className="text-center lg:text-left mb-4">
-                  <p className="text-sm text-[#71717A] font-medium">Drop-in integration for Node.js & Vercel AI SDK</p>
+              <div className="order-2 lg:order-1 space-y-4 sm:space-y-6">
+                <div className="text-center lg:text-left mb-2 sm:mb-4">
+                  <p className="text-xs sm:text-sm text-[#71717A] font-medium">Drop-in integration for Node.js & Vercel AI SDK</p>
                 </div>
                 <CodeBlock />
-
               </div>
 
               {/* Right - Features */}
-              <div className="order-1 lg:order-2 space-y-8">
+              <div className="order-1 lg:order-2 space-y-6 sm:space-y-8">
                 <div>
-                  <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2">
+                  <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight mb-2">
                     Built for developers
                   </h2>
-                  <p className="text-[#71717A]">
+                  <p className="text-sm sm:text-base text-[#71717A]">
                     No complications, straight to the code.
                   </p>
                 </div>
 
-                <ul className="space-y-5">
+                <ul className="space-y-4 sm:space-y-5">
                   <FeatureCheck>
                     <strong className="text-[#18181B] font-semibold">Trace the complete flow:</strong> prompts, tool calls and outputs.
                   </FeatureCheck>
@@ -309,9 +318,9 @@ export default function LandingPage() {
         </section>
 
         {/* Stack Agnostic Section */}
-        <section className="py-16 px-6 bg-white border-y border-[#18181B]/5">
+        <section className="py-10 sm:py-16 px-4 sm:px-6 bg-white border-y border-[#18181B]/5">
           <div className="max-w-6xl mx-auto">
-            <p className="text-center text-sm text-[#71717A] mb-8 font-medium">
+            <p className="text-center text-xs sm:text-sm text-[#71717A] mb-6 sm:mb-8 font-medium">
               Works seamlessly with your favorite ingredients:
             </p>
             <div
@@ -343,13 +352,13 @@ export default function LandingPage() {
         </section>
 
         {/* Footer */}
-        <footer className="py-12 px-6">
+        <footer className="py-8 sm:py-12 px-4 sm:px-6">
           <div className="max-w-6xl mx-auto">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6">
+              <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 text-center sm:text-left">
                 <LemonIcon className="w-6 h-6" />
-                <p className="text-sm text-[#71717A]">
-                  Lelemon — Lightweight observability for generative AI agents. Built with Go, ClickHouse & Next.js.
+                <p className="text-xs sm:text-sm text-[#71717A]">
+                  Lelemon — Lightweight observability for generative AI agents.
                 </p>
               </div>
               <nav className="flex flex-wrap items-center justify-center sm:justify-start gap-4 sm:gap-8 text-sm">

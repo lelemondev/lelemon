@@ -124,6 +124,15 @@
   }
 }
 
+/* iOS Safari rendering fixes */
+@supports (-webkit-touch-callout: none) {
+  /* Force GPU compositing on iOS to prevent black rectangle flash */
+  .transform-gpu {
+    -webkit-transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+  }
+}
+
 /* Landing page animations */
 @keyframes float-slow {
   0%, 100% { transform: translateY(0) rotate(12deg); }
