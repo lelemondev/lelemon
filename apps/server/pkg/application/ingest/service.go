@@ -348,6 +348,11 @@ func (s *Service) eventToSpan(traceID string, event IngestEvent) entity.Span {
 		EndedAt:   &now,
 	}
 
+	// Use SDK-provided span ID to preserve parent-child relationships
+	if event.SpanID != "" {
+		span.ID = event.SpanID
+	}
+
 	if event.ParentSpanID != "" {
 		span.ParentSpanID = &event.ParentSpanID
 	}
