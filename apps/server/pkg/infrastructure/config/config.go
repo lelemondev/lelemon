@@ -1,8 +1,10 @@
 package config
 
 import (
+	"log"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -28,24 +30,46 @@ type Config struct {
 	GoogleClientID     string
 	GoogleClientSecret string
 	GoogleRedirectURL  string
+
+	// Security
+	AllowedOrigins []string // CORS allowed origins (empty = allow FrontendURL only)
+	Environment    string   // development, staging, production
 }
 
 // Load loads configuration from environment variables
 func Load() *Config {
 	baseURL := getEnv("BASE_URL", "http://localhost:8080")
+	frontendURL := getEnv("FRONTEND_URL", "http://localhost:3000")
+	env := getEnv("ENVIRONMENT", "development")
+
+	// Parse allowed origins - defaults to frontend URL if not specified
+	allowedOrigins := getEnvList("ALLOWED_ORIGINS", ",")
+	if len(allowedOrigins) == 0 {
+		allowedOrigins = []string{frontendURL}
+	}
+
+	// Validate JWT_SECRET in production
+	jwtSecret := getEnv("JWT_SECRET", "change-me-in-production-please")
+	if env == "production" {
+		if jwtSecret == "change-me-in-production-please" || len(jwtSecret) < 32 {
+			log.Fatal("FATAL: JWT_SECRET must be set to a secure value (min 32 chars) in production")
+		}
+	}
 
 	return &Config{
-		Port:               getEnvInt("PORT", 8080),
-		FrontendURL:        getEnv("FRONTEND_URL", "http://localhost:3000"),
-		LogLevel:           getEnv("LOG_LEVEL", "info"),
-		LogFormat:          getEnv("LOG_FORMAT", "json"),
+		Port:                 getEnvInt("PORT", 8080),
+		FrontendURL:          frontendURL,
+		LogLevel:             getEnv("LOG_LEVEL", "info"),
+		LogFormat:            getEnv("LOG_FORMAT", "json"),
 		DatabaseURL:          getEnv("DATABASE_URL", "sqlite://./data/lelemon.db"),
 		AnalyticsDatabaseURL: getEnv("ANALYTICS_DATABASE_URL", ""),
-		JWTSecret:          getEnv("JWT_SECRET", "change-me-in-production-please"),
-		JWTExpiration:      getEnvDuration("JWT_EXPIRATION", 24*7*time.Hour), // 7 days
-		GoogleClientID:     getEnv("GOOGLE_CLIENT_ID", ""),
-		GoogleClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),
-		GoogleRedirectURL:  getEnv("GOOGLE_REDIRECT_URL", baseURL+"/api/v1/auth/google/callback"),
+		JWTSecret:            jwtSecret,
+		JWTExpiration:        getEnvDuration("JWT_EXPIRATION", 24*7*time.Hour), // 7 days
+		GoogleClientID:       getEnv("GOOGLE_CLIENT_ID", ""),
+		GoogleClientSecret:   getEnv("GOOGLE_CLIENT_SECRET", ""),
+		GoogleRedirectURL:    getEnv("GOOGLE_REDIRECT_URL", baseURL+"/api/v1/auth/google/callback"),
+		AllowedOrigins:       allowedOrigins,
+		Environment:          env,
 	}
 }
 
@@ -72,4 +96,20 @@ func getEnvDuration(key string, defaultValue time.Duration) time.Duration {
 		}
 	}
 	return defaultValue
+}
+
+func getEnvList(key, sep string) []string {
+	value := os.Getenv(key)
+	if value == "" {
+		return nil
+	}
+	parts := strings.Split(value, sep)
+	result := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			result = append(result, p)
+		}
+	}
+	return result
 }

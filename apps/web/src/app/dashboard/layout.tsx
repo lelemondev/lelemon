@@ -1,14 +1,30 @@
 'use client';
 
-import { useState, useEffect, createContext, useContext, useMemo } from 'react';
+import { useState, useEffect, createContext, useContext, useMemo, Fragment } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth-context';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ProjectProvider } from '@/lib/project-context';
 import { ProjectSelector } from '@/components/project-selector';
 import { LemonIcon } from '@/components/lemon-icon';
+import { UserInfo } from '@/components/user-info';
+
+// Dynamic imports for EE components - fail silently if not available
+const EEProvider = dynamic(
+  () => import('@/ee/lib/ee-context').then(m => m.EEProvider).catch(() => Fragment),
+  { ssr: false }
+);
+const EENavigation = dynamic(
+  () => import('@/ee/components/navigation').then(m => m.EENavigation).catch(() => () => null),
+  { ssr: false }
+);
+const OrganizationSwitcher = dynamic(
+  () => import('@/ee/components/organization-switcher').then(m => m.OrganizationSwitcher).catch(() => () => null),
+  { ssr: false }
+);
 
 // Sidebar context for children to know if collapsed
 const SidebarContext = createContext({ collapsed: false, setCollapsed: (_: boolean) => {} });
@@ -147,9 +163,10 @@ export default function DashboardLayout({
   const mainMargin = sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-60';
 
   return (
-    <ProjectProvider>
-      <SidebarContext.Provider value={sidebarContextValue}>
-        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+    <EEProvider>
+      <ProjectProvider>
+        <SidebarContext.Provider value={sidebarContextValue}>
+          <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
           {/* Mobile header */}
           <div className="lg:hidden fixed top-0 left-0 right-0 z-40 h-14 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-4">
             <button
@@ -202,6 +219,9 @@ export default function DashboardLayout({
               </button>
             </div>
 
+            {/* Organization Switcher - EE only */}
+            <OrganizationSwitcher collapsed={sidebarCollapsed} />
+
             {/* Project Selector - only when expanded */}
             {!sidebarCollapsed && <ProjectSelector />}
 
@@ -235,10 +255,19 @@ export default function DashboardLayout({
                   </Link>
                 );
               })}
+
+              {/* Enterprise navigation items */}
+              <EENavigation
+                collapsed={sidebarCollapsed}
+                onNavigate={() => setSidebarOpen(false)}
+              />
             </nav>
 
             {/* Bottom section */}
             <div className={cn("border-t border-zinc-200 dark:border-zinc-800", sidebarCollapsed ? "p-2" : "p-3")}>
+              {/* User info */}
+              <UserInfo collapsed={sidebarCollapsed} />
+
               {/* Theme toggle */}
               {!sidebarCollapsed ? (
                 <div className="flex items-center justify-between px-3 py-2 mb-1">
@@ -314,5 +343,6 @@ export default function DashboardLayout({
         </div>
       </SidebarContext.Provider>
     </ProjectProvider>
+    </EEProvider>
   );
 }

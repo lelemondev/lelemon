@@ -38,6 +38,7 @@ func main() {
 		"version", "1.0.0",
 		"port", cfg.Port,
 		"log_level", cfg.LogLevel,
+		"allowed_origins", cfg.AllowedOrigins,
 	)
 
 	// Initialize primary store (users, projects)
@@ -97,6 +98,7 @@ func main() {
 		AuthSvc:        authSvc,
 		JWTService:     jwtService,
 		FrontendURL:    cfg.FrontendURL,
+		AllowedOrigins: cfg.AllowedOrigins,
 	})
 
 	// Create server

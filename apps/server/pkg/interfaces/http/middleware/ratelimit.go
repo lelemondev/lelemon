@@ -101,3 +101,30 @@ func RateLimit(limiter *RateLimiter) func(http.Handler) http.Handler {
 		})
 	}
 }
+
+// RateLimitByIP creates middleware that limits requests per IP address
+// Useful for auth endpoints to prevent brute force attacks
+func RateLimitByIP(limiter *RateLimiter) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Use client IP as rate limit key
+			ip := r.Header.Get("X-Real-IP")
+			if ip == "" {
+				ip = r.Header.Get("X-Forwarded-For")
+			}
+			if ip == "" {
+				ip = r.RemoteAddr
+			}
+
+			if !limiter.Allow(ip) {
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Retry-After", "60")
+				w.WriteHeader(http.StatusTooManyRequests)
+				w.Write([]byte(`{"error":"Too many requests. Please try again later.","retryAfter":60}`))
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}

@@ -73,6 +73,24 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // Proxy API requests to backend in development
+  // This avoids CORS and browser security issues
+  async rewrites() {
+    // Only proxy in development when API_URL is set to a different host
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8080';
+
+    // In production, don't proxy (frontend and backend share domain or use proper CORS)
+    if (!isDev) {
+      return [];
+    }
+
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${backendUrl}/api/:path*`,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

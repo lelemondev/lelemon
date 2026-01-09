@@ -125,10 +125,10 @@ func TestCostCalculation(t *testing.T) {
 	apiKeyHeaders := map[string]string{"Authorization": "Bearer " + project.APIKey}
 
 	t.Run("gpt-4o cost calculation", func(t *testing.T) {
-		// gpt-4o: $5/1M input, $15/1M output
-		// 1000 input tokens = $0.005
-		// 500 output tokens = $0.0075
-		// Total = $0.0125
+		// gpt-4o: $2.50/1M input ($0.0025/1K), $10/1M output ($0.01/1K)
+		// 1000 input tokens = $0.0025
+		// 500 output tokens = $0.005
+		// Total = $0.0075
 		ts.Request("POST", "/api/v1/ingest", map[string]any{
 			"events": []map[string]any{{
 				"spanType": "llm", "provider": "openai", "model": "gpt-4o",
@@ -140,10 +140,10 @@ func TestCostCalculation(t *testing.T) {
 		var stats StatsResponse
 		ParseJSON(t, resp, &stats)
 
-		expectedCost := 0.0125
+		expectedCost := 0.0075
 		tolerance := 0.0001
 		if stats.TotalCostUSD < expectedCost-tolerance || stats.TotalCostUSD > expectedCost+tolerance {
-			t.Errorf("expected cost ~$0.0125, got $%f", stats.TotalCostUSD)
+			t.Errorf("expected cost ~$0.0075, got $%f", stats.TotalCostUSD)
 		}
 	})
 }

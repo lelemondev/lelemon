@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { LemonIcon } from '@/components/lemon-icon';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 export default function SignupPage() {
   const [name, setName] = useState('');
@@ -25,8 +25,21 @@ export default function SignupPage() {
       return;
     }
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    // Validate password strength
+    if (password.length < 12) {
+      setError('Password must be at least 12 characters');
+      return;
+    }
+    if (!/[A-Z]/.test(password)) {
+      setError('Password must contain at least one uppercase letter');
+      return;
+    }
+    if (!/[a-z]/.test(password)) {
+      setError('Password must contain at least one lowercase letter');
+      return;
+    }
+    if (!/[0-9]/.test(password)) {
+      setError('Password must contain at least one number');
       return;
     }
 
@@ -138,7 +151,7 @@ export default function SignupPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   className="w-full px-4 py-3 rounded-xl border border-[#18181B]/10 bg-[#F4F4F5] focus:bg-white focus:border-[#FACC15] focus:ring-2 focus:ring-[#FACC15]/20 outline-none transition-all text-[#18181B] placeholder:text-[#A1A1AA]"
-                  placeholder="Min 6 characters"
+                  placeholder="Min 12 chars, upper, lower, number"
                 />
               </div>
 

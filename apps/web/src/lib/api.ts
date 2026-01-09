@@ -2,7 +2,8 @@
  * Lelemon API Client - Connects to Go Backend
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+// API URL: use env var if set, otherwise relative (proxied by Next.js in dev)
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 // Helper to get auth token
 function getAuthToken(): string | null {

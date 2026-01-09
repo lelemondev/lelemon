@@ -5,6 +5,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
+	"net/mail"
+	"strings"
 
 	"github.com/lelemon/server/pkg/application/auth"
 	"github.com/lelemon/server/pkg/domain/entity"
@@ -33,8 +35,18 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Normalize email
+	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
+	req.Name = strings.TrimSpace(req.Name)
+
 	if req.Email == "" || req.Password == "" || req.Name == "" {
 		http.Error(w, `{"error":"Email, password and name are required"}`, http.StatusBadRequest)
+		return
+	}
+
+	// Validate email format
+	if _, err := mail.ParseAddress(req.Email); err != nil {
+		http.Error(w, `{"error":"Invalid email format"}`, http.StatusBadRequest)
 		return
 	}
 
@@ -44,7 +56,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		case auth.ErrEmailExists:
 			http.Error(w, `{"error":"Email already registered"}`, http.StatusConflict)
 		case auth.ErrWeakPassword:
-			http.Error(w, `{"error":"Password must be at least 8 characters"}`, http.StatusBadRequest)
+			http.Error(w, `{"error":"Password must be at least 12 characters with uppercase, lowercase, and number"}`, http.StatusBadRequest)
 		default:
 			http.Error(w, `{"error":"Internal server error"}`, http.StatusInternalServerError)
 		}
@@ -63,6 +75,9 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
 		return
 	}
+
+	// Normalize email
+	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
 
 	if req.Email == "" || req.Password == "" {
 		http.Error(w, `{"error":"Email and password are required"}`, http.StatusBadRequest)

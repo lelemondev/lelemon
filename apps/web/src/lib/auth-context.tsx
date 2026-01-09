@@ -3,7 +3,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+// API URL: use env var if set, otherwise relative (proxied by Next.js in dev)
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 export interface User {
   id: string;

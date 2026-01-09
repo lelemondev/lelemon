@@ -1,0 +1,34 @@
+Lelemon Enterprise License
+
+Copyright (c) 2026 Lelemon
+
+The software in this directory ("ee/") and in "apps/web/src/ee/" is proprietary
+and confidential.
+
+PERMITTED USE:
+- You MAY copy and modify this software for development and testing purposes
+- You MAY use this software in production with a valid Lelemon Enterprise License
+  or active Lelemon Cloud subscription
+- You MAY view this source code for evaluation and security review purposes
+
+PROHIBITED USE:
+- You MAY NOT use this software in production without a valid license
+- You MAY NOT distribute, sublicense, sell, or transfer this software
+- You MAY NOT remove or alter this license notice from any copies
+- You MAY NOT use this software to provide competing services
+
+OBTAINING A LICENSE:
+To obtain an Enterprise License or start a Lelemon Cloud subscription:
+- Visit: https://lelemon.dev/pricing
+- Contact: enterprise@lelemon.dev
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+For the open-source core of Lelemon (everything outside ee/ and apps/web/src/ee/),
+see the LICENSE file in the repository root.

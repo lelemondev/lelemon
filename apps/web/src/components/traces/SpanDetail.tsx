@@ -52,17 +52,33 @@ function formatJsonData(data: unknown): string {
 }
 
 /**
+ * Escape HTML entities to prevent XSS
+ */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/**
  * JSON Syntax Highlighter Component
+ * Safely highlights JSON with HTML escaping to prevent XSS
  */
 function JsonHighlight({ json }: { json: string }) {
   if (json === '-') return <span className="text-zinc-500">-</span>;
 
-  // Tokenize and highlight JSON
-  const highlighted = json.replace(
-    /("(?:\\.|[^"\\])*")\s*:/g, // Keys
+  // First escape all HTML entities to prevent XSS
+  const escaped = escapeHtml(json);
+
+  // Then apply syntax highlighting with safe class names
+  const highlighted = escaped.replace(
+    /(&quot;(?:\\.|[^&])*?&quot;)\s*:/g, // Keys (escaped quotes)
     '<span class="text-purple-400">$1</span>:'
   ).replace(
-    /:\s*("(?:\\.|[^"\\])*")/g, // String values
+    /:\s*(&quot;(?:\\.|[^&])*?&quot;)/g, // String values (escaped quotes)
     ': <span class="text-emerald-400">$1</span>'
   ).replace(
     /:\s*(\d+\.?\d*)/g, // Numbers

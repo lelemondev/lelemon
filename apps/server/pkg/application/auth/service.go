@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"unicode"
 
 	"github.com/lelemon/server/pkg/domain/entity"
 	"github.com/lelemon/server/pkg/domain/repository"
@@ -12,7 +13,7 @@ import (
 var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrEmailExists        = errors.New("email already registered")
-	ErrWeakPassword       = errors.New("password must be at least 8 characters")
+	ErrWeakPassword       = errors.New("password must be at least 12 characters with uppercase, lowercase, and number")
 )
 
 // Service handles authentication operations
@@ -33,8 +34,8 @@ func NewService(store repository.Store, jwt *auth.JWTService, oauth *auth.OAuthS
 
 // Register creates a new user account
 func (s *Service) Register(ctx context.Context, req *RegisterRequest) (*AuthResponse, error) {
-	// Validate password
-	if len(req.Password) < 8 {
+	// Validate password strength
+	if !isStrongPassword(req.Password) {
 		return nil, ErrWeakPassword
 	}
 
@@ -134,7 +135,9 @@ func (s *Service) HandleGoogleCallback(ctx context.Context, code string) (*AuthR
 		// Update Google ID if not set
 		if user.GoogleID == nil {
 			googleID := googleUser.ID
-			s.store.UpdateUser(ctx, user.ID, entity.UserUpdate{})
+			if err := s.store.UpdateUser(ctx, user.ID, entity.UserUpdate{GoogleID: &googleID}); err != nil {
+				return nil, err
+			}
 			user.GoogleID = &googleID
 		}
 	}
@@ -172,4 +175,29 @@ func userToResponse(user *entity.User) *UserResponse {
 		Name:      user.Name,
 		CreatedAt: user.CreatedAt,
 	}
+}
+
+// isStrongPassword validates password strength:
+// - Minimum 12 characters
+// - At least one uppercase letter
+// - At least one lowercase letter
+// - At least one digit
+func isStrongPassword(password string) bool {
+	if len(password) < 12 {
+		return false
+	}
+
+	var hasUpper, hasLower, hasDigit bool
+	for _, r := range password {
+		switch {
+		case unicode.IsUpper(r):
+			hasUpper = true
+		case unicode.IsLower(r):
+			hasLower = true
+		case unicode.IsDigit(r):
+			hasDigit = true
+		}
+	}
+
+	return hasUpper && hasLower && hasDigit
 }

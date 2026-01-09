@@ -209,6 +209,10 @@ func (s *Store) UpdateUser(ctx context.Context, id string, updates entity.UserUp
 		sets = append(sets, "password_hash = ?")
 		args = append(args, *updates.PasswordHash)
 	}
+	if updates.GoogleID != nil {
+		sets = append(sets, "google_id = ?")
+		args = append(args, *updates.GoogleID)
+	}
 
 	if len(sets) == 0 {
 		return nil

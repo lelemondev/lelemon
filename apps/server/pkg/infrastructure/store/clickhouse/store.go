@@ -251,6 +251,9 @@ func (s *Store) UpdateUser(ctx context.Context, id string, updates entity.UserUp
 	if updates.PasswordHash != nil {
 		existing.PasswordHash = updates.PasswordHash
 	}
+	if updates.GoogleID != nil {
+		existing.GoogleID = updates.GoogleID
+	}
 	existing.UpdatedAt = time.Now()
 
 	return s.conn.Exec(ctx, `

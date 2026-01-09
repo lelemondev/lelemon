@@ -15,6 +15,7 @@ type User struct {
 type UserUpdate struct {
 	Name         *string
 	PasswordHash *string
+	GoogleID     *string
 }
 
 type NewUser struct {
@@ -22,4 +23,14 @@ type NewUser struct {
 	Name         string
 	PasswordHash *string
 	GoogleID     *string
+}
+
+// GetID returns the user ID (implements common user interface)
+func (u *User) GetID() string {
+	return u.ID
+}
+
+// GetEmail returns the user email (implements common user interface)
+func (u *User) GetEmail() string {
+	return u.Email
 }

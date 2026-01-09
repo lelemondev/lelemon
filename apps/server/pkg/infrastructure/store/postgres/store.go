@@ -117,7 +117,7 @@ func (s *Store) Migrate(ctx context.Context) error {
 		`ALTER TABLE spans ADD COLUMN IF NOT EXISTS first_token_ms INTEGER`,
 		`ALTER TABLE spans ADD COLUMN IF NOT EXISTS thinking TEXT`,
 
-		// Indexes
+		// Indexes - Basic
 		`CREATE INDEX IF NOT EXISTS idx_projects_api_key_hash ON projects(api_key_hash)`,
 		`CREATE INDEX IF NOT EXISTS idx_projects_owner ON projects(owner_email)`,
 		`CREATE INDEX IF NOT EXISTS idx_traces_project_created ON traces(project_id, created_at DESC)`,
@@ -126,6 +126,19 @@ func (s *Store) Migrate(ctx context.Context) error {
 		`CREATE INDEX IF NOT EXISTS idx_spans_trace ON spans(trace_id, started_at)`,
 		`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`,
 		`CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id)`,
+
+		// High-volume optimizations - BRIN indexes for time-series data
+		// BRIN indexes are ~100x smaller than B-tree for sequential time data
+		`CREATE INDEX IF NOT EXISTS idx_traces_created_brin ON traces USING BRIN(created_at) WITH (pages_per_range = 32)`,
+		`CREATE INDEX IF NOT EXISTS idx_spans_started_brin ON spans USING BRIN(started_at) WITH (pages_per_range = 32)`,
+
+		// Partial indexes for common filters
+		`CREATE INDEX IF NOT EXISTS idx_traces_errors ON traces(project_id, created_at DESC) WHERE status = 'error'`,
+		`CREATE INDEX IF NOT EXISTS idx_spans_model ON spans(model) WHERE model IS NOT NULL`,
+		`CREATE INDEX IF NOT EXISTS idx_spans_provider ON spans(provider) WHERE provider IS NOT NULL`,
+
+		// Covering index for ListTraces to avoid table lookups
+		`CREATE INDEX IF NOT EXISTS idx_traces_list ON traces(project_id, created_at DESC) INCLUDE (id, session_id, user_id, status)`,
 	}
 
 	for _, m := range migrations {
@@ -213,6 +226,11 @@ func (s *Store) UpdateUser(ctx context.Context, id string, updates entity.UserUp
 	if updates.PasswordHash != nil {
 		sets = append(sets, fmt.Sprintf("password_hash = $%d", argNum))
 		args = append(args, *updates.PasswordHash)
+		argNum++
+	}
+	if updates.GoogleID != nil {
+		sets = append(sets, fmt.Sprintf("google_id = $%d", argNum))
+		args = append(args, *updates.GoogleID)
 		argNum++
 	}
 

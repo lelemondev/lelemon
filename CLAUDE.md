@@ -26,7 +26,13 @@
 
 **Related Projects:**
 - **SDK:** [@lelemondev/sdk](https://github.com/lelemondev/sdk) - TypeScript SDK (separate repository)
-- **Enterprise:** lelemon-cloud (private) - Multi-tenancy, billing, RBAC
+
+**Enterprise Edition:**
+The `ee/` folder contains enterprise features under a proprietary license:
+- Organizations with multi-tenancy
+- Role-based access control (RBAC)
+- Billing with Lemon Squeezy integration
+- See `ee/LICENSE` for terms
 
 ---
 
@@ -34,10 +40,12 @@
 
 ```
 lelemon/
+├── LICENSE                        # AGPL-3.0 (excludes ee/)
+├── go.work                        # Go workspace (core + ee)
 ├── apps/
-│   ├── server/                    # Go backend (API + Auth)
-│   │   ├── cmd/server/main.go     # Entry point
-│   │   ├── pkg/                   # Exportable packages
+│   ├── server/                    # Go backend CORE (API + Auth)
+│   │   ├── cmd/server/main.go     # Entry point (community edition)
+│   │   ├── pkg/
 │   │   │   ├── domain/
 │   │   │   │   ├── entity/        # User, Project, Trace, Span, Session
 │   │   │   │   ├── repository/    # Store interfaces
@@ -54,14 +62,15 @@ lelemon/
 │   │   │   │   ├── config/        # Environment loading
 │   │   │   │   └── logger/        # Structured logging (slog)
 │   │   │   └── interfaces/http/
-│   │   │       ├── handler/       # HTTP handlers
+│   │   │       ├── handler/       # HTTP handlers + features.go
 │   │   │       ├── middleware/    # Auth, logging, rate-limit
-│   │   │       ├── router.go      # Route definitions
+│   │   │       ├── router.go      # Extensible router
+│   │   │       ├── extension.go   # RouterExtension interface
 │   │   │       └── server.go      # Server setup
 │   │   ├── Dockerfile
 │   │   └── docker-compose*.yml
 │   │
-│   ├── web/                       # Next.js dashboard (frontend only)
+│   ├── web/                       # Next.js dashboard
 │   │   ├── src/
 │   │   │   ├── app/
 │   │   │   │   ├── (auth)/        # Login, signup pages
@@ -69,14 +78,36 @@ lelemon/
 │   │   │   ├── components/
 │   │   │   │   ├── ui/            # shadcn/ui components
 │   │   │   │   └── traces/        # Trace visualization
+│   │   │   ├── ee/                # Enterprise frontend (proprietary)
+│   │   │   │   ├── lib/           # EEProvider, useEE hook
+│   │   │   │   └── components/    # FeatureGate, EENavigation
 │   │   │   └── lib/
-│   │   │       ├── api.ts         # API client (normalizes Go responses)
-│   │   │       ├── auth-context.tsx  # JWT auth provider
+│   │   │       ├── api.ts
+│   │   │       ├── auth-context.tsx
 │   │   │       └── project-context.tsx
 │   │   └── package.json
 │   │
 │   └── playground/                # SDK testing app (port 3001)
-│       └── src/                   # Multi-provider chat interface
+│
+├── ee/                            # ENTERPRISE (proprietary license)
+│   ├── LICENSE                    # Enterprise license
+│   └── server/
+│       ├── cmd/server/main.go     # Entry point (enterprise edition)
+│       ├── go.mod                 # Depends on ../../apps/server
+│       ├── domain/
+│       │   ├── entity/            # Organization, TeamMember, Permission
+│       │   └── repository/        # EnterpriseStore interface
+│       ├── application/
+│       │   ├── organization/      # Organization CRUD
+│       │   ├── rbac/              # Role-based access control
+│       │   └── billing/           # Subscription management
+│       ├── infrastructure/
+│       │   ├── store/             # Enterprise store implementation
+│       │   └── lemonsqueezy/      # Payment provider client
+│       └── interfaces/http/
+│           ├── handler/           # Billing, org handlers
+│           ├── middleware/        # RBAC middleware
+│           └── extension.go       # Implements RouterExtension
 │
 └── docs/
     └── ROADMAP.md
@@ -103,22 +134,34 @@ docker-compose -f docker-compose.clickhouse.yml up -d # ClickHouse
 ### Dashboard (apps/web)
 ```bash
 cd apps/web
-yarn install
-yarn dev              # Dev server (port 3000)
-yarn build            # Production build
+pnpm install
+pnpm dev              # Dev server (port 3000)
+pnpm build            # Production build
 ```
 
 ### Playground (apps/playground)
 ```bash
 cd apps/playground
-yarn install
-yarn dev              # Dev server (port 3001)
+pnpm install
+pnpm dev              # Dev server (port 3001)
 ```
 
 ### Monorepo Root
 ```bash
-yarn install          # Install all dependencies
-yarn dev              # Run dashboard in dev mode
+pnpm install          # Install all dependencies
+pnpm dev              # Run dashboard in dev mode
+```
+
+### Enterprise Backend (ee/server)
+```bash
+cd ee/server
+
+go run ./cmd/server           # Run EE server (port 8080)
+go build -o lelemon-ee ./cmd/server  # Build EE binary
+go test ./...                 # Run tests
+
+# Use go.work from root for workspace-aware commands
+cd ../.. && go build ./ee/server/...
 ```
 
 ---
