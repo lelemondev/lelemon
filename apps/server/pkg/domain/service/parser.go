@@ -139,17 +139,27 @@ func parseAnthropicResponse(raw any) *ParsedResponse {
 	return result
 }
 
-// parseBedrockResponse parses AWS Bedrock Converse API response
-// Format: { output: { message: { content: [...] } }, usage: { inputTokens, ... }, stopReason }
+// parseBedrockResponse parses AWS Bedrock responses
+// Supports both formats:
+// - Converse API: { output: { message: { content: [...] } }, usage: { inputTokens, ... }, stopReason }
+// - InvokeModel API: { content: [...], usage: { input_tokens, ... }, stop_reason } (Anthropic raw format)
 func parseBedrockResponse(raw any) *ParsedResponse {
 	resp, ok := raw.(map[string]any)
 	if !ok {
 		return nil
 	}
 
+	// Detect format: InvokeModel returns Anthropic format directly (has "content" array at root)
+	// Converse API has "output.message.content" structure
+	if _, hasContent := resp["content"]; hasContent {
+		// InvokeModel API - use Anthropic parser
+		return parseAnthropicResponse(raw)
+	}
+
 	result := &ParsedResponse{}
 
-	// Extract usage
+	// Converse API format
+	// Extract usage (camelCase)
 	if usage, ok := resp["usage"].(map[string]any); ok {
 		if v, ok := usage["inputTokens"].(float64); ok {
 			result.InputTokens = int(v)
