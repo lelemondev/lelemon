@@ -72,6 +72,7 @@ func (s *Store) Migrate(ctx context.Context) error {
 		`CREATE TABLE IF NOT EXISTS traces (
 			id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 			project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+			name TEXT,
 			session_id TEXT,
 			user_id TEXT,
 			status TEXT NOT NULL DEFAULT 'active',
@@ -116,6 +117,9 @@ func (s *Store) Migrate(ctx context.Context) error {
 		`ALTER TABLE spans ADD COLUMN IF NOT EXISTS reasoning_tokens INTEGER`,
 		`ALTER TABLE spans ADD COLUMN IF NOT EXISTS first_token_ms INTEGER`,
 		`ALTER TABLE spans ADD COLUMN IF NOT EXISTS thinking TEXT`,
+
+		// Phase 7.2: Add name field to traces table
+		`ALTER TABLE traces ADD COLUMN IF NOT EXISTS name TEXT`,
 
 		// Indexes - Basic
 		`CREATE INDEX IF NOT EXISTS idx_projects_api_key_hash ON projects(api_key_hash)`,
@@ -392,9 +396,9 @@ func (s *Store) CreateTrace(ctx context.Context, t *entity.Trace) error {
 	metadataJSON, _ := json.Marshal(t.Metadata)
 
 	_, err := s.pool.Exec(ctx, `
-		INSERT INTO traces (id, project_id, session_id, user_id, status, tags, metadata, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-	`, t.ID, t.ProjectID, t.SessionID, t.UserID, t.Status, tagsJSON, metadataJSON, t.CreatedAt, t.UpdatedAt)
+		INSERT INTO traces (id, project_id, name, session_id, user_id, status, tags, metadata, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+	`, t.ID, t.ProjectID, t.Name, t.SessionID, t.UserID, t.Status, tagsJSON, metadataJSON, t.CreatedAt, t.UpdatedAt)
 
 	return err
 }
@@ -455,12 +459,12 @@ func (s *Store) DeleteAllTraces(ctx context.Context, projectID string) (int64, e
 func (s *Store) GetTrace(ctx context.Context, projectID, traceID string) (*entity.TraceWithSpans, error) {
 	var t entity.Trace
 	var tagsJSON, metadataJSON []byte
-	var sessionID, userID *string
+	var name, sessionID, userID *string
 
 	err := s.pool.QueryRow(ctx, `
-		SELECT id, project_id, session_id, user_id, status, tags, metadata, created_at, updated_at
+		SELECT id, project_id, name, session_id, user_id, status, tags, metadata, created_at, updated_at
 		FROM traces WHERE project_id = $1 AND id = $2
-	`, projectID, traceID).Scan(&t.ID, &t.ProjectID, &sessionID, &userID, &t.Status, &tagsJSON, &metadataJSON, &t.CreatedAt, &t.UpdatedAt)
+	`, projectID, traceID).Scan(&t.ID, &t.ProjectID, &name, &sessionID, &userID, &t.Status, &tagsJSON, &metadataJSON, &t.CreatedAt, &t.UpdatedAt)
 
 	if err == pgx.ErrNoRows {
 		return nil, entity.ErrNotFound
@@ -469,6 +473,7 @@ func (s *Store) GetTrace(ctx context.Context, projectID, traceID string) (*entit
 		return nil, err
 	}
 
+	t.Name = name
 	t.SessionID = sessionID
 	t.UserID = userID
 	json.Unmarshal(tagsJSON, &t.Tags)
@@ -621,7 +626,7 @@ func (s *Store) ListTraces(ctx context.Context, projectID string, filter entity.
 	}
 
 	query := fmt.Sprintf(`
-		SELECT t.id, t.project_id, t.session_id, t.user_id, t.status, t.tags, t.metadata, t.created_at, t.updated_at,
+		SELECT t.id, t.project_id, t.name, t.session_id, t.user_id, t.status, t.tags, t.metadata, t.created_at, t.updated_at,
 		       COALESCE(COUNT(s.id), 0) as total_spans,
 		       COALESCE(SUM(COALESCE(s.input_tokens, 0) + COALESCE(s.output_tokens, 0)), 0) as total_tokens,
 		       COALESCE(SUM(COALESCE(s.cost_usd, 0)), 0) as total_cost,
@@ -645,14 +650,15 @@ func (s *Store) ListTraces(ctx context.Context, projectID string, filter entity.
 	for rows.Next() {
 		var t entity.TraceWithMetrics
 		var tagsJSON, metadataJSON []byte
-		var sessionID, userID *string
+		var name, sessionID, userID *string
 
-		err := rows.Scan(&t.ID, &t.ProjectID, &sessionID, &userID, &t.Status, &tagsJSON, &metadataJSON,
+		err := rows.Scan(&t.ID, &t.ProjectID, &name, &sessionID, &userID, &t.Status, &tagsJSON, &metadataJSON,
 			&t.CreatedAt, &t.UpdatedAt, &t.TotalSpans, &t.TotalTokens, &t.TotalCostUSD, &t.TotalDurationMs)
 		if err != nil {
 			return nil, err
 		}
 
+		t.Name = name
 		t.SessionID = sessionID
 		t.UserID = userID
 		json.Unmarshal(tagsJSON, &t.Tags)

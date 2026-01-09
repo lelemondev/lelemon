@@ -13,6 +13,7 @@ const (
 type Trace struct {
 	ID        string
 	ProjectID string
+	Name      *string // Name from SDK trace() call (e.g., "sales-agent")
 	SessionID *string
 	UserID    *string
 	Status    TraceStatus

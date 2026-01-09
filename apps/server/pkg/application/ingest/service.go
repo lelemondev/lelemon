@@ -162,6 +162,20 @@ func (s *Service) processTraceEvents(ctx context.Context, projectID, traceID str
 			Metadata:  make(map[string]any),
 		}
 
+		// Extract trace name from the "agent" span event or metadata._traceName
+		for _, event := range events {
+			if event.SpanType == "agent" && event.Name != "" {
+				trace.Name = &event.Name
+				break
+			}
+		}
+		// Fallback: check _traceName in metadata (set by SDK trace context)
+		if trace.Name == nil && firstEvent.Metadata != nil {
+			if traceName, ok := firstEvent.Metadata["_traceName"].(string); ok && traceName != "" {
+				trace.Name = &traceName
+			}
+		}
+
 		if firstEvent.SessionID != "" {
 			trace.SessionID = &firstEvent.SessionID
 		}

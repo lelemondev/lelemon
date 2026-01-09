@@ -134,6 +134,172 @@ func TestIngest(t *testing.T) {
 	})
 }
 
+func TestIngestHierarchy(t *testing.T) {
+	ts := setupTestServer(t)
+
+	// Setup: create user, get JWT, create project, get API key
+	regResp := ts.Request("POST", "/api/v1/auth/register", map[string]string{
+		"email": "hierarchy@example.com", "password": "SecurePass123", "name": "Hierarchy User",
+	}, nil)
+	var auth AuthResponse
+	ParseJSON(t, regResp, &auth)
+
+	projResp := ts.Request("POST", "/api/v1/dashboard/projects", map[string]string{
+		"name": "Hierarchy Test Project",
+	}, map[string]string{"Authorization": "Bearer " + auth.Token})
+	var project ProjectResponse
+	ParseJSON(t, projResp, &project)
+
+	apiKeyHeaders := map[string]string{"Authorization": "Bearer " + project.APIKey}
+
+	t.Run("agent span sets trace name", func(t *testing.T) {
+		// Simulate SDK trace() + observe() pattern:
+		// 1. Agent span (root) with trace name
+		// 2. LLM span as child
+		traceID := "test-trace-001"
+		agentSpanID := "agent-span-001"
+		llmSpanID := "llm-span-001"
+
+		resp := ts.Request("POST", "/api/v1/ingest", map[string]any{
+			"events": []map[string]any{
+				{
+					"traceId":    traceID,
+					"spanId":     agentSpanID,
+					"spanType":   "agent",
+					"name":       "sales-conversation", // This should become trace.Name
+					"provider":   "agent",
+					"model":      "sales-conversation",
+					"input":      map[string]any{"message": "Hello"},
+					"output":     "Hi there!",
+					"durationMs": 1500,
+					"status":     "success",
+					"sessionId":  "session-123",
+				},
+				{
+					"traceId":      traceID,
+					"spanId":       llmSpanID,
+					"parentSpanId": agentSpanID, // LLM is child of agent
+					"spanType":     "llm",
+					"name":         "bedrock-call",
+					"provider":     "bedrock",
+					"model":        "anthropic.claude-3-haiku-20240307-v1:0",
+					"input":        []map[string]any{{"role": "user", "content": "Hello"}},
+					"inputTokens":  50,
+					"outputTokens": 100,
+					"durationMs":   800,
+					"status":       "success",
+					"sessionId":    "session-123",
+				},
+			},
+		}, apiKeyHeaders)
+
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("expected status 200, got %d", resp.StatusCode)
+		}
+
+		var result IngestResponse
+		ParseJSON(t, resp, &result)
+		if result.Processed != 2 {
+			t.Errorf("expected processed 2, got %d", result.Processed)
+		}
+
+		// Verify the trace was created with correct name
+		traceResp := ts.Request("GET", "/api/v1/traces/"+traceID, nil, apiKeyHeaders)
+		if traceResp.StatusCode != http.StatusOK {
+			t.Fatalf("expected status 200 for trace, got %d", traceResp.StatusCode)
+		}
+
+		var trace map[string]any
+		ParseJSON(t, traceResp, &trace)
+
+		// Check trace name is set from agent span
+		if trace["Name"] == nil {
+			t.Error("expected trace to have Name set from agent span")
+		} else if trace["Name"].(string) != "sales-conversation" {
+			t.Errorf("expected trace Name 'sales-conversation', got '%v'", trace["Name"])
+		}
+
+		// Check we have 2 spans
+		spans, ok := trace["Spans"].([]any)
+		if !ok {
+			t.Fatal("expected Spans array in trace response")
+		}
+		if len(spans) != 2 {
+			t.Errorf("expected 2 spans, got %d", len(spans))
+		}
+
+		// Find agent span and verify it has no parent
+		var agentSpan, llmSpan map[string]any
+		for _, s := range spans {
+			span := s.(map[string]any)
+			if span["Type"] == "agent" {
+				agentSpan = span
+			} else if span["Type"] == "llm" {
+				llmSpan = span
+			}
+		}
+
+		if agentSpan == nil {
+			t.Fatal("agent span not found")
+		}
+		if llmSpan == nil {
+			t.Fatal("llm span not found")
+		}
+
+		// Agent span should have no parent
+		if agentSpan["ParentSpanID"] != nil {
+			t.Errorf("agent span should have no parent, got %v", agentSpan["ParentSpanID"])
+		}
+
+		// LLM span should have agent as parent
+		if llmSpan["ParentSpanID"] == nil {
+			t.Error("llm span should have parent")
+		} else if llmSpan["ParentSpanID"].(string) != agentSpanID {
+			t.Errorf("llm span parent should be '%s', got '%v'", agentSpanID, llmSpan["ParentSpanID"])
+		}
+	})
+
+	t.Run("trace name from metadata._traceName fallback", func(t *testing.T) {
+		// When no agent span, trace name comes from metadata._traceName
+		traceID := "test-trace-002"
+
+		resp := ts.Request("POST", "/api/v1/ingest", map[string]any{
+			"events": []map[string]any{
+				{
+					"traceId":      traceID,
+					"spanId":       "llm-only-001",
+					"spanType":     "llm",
+					"name":         "bedrock-call",
+					"provider":     "bedrock",
+					"model":        "anthropic.claude-3-haiku-20240307-v1:0",
+					"inputTokens":  50,
+					"outputTokens": 100,
+					"durationMs":   800,
+					"status":       "success",
+					"metadata": map[string]any{
+						"_traceName": "fallback-trace-name",
+					},
+				},
+			},
+		}, apiKeyHeaders)
+
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("expected status 200, got %d", resp.StatusCode)
+		}
+
+		// Verify the trace was created with name from metadata
+		traceResp := ts.Request("GET", "/api/v1/traces/"+traceID, nil, apiKeyHeaders)
+		var trace map[string]any
+		ParseJSON(t, traceResp, &trace)
+
+		if trace["Name"] == nil {
+			t.Error("expected trace to have Name set from metadata._traceName")
+		} else if trace["Name"].(string) != "fallback-trace-name" {
+			t.Errorf("expected trace Name 'fallback-trace-name', got '%v'", trace["Name"])
+		}
+	})
+}
+
 func TestTraces(t *testing.T) {
 	ts := setupTestServer(t)
 
