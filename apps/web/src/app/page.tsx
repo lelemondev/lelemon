@@ -29,24 +29,24 @@ const res = await openai.chat.completions.create({
   };
 
   return (
-    <div className="relative group">
-      {/* Glow effect - subtle */}
-      <div className="absolute -inset-1 bg-gradient-to-r from-[#FACC15]/15 via-[#FEF08A]/8 to-[#FACC15]/15 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+    <div className="relative group overflow-hidden rounded-2xl">
+      {/* Glow effect - subtle, hidden on mobile */}
+      <div className="hidden sm:block absolute inset-0 bg-gradient-to-r from-[#FACC15]/15 via-[#FEF08A]/8 to-[#FACC15]/15 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
       <div className="relative rounded-2xl bg-[#0F0F10] overflow-hidden shadow-xl border border-white/5">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-gradient-to-r from-[#1A1A1B] to-[#0F0F10]">
-          <div className="flex items-center gap-3">
-            <div className="flex gap-2">
-              <div className="w-3 h-3 rounded-full bg-[#FF5F57]" />
-              <div className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
-              <div className="w-3 h-3 rounded-full bg-[#28C840]" />
+        <div className="flex items-center justify-between px-3 sm:px-5 py-3 sm:py-4 border-b border-white/10 bg-gradient-to-r from-[#1A1A1B] to-[#0F0F10]">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex gap-1.5 sm:gap-2">
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#FF5F57]" />
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#FFBD2E]" />
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#28C840]" />
             </div>
-            <span className="text-sm text-white/30 font-mono">app.ts</span>
+            <span className="text-xs sm:text-sm text-white/30 font-mono">app.ts</span>
           </div>
           <button
             onClick={handleCopy}
-            className="flex items-center gap-2 text-xs text-white/40 hover:text-white/80 transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5"
+            className="flex items-center gap-1.5 sm:gap-2 text-xs text-white/40 hover:text-white/80 transition-colors px-2 sm:px-3 py-1.5 rounded-lg hover:bg-white/5"
           >
             {copied ? (
               <>
@@ -67,7 +67,7 @@ const res = await openai.chat.completions.create({
         </div>
 
         {/* Code */}
-        <div className="p-4 sm:p-6 text-[11px] sm:text-[13px] font-mono leading-6 sm:leading-7 overflow-x-auto">
+        <div className="p-3 sm:p-6 text-[10px] sm:text-[13px] font-mono leading-5 sm:leading-7 overflow-x-auto">
           <SyntaxHighlighter
             language="typescript"
             style={vscDarkPlus}
@@ -92,33 +92,33 @@ const res = await openai.chat.completions.create({
 
 function FeatureCheck({ children }: { children: React.ReactNode }) {
   return (
-    <li className="flex items-start gap-3 group">
-      <div className="mt-1 w-5 h-5 rounded-full bg-gradient-to-br from-[#FEF08A] to-[#FACC15] flex items-center justify-center shadow-[0_2px_6px_-2px_rgba(250,204,21,0.4)] group-hover:shadow-[0_2px_8px_-2px_rgba(250,204,21,0.5)] transition-shadow">
-        <svg className="w-3 h-3 text-[#18181B]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+    <li className="flex items-start gap-2 sm:gap-3 group">
+      <div className="mt-0.5 sm:mt-1 w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-gradient-to-br from-[#FEF08A] to-[#FACC15] flex items-center justify-center flex-shrink-0 shadow-[0_2px_6px_-2px_rgba(250,204,21,0.4)] group-hover:shadow-[0_2px_8px_-2px_rgba(250,204,21,0.5)] transition-shadow">
+        <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#18181B]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
         </svg>
       </div>
-      <span className="text-[#3F3F46] leading-relaxed">{children}</span>
+      <span className="text-sm sm:text-base text-[#3F3F46] leading-relaxed">{children}</span>
     </li>
   );
 }
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-[#FAFDF7] text-[#18181B]">
+    <div className="min-h-screen bg-[#FAFDF7] text-[#18181B] overflow-x-hidden">
       {/* Background elements - simplified for mobile performance */}
-      <div className="fixed inset-0 pointer-events-none bg-[#FAFDF7] transform-gpu will-change-transform">
+      <div className="fixed inset-0 pointer-events-none bg-[#FAFDF7] transform-gpu will-change-transform overflow-hidden">
         {/* Subtle grid - hidden on mobile for performance */}
         <div className="hidden sm:block absolute inset-0 opacity-[0.02]" style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h60v60H0z' fill='none' stroke='%2318181B' stroke-width='0.5'/%3E%3C/svg%3E")`,
         }} />
-        {/* Gradient blobs - reduced on mobile */}
-        <div className="absolute top-0 right-0 w-[300px] sm:w-[600px] h-[300px] sm:h-[600px] bg-gradient-to-bl from-[#FACC15]/10 sm:from-[#FACC15]/15 via-[#FEF08A]/5 sm:via-[#FEF08A]/8 to-transparent rounded-full blur-2xl sm:blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-[200px] sm:w-[400px] h-[200px] sm:h-[400px] bg-gradient-to-tr from-[#FACC15]/5 sm:from-[#FACC15]/8 to-transparent rounded-full blur-2xl sm:blur-3xl" />
+        {/* Gradient blobs - contained within viewport */}
+        <div className="absolute -top-20 -right-20 w-[250px] sm:w-[500px] h-[250px] sm:h-[500px] bg-gradient-to-bl from-[#FACC15]/10 sm:from-[#FACC15]/15 via-[#FEF08A]/5 sm:via-[#FEF08A]/8 to-transparent rounded-full blur-2xl sm:blur-3xl" />
+        <div className="absolute -bottom-20 -left-20 w-[200px] sm:w-[400px] h-[200px] sm:h-[400px] bg-gradient-to-tr from-[#FACC15]/5 sm:from-[#FACC15]/8 to-transparent rounded-full blur-2xl sm:blur-3xl" />
       </div>
 
       {/* Content */}
-      <div className="relative">
+      <div className="relative overflow-x-hidden">
         {/* Header */}
         <header className="fixed top-0 left-0 right-0 z-50 bg-[#FAFDF7]/95 backdrop-blur-sm border-b border-[#18181B]/5 transform-gpu">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
@@ -318,35 +318,36 @@ export default function LandingPage() {
         </section>
 
         {/* Stack Agnostic Section */}
-        <section className="py-10 sm:py-16 px-4 sm:px-6 bg-white border-y border-[#18181B]/5">
-          <div className="max-w-6xl mx-auto">
+        <section className="py-10 sm:py-16 bg-white border-y border-[#18181B]/5 overflow-hidden">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6">
             <p className="text-center text-xs sm:text-sm text-[#71717A] mb-6 sm:mb-8 font-medium">
               Works seamlessly with your favorite ingredients:
             </p>
-            <div
-              className="relative w-full overflow-hidden"
-              style={{
-                maskImage: 'linear-gradient(to right, transparent, black 20%, black 80%, transparent)',
-              }}
-            >
-              <div className="flex w-max animate-infinite-scroll">
-                {['OpenAI', 'Anthropic', 'OpenRouter', 'Vercel AI SDK', 'LangChain', 'Bedrock', 'Gemini'].flatMap((tech) => (
-                  <div
-                    key={tech}
-                    className="px-5 py-2.5 rounded-lg bg-[#F4F4F5] text-[#3F3F46] text-sm font-semibold mx-4"
-                  >
-                    {tech}
-                  </div>
-                ))}
-                {['OpenAI', 'Anthropic', 'OpenRouter', 'Vercel AI SDK', 'LangChain', 'Bedrock', 'Gemini'].flatMap((tech) => (
-                  <div
-                    key={`${tech}-2`}
-                    className="px-5 py-2.5 rounded-lg bg-[#F4F4F5] text-[#3F3F46] text-sm font-semibold mx-4"
-                  >
-                    {tech}
-                  </div>
-                ))}
-              </div>
+          </div>
+          <div
+            className="relative w-full overflow-hidden"
+            style={{
+              maskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)',
+              WebkitMaskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)',
+            }}
+          >
+            <div className="flex w-max animate-infinite-scroll">
+              {['OpenAI', 'Anthropic', 'OpenRouter', 'Vercel AI SDK', 'LangChain', 'Bedrock', 'Gemini'].map((tech) => (
+                <div
+                  key={tech}
+                  className="px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg bg-[#F4F4F5] text-[#3F3F46] text-xs sm:text-sm font-semibold mx-2 sm:mx-4 whitespace-nowrap"
+                >
+                  {tech}
+                </div>
+              ))}
+              {['OpenAI', 'Anthropic', 'OpenRouter', 'Vercel AI SDK', 'LangChain', 'Bedrock', 'Gemini'].map((tech) => (
+                <div
+                  key={`${tech}-2`}
+                  className="px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg bg-[#F4F4F5] text-[#3F3F46] text-xs sm:text-sm font-semibold mx-2 sm:mx-4 whitespace-nowrap"
+                >
+                  {tech}
+                </div>
+              ))}
             </div>
           </div>
         </section>
