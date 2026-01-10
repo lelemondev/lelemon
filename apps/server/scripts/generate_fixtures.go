@@ -627,7 +627,7 @@ func generateGeminiFixtures(apiKey string) {
 }
 
 func generateGeminiAnalysis(apiKey string) {
-	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=%s", apiKey)
+	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=%s", apiKey)
 
 	request := map[string]any{
 		"contents": []map[string]any{
@@ -683,7 +683,7 @@ Provide:
 		"_description": "Gemini - Complex startup analysis (production scenario)",
 		"_source":      "Live API call",
 		"_captured":    time.Now().Format("2006-01-02T15:04:05Z"),
-		"_model":       "gemini-1.5-pro",
+		"_model":       "gemini-2.0-flash",
 		"_scenario":    "VC-style startup pitch analysis",
 		"request":      request,
 		"response":     response,
@@ -692,7 +692,7 @@ Provide:
 }
 
 func generateGeminiFunctionCalling(apiKey string) {
-	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=%s", apiKey)
+	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=%s", apiKey)
 
 	request := map[string]any{
 		"contents": []map[string]any{
@@ -770,7 +770,7 @@ func generateGeminiFunctionCalling(apiKey string) {
 		"_description": "Gemini - Function calling (production scenario)",
 		"_source":      "Live API call",
 		"_captured":    time.Now().Format("2006-01-02T15:04:05Z"),
-		"_model":       "gemini-1.5-pro",
+		"_model":       "gemini-2.0-flash",
 		"_scenario":    "Travel booking with multiple function calls",
 		"request":      request,
 		"response":     response,

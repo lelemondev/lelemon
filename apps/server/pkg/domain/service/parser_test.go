@@ -9,6 +9,81 @@ import (
 
 // TestParserWithRealFixtures tests the parser using real API responses
 func TestParserWithRealFixtures(t *testing.T) {
+	t.Run("Gemini Analysis", func(t *testing.T) {
+		fixture := loadFixture(t, "real_gemini_analysis.json")
+		response := fixture["response"]
+
+		result := ParseProviderResponse("gemini", response)
+		if result == nil {
+			t.Fatal("expected non-nil result")
+		}
+
+		// Verify tokens
+		if result.InputTokens == 0 {
+			t.Error("expected input tokens > 0")
+		}
+		if result.OutputTokens == 0 {
+			t.Error("expected output tokens > 0")
+		}
+
+		// Verify output is a string
+		output, ok := result.Output.(string)
+		if !ok {
+			t.Errorf("expected output to be string, got %T", result.Output)
+		}
+		if output == "" {
+			t.Error("expected non-empty output")
+		}
+
+		// Verify stop reason
+		if result.StopReason == nil {
+			t.Error("expected stop reason")
+		} else if *result.StopReason != "STOP" {
+			t.Errorf("expected stop reason 'STOP', got '%s'", *result.StopReason)
+		}
+
+		// Verify subtype is response (no function calls)
+		if result.SubType == nil {
+			t.Error("expected subtype")
+		} else if *result.SubType != "response" {
+			t.Errorf("expected subtype 'response', got '%s'", *result.SubType)
+		}
+
+		t.Logf("Parsed: input=%d, output=%d, stopReason=%s",
+			result.InputTokens, result.OutputTokens, *result.StopReason)
+	})
+
+	t.Run("Gemini Function Calling (text response)", func(t *testing.T) {
+		fixture := loadFixture(t, "real_gemini_function_calling.json")
+		response := fixture["response"]
+
+		result := ParseProviderResponse("gemini", response)
+		if result == nil {
+			t.Fatal("expected non-nil result")
+		}
+
+		// Verify tokens
+		if result.InputTokens == 0 {
+			t.Error("expected input tokens > 0")
+		}
+		if result.OutputTokens == 0 {
+			t.Error("expected output tokens > 0")
+		}
+
+		// In this case, model asked for clarification instead of using functions
+		// So output should be a text string
+		output, ok := result.Output.(string)
+		if !ok {
+			t.Errorf("expected output to be string, got %T", result.Output)
+		}
+		if output == "" {
+			t.Error("expected non-empty output")
+		}
+
+		t.Logf("Parsed: input=%d, output=%d, toolUses=%d",
+			result.InputTokens, result.OutputTokens, len(result.ToolUses))
+	})
+
 	t.Run("OpenAI Multi-turn", func(t *testing.T) {
 		fixture := loadFixture(t, "real_openai_multi_turn.json")
 		response := fixture["response"]
