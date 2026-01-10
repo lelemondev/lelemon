@@ -1,93 +1,68 @@
-# API Response Fixtures
+# LLM Response Fixtures
 
-This directory contains fixtures for testing the LLM response parser.
+## Best Practice: One Fixture per API SCENARIO, not per Model
 
-## Fixture Types
+The response FORMAT is determined by the API, not the model. gpt-4o and gpt-4-turbo return identical structures. We only need separate fixtures when there's a STRUCTURAL difference (e.g., O1 models have `reasoning_tokens`).
 
-### Real Fixtures (`real_*.json`)
-Generated from actual API calls to LLM providers. These are the most reliable for testing since they contain real response structures with all fields populated.
+## Fixture Organization
 
-- `real_openai_multi_turn.json` - Multi-turn customer support conversation (gpt-4o)
-- `real_openai_parallel_tools.json` - Parallel function calling with 3 tools
-- `real_openai_structured.json` - JSON response format with structured output
+### Real Fixtures (from live API calls)
 
-### Synthetic Fixtures
-Created based on API documentation for edge cases and providers we don't have keys for.
+| Provider | Scenario | File | Description |
+|----------|----------|------|-------------|
+| OpenAI | text | `real_openai_text.json` | Standard text response |
+| OpenAI | tools | `real_openai_tools.json` | Parallel function calling |
+| OpenAI | reasoning | `real_openai_reasoning.json` | O1 model with reasoning_tokens |
+| Gemini | text | `real_gemini_text.json` | Standard text response |
+| Gemini | functions | `real_gemini_functions.json` | Function calling |
 
-- `openai_chat_completion.json` - Standard text response
-- `openai_tool_calls.json` - Function calling response
-- `openai_with_reasoning.json` - o1/o3 model with reasoning tokens
-- `anthropic_*.json` - Anthropic Messages API responses
-- `bedrock_converse.json` - AWS Bedrock Converse API response
+### Synthetic Fixtures (from API documentation)
 
-## Fixture Structure
+Used for providers without API keys or for edge cases:
 
-Each fixture contains:
+| Provider | Scenario | File |
+|----------|----------|------|
+| Anthropic | text | `anthropic_text_response.json` |
+| Anthropic | tool_use | `anthropic_tool_use.json` |
+| Anthropic | cache | `anthropic_with_cache.json` |
+| Anthropic | thinking | `anthropic_with_thinking.json` |
+| Bedrock | converse | `bedrock_converse.json` |
 
-```json
-{
-  "_description": "Human-readable description",
-  "_source": "API documentation URL or 'Live API call'",
-  "_captured": "ISO timestamp when captured",
-  "_model": "Model used",
-  "_scenario": "What production scenario this tests",
-  "request": { ... },  // The API request sent
-  "response": { ... }, // The raw API response
-  "expected": { ... }  // Expected parser output (synthetic only)
-}
-```
-
-## Generating New Fixtures
-
-Run the fixture generator script with API keys set:
+## Generating Fixtures
 
 ```bash
+cd apps/server
+
+# Set API keys
 export ANTHROPIC_API_KEY=your-key
 export OPENAI_API_KEY=your-key
 export GOOGLE_API_KEY=your-key
 
-cd apps/server
+# Generate
 go run scripts/generate_fixtures.go
 ```
 
-## Usage in Tests
+## Fixture Structure
 
-```go
-func TestParser(t *testing.T) {
-    fixture := loadFixture(t, "real_openai_multi_turn.json")
-    response := fixture["response"]
-
-    result := ParseProviderResponse("openai", response)
-    // Assert on result
+```json
+{
+  "_description": "Provider API - Scenario",
+  "_scenario": "text_response | tool_calls | reasoning | ...",
+  "_model": "model-id used",
+  "_captured": "ISO timestamp",
+  "request": { ... },
+  "response": { ... }
 }
 ```
 
-## Provider Format Reference
+## Why This Approach?
 
-### OpenAI
-- `choices[0].message.content` → output (string)
-- `choices[0].message.tool_calls` → tool_uses
-- `usage.prompt_tokens` → input_tokens
-- `usage.completion_tokens` → output_tokens
-- `choices[0].finish_reason` → stop_reason
+1. **Less redundancy** - 7 fixtures instead of 20+
+2. **Easier maintenance** - new model ≠ new fixture
+3. **Focused testing** - tests what matters (parsing logic)
+4. **Model-specific only when needed** - O1 reasoning is structurally different
 
-### Anthropic
-- `content[*].text` → output (joined string or content array if tool_use)
-- `content[*].type == "tool_use"` → tool_uses
-- `usage.input_tokens` → input_tokens
-- `usage.output_tokens` → output_tokens
-- `stop_reason` → stop_reason
+## References
 
-### Bedrock (Converse API)
-- `output.message.content[*].text` → output
-- `output.message.content[*].toolUse` → tool_uses
-- `usage.inputTokens` → input_tokens
-- `usage.outputTokens` → output_tokens
-- `stopReason` → stop_reason
-
-### Gemini
-- `candidates[0].content.parts[*].text` → output
-- `candidates[0].content.parts[*].functionCall` → tool_uses
-- `usageMetadata.promptTokenCount` → input_tokens
-- `usageMetadata.candidatesTokenCount` → output_tokens
-- `candidates[0].finishReason` → stop_reason
+- [Langfuse Testing Guide](https://langfuse.com/blog/2025-10-21-testing-llm-applications)
+- [LLM Testing Best Practices](https://www.confident-ai.com/blog/llm-testing-in-2024-top-methods-and-strategies)

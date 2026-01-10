@@ -1,0 +1,51 @@
+{
+  "_captured": "2026-01-10T01:05:15-03:00",
+  "_description": "Gemini GenerateContent - Text response",
+  "_model": "gemini-2.5-pro",
+  "_scenario": "text_response",
+  "request": {
+    "contents": [
+      {
+        "parts": [
+          {
+            "text": "Explain database indexing: types, when to use each, and trade-offs."
+          }
+        ]
+      }
+    ],
+    "generationConfig": {
+      "maxOutputTokens": 1500,
+      "temperature": 0.7
+    }
+  },
+  "response": {
+    "candidates": [
+      {
+        "content": {
+          "parts": [
+            {
+              "text": "Of course. Here is a comprehensive explanation of database indexing.\n\n### The Core Analogy: The Index of a Book\n\nImagine you have a 500-page book about technology and you need to find the section on \"Artificial Intelligence.\" Without an index, you'd have to scan every single page from the beginning—a slow and inefficient process. This is called a **full table scan** in database terms.\n\nA book's index, however, lists keywords alphabetically and provides the exact page numbers where they are mentioned. You can quickly look up \"Artificial Intelligence\" in the index, find the page numbers (e.g"
+            }
+          ],
+          "role": "model"
+        },
+        "finishReason": "MAX_TOKENS",
+        "index": 0
+      }
+    ],
+    "modelVersion": "gemini-2.5-pro",
+    "responseId": "-89haYrcEJywqtsP_vHuqQ8",
+    "usageMetadata": {
+      "candidatesTokenCount": 130,
+      "promptTokenCount": 16,
+      "promptTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 16
+        }
+      ],
+      "thoughtsTokenCount": 1366,
+      "totalTokenCount": 1512
+    }
+  }
+}

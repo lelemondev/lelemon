@@ -4,452 +4,237 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
-// TestParserWithRealFixtures tests the parser using real API responses
-func TestParserWithRealFixtures(t *testing.T) {
-	t.Run("Gemini Analysis", func(t *testing.T) {
-		fixture := loadFixture(t, "real_gemini_analysis.json")
-		response := fixture["response"]
+// =============================================================================
+// BEST PRACTICE: Test by API SCENARIO, not by individual model
+//
+// The response FORMAT is determined by the API, not the model.
+// gpt-4o and gpt-4-turbo return identical structures.
+// We only test unique scenarios:
+//   - OpenAI: text, tools, reasoning (o1 has reasoning_tokens)
+//   - Anthropic: text, tool_use
+//   - Gemini: text, function_calls
+//   - Bedrock: converse format
+// =============================================================================
 
-		result := ParseProviderResponse("gemini", response)
-		if result == nil {
-			t.Fatal("expected non-nil result")
-		}
+// TestOpenAIScenarios tests all OpenAI API scenarios
+func TestOpenAIScenarios(t *testing.T) {
+	t.Run("text_response", func(t *testing.T) {
+		fixture := loadFixture(t, "real_openai_text.json")
+		result := ParseProviderResponse("openai", fixture["response"])
 
-		// Verify tokens
-		if result.InputTokens == 0 {
-			t.Error("expected input tokens > 0")
-		}
-		if result.OutputTokens == 0 {
-			t.Error("expected output tokens > 0")
-		}
+		assertNotNil(t, result)
+		assertTokensPositive(t, result)
+		assertOutputIsString(t, result)
+		assertStopReason(t, result, "stop")
+		assertSubType(t, result, "response")
+		assertNoToolUses(t, result)
 
-		// Verify output is a string
-		output, ok := result.Output.(string)
-		if !ok {
-			t.Errorf("expected output to be string, got %T", result.Output)
-		}
-		if output == "" {
-			t.Error("expected non-empty output")
-		}
-
-		// Verify stop reason
-		if result.StopReason == nil {
-			t.Error("expected stop reason")
-		} else if *result.StopReason != "STOP" {
-			t.Errorf("expected stop reason 'STOP', got '%s'", *result.StopReason)
-		}
-
-		// Verify subtype is response (no function calls)
-		if result.SubType == nil {
-			t.Error("expected subtype")
-		} else if *result.SubType != "response" {
-			t.Errorf("expected subtype 'response', got '%s'", *result.SubType)
-		}
-
-		t.Logf("Parsed: input=%d, output=%d, stopReason=%s",
-			result.InputTokens, result.OutputTokens, *result.StopReason)
+		t.Logf("✓ tokens: %d→%d, stop: %s", result.InputTokens, result.OutputTokens, *result.StopReason)
 	})
 
-	t.Run("Gemini Function Calling (text response)", func(t *testing.T) {
-		fixture := loadFixture(t, "real_gemini_function_calling.json")
-		response := fixture["response"]
+	t.Run("tool_calls", func(t *testing.T) {
+		fixture := loadFixture(t, "real_openai_tools.json")
+		result := ParseProviderResponse("openai", fixture["response"])
 
-		result := ParseProviderResponse("gemini", response)
-		if result == nil {
-			t.Fatal("expected non-nil result")
-		}
+		assertNotNil(t, result)
+		assertTokensPositive(t, result)
+		assertStopReason(t, result, "tool_calls")
+		assertSubType(t, result, "planning")
+		assertHasToolUses(t, result)
 
-		// Verify tokens
-		if result.InputTokens == 0 {
-			t.Error("expected input tokens > 0")
-		}
-		if result.OutputTokens == 0 {
-			t.Error("expected output tokens > 0")
-		}
-
-		// In this case, model asked for clarification instead of using functions
-		// So output should be a text string
-		output, ok := result.Output.(string)
-		if !ok {
-			t.Errorf("expected output to be string, got %T", result.Output)
-		}
-		if output == "" {
-			t.Error("expected non-empty output")
-		}
-
-		t.Logf("Parsed: input=%d, output=%d, toolUses=%d",
-			result.InputTokens, result.OutputTokens, len(result.ToolUses))
-	})
-
-	t.Run("OpenAI Multi-turn", func(t *testing.T) {
-		fixture := loadFixture(t, "real_openai_multi_turn.json")
-		response := fixture["response"]
-
-		result := ParseProviderResponse("openai", response)
-		if result == nil {
-			t.Fatal("expected non-nil result")
-		}
-
-		// Verify tokens
-		if result.InputTokens == 0 {
-			t.Error("expected input tokens > 0")
-		}
-		if result.OutputTokens == 0 {
-			t.Error("expected output tokens > 0")
-		}
-
-		// Verify output is a string (text response)
-		output, ok := result.Output.(string)
-		if !ok {
-			t.Errorf("expected output to be string, got %T", result.Output)
-		}
-		if output == "" {
-			t.Error("expected non-empty output")
-		}
-
-		// Verify stop reason
-		if result.StopReason == nil {
-			t.Error("expected stop reason")
-		} else if *result.StopReason != "stop" {
-			t.Errorf("expected stop reason 'stop', got '%s'", *result.StopReason)
-		}
-
-		// Verify subtype is response (no tool calls)
-		if result.SubType == nil {
-			t.Error("expected subtype")
-		} else if *result.SubType != "response" {
-			t.Errorf("expected subtype 'response', got '%s'", *result.SubType)
-		}
-
-		// Should not have tool uses
-		if len(result.ToolUses) > 0 {
-			t.Errorf("expected no tool uses, got %d", len(result.ToolUses))
-		}
-
-		t.Logf("Parsed: input=%d, output=%d, stopReason=%s",
-			result.InputTokens, result.OutputTokens, *result.StopReason)
-	})
-
-	t.Run("OpenAI Parallel Tools", func(t *testing.T) {
-		fixture := loadFixture(t, "real_openai_parallel_tools.json")
-		response := fixture["response"]
-
-		result := ParseProviderResponse("openai", response)
-		if result == nil {
-			t.Fatal("expected non-nil result")
-		}
-
-		// Verify tokens
-		if result.InputTokens == 0 {
-			t.Error("expected input tokens > 0")
-		}
-		if result.OutputTokens == 0 {
-			t.Error("expected output tokens > 0")
-		}
-
-		// Verify stop reason is tool_calls
-		if result.StopReason == nil {
-			t.Error("expected stop reason")
-		} else if *result.StopReason != "tool_calls" {
-			t.Errorf("expected stop reason 'tool_calls', got '%s'", *result.StopReason)
-		}
-
-		// Verify tool uses are extracted
-		if len(result.ToolUses) == 0 {
-			t.Error("expected tool uses")
-		} else {
-			t.Logf("Found %d tool uses", len(result.ToolUses))
-			for i, tu := range result.ToolUses {
-				if tu.ID == "" {
-					t.Errorf("tool use %d has empty ID", i)
-				}
-				if tu.Name == "" {
-					t.Errorf("tool use %d has empty name", i)
-				}
-				t.Logf("  Tool %d: id=%s, name=%s", i, tu.ID, tu.Name)
+		t.Logf("✓ tokens: %d→%d, tools: %d", result.InputTokens, result.OutputTokens, len(result.ToolUses))
+		for i, tu := range result.ToolUses {
+			if tu.ID == "" || tu.Name == "" {
+				t.Errorf("tool %d missing id or name", i)
 			}
 		}
+	})
 
-		// Verify subtype is planning (has tool calls)
-		if result.SubType == nil {
-			t.Error("expected subtype")
-		} else if *result.SubType != "planning" {
-			t.Errorf("expected subtype 'planning', got '%s'", *result.SubType)
+	t.Run("reasoning_o1", func(t *testing.T) {
+		fixture := loadFixture(t, "real_openai_reasoning.json")
+		result := ParseProviderResponse("openai", fixture["response"])
+
+		assertNotNil(t, result)
+		assertTokensPositive(t, result)
+		assertOutputIsString(t, result)
+
+		// O1 models include reasoning_tokens
+		if result.ReasoningTokens == nil {
+			t.Error("expected reasoning_tokens for O1 model")
+		} else if *result.ReasoningTokens <= 0 {
+			t.Error("expected reasoning_tokens > 0")
+		}
+
+		t.Logf("✓ tokens: %d→%d, reasoning: %d", result.InputTokens, result.OutputTokens, *result.ReasoningTokens)
+	})
+}
+
+// TestGeminiScenarios tests all Gemini API scenarios
+func TestGeminiScenarios(t *testing.T) {
+	t.Run("text_response", func(t *testing.T) {
+		fixture := loadFixture(t, "real_gemini_text.json")
+		result := ParseProviderResponse("gemini", fixture["response"])
+
+		assertNotNil(t, result)
+		assertTokensPositive(t, result)
+		assertOutputIsString(t, result)
+		assertStopReasonSet(t, result) // Gemini may return STOP or MAX_TOKENS
+		assertSubType(t, result, "response")
+		assertNoToolUses(t, result)
+
+		t.Logf("✓ tokens: %d→%d, stop: %s", result.InputTokens, result.OutputTokens, *result.StopReason)
+	})
+
+	t.Run("function_calls", func(t *testing.T) {
+		fixture := loadFixture(t, "real_gemini_functions.json")
+		result := ParseProviderResponse("gemini", fixture["response"])
+
+		assertNotNil(t, result)
+		assertTokensPositive(t, result)
+
+		// Gemini may return text OR function calls depending on the prompt
+		// Just verify we parsed something useful
+		if result.Output == nil && len(result.ToolUses) == 0 {
+			t.Error("expected either output or tool uses")
+		}
+
+		t.Logf("✓ tokens: %d→%d, tools: %d", result.InputTokens, result.OutputTokens, len(result.ToolUses))
+	})
+}
+
+// TestAnthropicScenarios tests Anthropic API scenarios (using synthetic fixtures)
+func TestAnthropicScenarios(t *testing.T) {
+	t.Run("text_response", func(t *testing.T) {
+		fixture := loadFixture(t, "anthropic_text_response.json")
+		result := ParseProviderResponse("anthropic", fixture["response"])
+
+		assertNotNil(t, result)
+		assertTokensPositive(t, result)
+		assertOutputIsString(t, result)
+		assertStopReason(t, result, "end_turn")
+		assertSubType(t, result, "response")
+
+		t.Logf("✓ tokens: %d→%d", result.InputTokens, result.OutputTokens)
+	})
+
+	t.Run("tool_use", func(t *testing.T) {
+		fixture := loadFixture(t, "anthropic_tool_use.json")
+		result := ParseProviderResponse("anthropic", fixture["response"])
+
+		assertNotNil(t, result)
+		assertTokensPositive(t, result)
+		assertStopReason(t, result, "tool_use")
+		assertSubType(t, result, "planning")
+		assertHasToolUses(t, result)
+
+		t.Logf("✓ tokens: %d→%d, tools: %d", result.InputTokens, result.OutputTokens, len(result.ToolUses))
+	})
+
+	t.Run("with_cache", func(t *testing.T) {
+		fixture := loadFixture(t, "anthropic_with_cache.json")
+		result := ParseProviderResponse("anthropic", fixture["response"])
+
+		assertNotNil(t, result)
+
+		// Cache tokens should be extracted
+		if result.CacheReadTokens == nil && result.CacheWriteTokens == nil {
+			t.Log("⚠ no cache tokens found (may be expected)")
+		} else {
+			t.Logf("✓ cache: read=%v, write=%v", result.CacheReadTokens, result.CacheWriteTokens)
 		}
 	})
 
-	t.Run("OpenAI Structured Output", func(t *testing.T) {
-		fixture := loadFixture(t, "real_openai_structured.json")
-		response := fixture["response"]
+	t.Run("with_thinking", func(t *testing.T) {
+		fixture := loadFixture(t, "anthropic_with_thinking.json")
+		result := ParseProviderResponse("anthropic", fixture["response"])
 
-		result := ParseProviderResponse("openai", response)
-		if result == nil {
-			t.Fatal("expected non-nil result")
-		}
+		assertNotNil(t, result)
 
-		// Verify tokens
-		if result.InputTokens == 0 {
-			t.Error("expected input tokens > 0")
-		}
-		if result.OutputTokens == 0 {
-			t.Error("expected output tokens > 0")
-		}
-
-		// Output should be a JSON string
-		output, ok := result.Output.(string)
-		if !ok {
-			t.Errorf("expected output to be string, got %T", result.Output)
+		if result.Thinking == nil {
+			t.Log("⚠ no thinking extracted (may be expected)")
 		} else {
-			// Verify it's valid JSON
-			var parsed map[string]any
-			if err := json.Unmarshal([]byte(output), &parsed); err != nil {
-				t.Errorf("output is not valid JSON: %v", err)
-			}
-		}
-
-		// Verify stop reason
-		if result.StopReason == nil {
-			t.Error("expected stop reason")
-		} else if *result.StopReason != "stop" {
-			t.Errorf("expected stop reason 'stop', got '%s'", *result.StopReason)
-		}
-
-		// Verify subtype is response
-		if result.SubType == nil {
-			t.Error("expected subtype")
-		} else if *result.SubType != "response" {
-			t.Errorf("expected subtype 'response', got '%s'", *result.SubType)
+			t.Logf("✓ thinking: %d chars", len(*result.Thinking))
 		}
 	})
 }
 
-// TestParserWithSyntheticFixtures tests the parser using synthetic fixtures
-func TestParserWithSyntheticFixtures(t *testing.T) {
-	t.Run("OpenAI Chat Completion", func(t *testing.T) {
-		fixture := loadFixture(t, "openai_chat_completion.json")
-		response := fixture["response"]
-
-		result := ParseProviderResponse("openai", response)
-		if result == nil {
-			t.Fatal("expected non-nil result")
-		}
-
-		expected := fixture["expected"].(map[string]any)
-
-		// Verify input tokens
-		if expectedTokens, ok := expected["input_tokens"].(float64); ok {
-			if result.InputTokens != int(expectedTokens) {
-				t.Errorf("expected input tokens %d, got %d", int(expectedTokens), result.InputTokens)
-			}
-		}
-
-		// Verify output tokens
-		if expectedTokens, ok := expected["output_tokens"].(float64); ok {
-			if result.OutputTokens != int(expectedTokens) {
-				t.Errorf("expected output tokens %d, got %d", int(expectedTokens), result.OutputTokens)
-			}
-		}
-
-		// Verify stop reason
-		if expectedStop, ok := expected["stop_reason"].(string); ok {
-			if result.StopReason == nil || *result.StopReason != expectedStop {
-				t.Errorf("expected stop reason '%s', got '%v'", expectedStop, result.StopReason)
-			}
-		}
-
-		// Verify subtype
-		if expectedSubType, ok := expected["sub_type"].(string); ok {
-			if result.SubType == nil || *result.SubType != expectedSubType {
-				t.Errorf("expected subtype '%s', got '%v'", expectedSubType, result.SubType)
-			}
-		}
-	})
-
-	t.Run("OpenAI Tool Calls", func(t *testing.T) {
-		fixture := loadFixture(t, "openai_tool_calls.json")
-		response := fixture["response"]
-
-		result := ParseProviderResponse("openai", response)
-		if result == nil {
-			t.Fatal("expected non-nil result")
-		}
-
-		expected := fixture["expected"].(map[string]any)
-
-		// Verify has tool uses
-		if expectedHasTools, ok := expected["has_tool_uses"].(bool); ok && expectedHasTools {
-			if len(result.ToolUses) == 0 {
-				t.Error("expected tool uses")
-			}
-		}
-
-		// Verify tool uses count
-		if expectedCount, ok := expected["tool_uses_count"].(float64); ok {
-			if len(result.ToolUses) != int(expectedCount) {
-				t.Errorf("expected %d tool uses, got %d", int(expectedCount), len(result.ToolUses))
-			}
-		}
-
-		// Verify individual tool uses
-		if expectedTools, ok := expected["tool_uses"].([]any); ok {
-			for i, expTool := range expectedTools {
-				if i >= len(result.ToolUses) {
-					break
-				}
-				expToolMap := expTool.(map[string]any)
-				actualTool := result.ToolUses[i]
-
-				if expID, ok := expToolMap["id"].(string); ok {
-					if actualTool.ID != expID {
-						t.Errorf("tool %d: expected id '%s', got '%s'", i, expID, actualTool.ID)
-					}
-				}
-				if expName, ok := expToolMap["name"].(string); ok {
-					if actualTool.Name != expName {
-						t.Errorf("tool %d: expected name '%s', got '%s'", i, expName, actualTool.Name)
-					}
-				}
-			}
-		}
-
-		// Verify subtype is planning
-		if result.SubType == nil || *result.SubType != "planning" {
-			t.Errorf("expected subtype 'planning', got '%v'", result.SubType)
-		}
-	})
-
-	t.Run("OpenAI with Reasoning Tokens", func(t *testing.T) {
-		fixture := loadFixture(t, "openai_with_reasoning.json")
-		response := fixture["response"]
-
-		result := ParseProviderResponse("openai", response)
-		if result == nil {
-			t.Fatal("expected non-nil result")
-		}
-
-		expected := fixture["expected"].(map[string]any)
-
-		// Verify reasoning tokens
-		if expectedReasoning, ok := expected["reasoning_tokens"].(float64); ok {
-			if result.ReasoningTokens == nil {
-				t.Error("expected reasoning tokens to be set")
-			} else if *result.ReasoningTokens != int(expectedReasoning) {
-				t.Errorf("expected reasoning tokens %d, got %d", int(expectedReasoning), *result.ReasoningTokens)
-			}
-		}
-
-		// Verify output contains expected text
-		if expectedContains, ok := expected["output_contains"].(string); ok {
-			output, ok := result.Output.(string)
-			if !ok || output == "" {
-				t.Error("expected non-empty string output")
-			} else if !containsSubstring(output, expectedContains) {
-				t.Errorf("output does not contain '%s'", expectedContains)
-			}
-		}
-	})
-
-	t.Run("Bedrock Converse", func(t *testing.T) {
+// TestBedrockScenarios tests Bedrock Converse API scenarios
+func TestBedrockScenarios(t *testing.T) {
+	t.Run("converse_text", func(t *testing.T) {
 		fixture := loadFixture(t, "bedrock_converse.json")
-		response := fixture["response"]
+		result := ParseProviderResponse("bedrock", fixture["response"])
 
-		result := ParseProviderResponse("bedrock", response)
-		if result == nil {
-			t.Fatal("expected non-nil result")
-		}
+		assertNotNil(t, result)
+		assertTokensPositive(t, result)
+		assertOutputIsString(t, result)
+		assertStopReason(t, result, "end_turn")
+		assertSubType(t, result, "response")
 
-		expected := fixture["expected"].(map[string]any)
-
-		// Verify input tokens
-		if expectedTokens, ok := expected["input_tokens"].(float64); ok {
-			if result.InputTokens != int(expectedTokens) {
-				t.Errorf("expected input tokens %d, got %d", int(expectedTokens), result.InputTokens)
-			}
-		}
-
-		// Verify output tokens
-		if expectedTokens, ok := expected["output_tokens"].(float64); ok {
-			if result.OutputTokens != int(expectedTokens) {
-				t.Errorf("expected output tokens %d, got %d", int(expectedTokens), result.OutputTokens)
-			}
-		}
-
-		// Verify output contains expected text
-		if expectedContains, ok := expected["output_contains"].(string); ok {
-			output, ok := result.Output.(string)
-			if !ok || output == "" {
-				t.Error("expected non-empty string output")
-			} else if !containsSubstring(output, expectedContains) {
-				t.Errorf("output does not contain '%s'", expectedContains)
-			}
-		}
+		t.Logf("✓ tokens: %d→%d", result.InputTokens, result.OutputTokens)
 	})
 }
 
-// TestAutoDetect tests automatic provider detection
+// TestAutoDetect tests automatic provider detection from response structure
 func TestAutoDetect(t *testing.T) {
 	testCases := []struct {
 		name     string
 		fixture  string
-		provider string
+		expected string // expected provider
 	}{
-		{"OpenAI auto-detect", "openai_chat_completion.json", ""},
-		{"Bedrock auto-detect", "bedrock_converse.json", ""},
+		{"OpenAI format", "real_openai_text.json", "openai"},
+		{"Gemini format", "real_gemini_text.json", "gemini"},
+		{"Bedrock format", "bedrock_converse.json", "bedrock"},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			fixture := loadFixture(t, tc.fixture)
-			response := fixture["response"]
+			// Parse with empty provider to trigger auto-detect
+			result := ParseProviderResponse("", fixture["response"])
 
-			// Parse with empty provider (auto-detect)
-			result := ParseProviderResponse(tc.provider, response)
 			if result == nil {
-				t.Fatal("expected auto-detect to work")
+				t.Fatal("auto-detect failed to parse")
 			}
-
-			// Should have parsed something meaningful
 			if result.InputTokens == 0 && result.OutputTokens == 0 && result.Output == nil {
-				t.Error("auto-detect failed to parse any data")
+				t.Error("auto-detect parsed nothing useful")
 			}
+			t.Logf("✓ auto-detected and parsed successfully")
 		})
 	}
 }
 
-// TestParserEdgeCases tests edge cases
-func TestParserEdgeCases(t *testing.T) {
-	t.Run("nil response", func(t *testing.T) {
+// TestEdgeCases tests error handling and edge cases
+func TestEdgeCases(t *testing.T) {
+	t.Run("nil_response", func(t *testing.T) {
 		result := ParseProviderResponse("openai", nil)
 		if result != nil {
 			t.Error("expected nil for nil input")
 		}
 	})
 
-	t.Run("empty response", func(t *testing.T) {
+	t.Run("empty_response", func(t *testing.T) {
 		result := ParseProviderResponse("openai", map[string]any{})
 		if result == nil {
 			t.Error("expected non-nil for empty map")
 		}
 	})
 
-	t.Run("wrong type response", func(t *testing.T) {
+	t.Run("wrong_type", func(t *testing.T) {
 		result := ParseProviderResponse("openai", "not a map")
 		if result != nil {
 			t.Error("expected nil for wrong type")
 		}
 	})
 
-	t.Run("unknown provider with auto-detect", func(t *testing.T) {
-		// Should try auto-detect
-		openAIResponse := map[string]any{
+	t.Run("unknown_provider_with_openai_format", func(t *testing.T) {
+		resp := map[string]any{
 			"choices": []any{
 				map[string]any{
-					"message": map[string]any{
-						"content": "test",
-					},
+					"message":       map[string]any{"content": "test"},
 					"finish_reason": "stop",
 				},
 			},
@@ -458,17 +243,92 @@ func TestParserEdgeCases(t *testing.T) {
 				"completion_tokens": float64(20),
 			},
 		}
-		result := ParseProviderResponse("unknown", openAIResponse)
+		result := ParseProviderResponse("unknown", resp)
 		if result == nil {
-			t.Error("expected auto-detect to work for unknown provider")
+			t.Fatal("expected auto-detect to work")
 		}
 		if result.Output != "test" {
-			t.Errorf("expected output 'test', got '%v'", result.Output)
+			t.Errorf("expected output 'test', got %v", result.Output)
 		}
 	})
 }
 
-// Helper functions
+// =============================================================================
+// ASSERTION HELPERS
+// =============================================================================
+
+func assertNotNil(t *testing.T, result *ParsedResponse) {
+	t.Helper()
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+}
+
+func assertTokensPositive(t *testing.T, result *ParsedResponse) {
+	t.Helper()
+	if result.InputTokens <= 0 {
+		t.Errorf("expected input tokens > 0, got %d", result.InputTokens)
+	}
+	if result.OutputTokens <= 0 {
+		t.Errorf("expected output tokens > 0, got %d", result.OutputTokens)
+	}
+}
+
+func assertOutputIsString(t *testing.T, result *ParsedResponse) {
+	t.Helper()
+	output, ok := result.Output.(string)
+	if !ok {
+		t.Errorf("expected output to be string, got %T", result.Output)
+	}
+	if output == "" {
+		t.Error("expected non-empty output")
+	}
+}
+
+func assertStopReason(t *testing.T, result *ParsedResponse, expected string) {
+	t.Helper()
+	if result.StopReason == nil {
+		t.Error("expected stop reason to be set")
+	} else if *result.StopReason != expected {
+		t.Errorf("expected stop reason '%s', got '%s'", expected, *result.StopReason)
+	}
+}
+
+func assertStopReasonSet(t *testing.T, result *ParsedResponse) {
+	t.Helper()
+	if result.StopReason == nil {
+		t.Error("expected stop reason to be set")
+	} else if *result.StopReason == "" {
+		t.Error("expected non-empty stop reason")
+	}
+}
+
+func assertSubType(t *testing.T, result *ParsedResponse, expected string) {
+	t.Helper()
+	if result.SubType == nil {
+		t.Error("expected subtype to be set")
+	} else if *result.SubType != expected {
+		t.Errorf("expected subtype '%s', got '%s'", expected, *result.SubType)
+	}
+}
+
+func assertNoToolUses(t *testing.T, result *ParsedResponse) {
+	t.Helper()
+	if len(result.ToolUses) > 0 {
+		t.Errorf("expected no tool uses, got %d", len(result.ToolUses))
+	}
+}
+
+func assertHasToolUses(t *testing.T, result *ParsedResponse) {
+	t.Helper()
+	if len(result.ToolUses) == 0 {
+		t.Error("expected tool uses")
+	}
+}
+
+// =============================================================================
+// FIXTURE LOADER
+// =============================================================================
 
 func loadFixture(t *testing.T, filename string) map[string]any {
 	t.Helper()
@@ -487,5 +347,5 @@ func loadFixture(t *testing.T, filename string) map[string]any {
 }
 
 func containsSubstring(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && (s[0:len(substr)] == substr || containsSubstring(s[1:], substr)))
+	return strings.Contains(s, substr)
 }

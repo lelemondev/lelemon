@@ -1,0 +1,53 @@
+{
+  "_captured": "2026-01-10T01:05:01-03:00",
+  "_description": "OpenAI Chat Completions - O1 reasoning model",
+  "_model": "o1",
+  "_note": "O1 models include reasoning_tokens in completion_tokens_details",
+  "_scenario": "reasoning",
+  "request": {
+    "max_completion_tokens": 2000,
+    "messages": [
+      {
+        "content": "A farmer has 17 sheep. All but 9 run away. How many sheep remain? Think step by step.",
+        "role": "user"
+      }
+    ],
+    "model": "o1"
+  },
+  "response": {
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "logprobs": null,
+        "message": {
+          "annotations": [],
+          "content": "Think of it this way: The phrase \"All but 9 run away\" means exactly 9 did not run away. So, of the 17 sheep, 9 remain.",
+          "refusal": null,
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1768017899,
+    "id": "chatcmpl-CwKVfW80aLRUVc6bXnthNWjGeUDNY",
+    "model": "o1-2024-12-17",
+    "object": "chat.completion",
+    "service_tier": "default",
+    "system_fingerprint": "fp_3d688b3f15",
+    "usage": {
+      "completion_tokens": 183,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": 0,
+        "audio_tokens": 0,
+        "reasoning_tokens": 128,
+        "rejected_prediction_tokens": 0
+      },
+      "prompt_tokens": 30,
+      "prompt_tokens_details": {
+        "audio_tokens": 0,
+        "cached_tokens": 0
+      },
+      "total_tokens": 213
+    }
+  }
+}

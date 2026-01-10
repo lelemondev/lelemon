@@ -1,0 +1,109 @@
+{
+  "_captured": "2026-01-10T01:05:19-03:00",
+  "_description": "Gemini GenerateContent - Function calling",
+  "_model": "gemini-2.5-pro",
+  "_scenario": "function_calls",
+  "request": {
+    "contents": [
+      {
+        "parts": [
+          {
+            "text": "Order a large pepperoni pizza and a medium hawaiian to 123 Main St. Also check for promotions."
+          }
+        ]
+      }
+    ],
+    "generationConfig": {
+      "maxOutputTokens": 1024
+    },
+    "tools": [
+      {
+        "functionDeclarations": [
+          {
+            "description": "Place a pizza order",
+            "name": "place_order",
+            "parameters": {
+              "properties": {
+                "delivery_address": {
+                  "type": "string"
+                },
+                "items": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "items",
+                "delivery_address"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "description": "Get current promotions",
+            "name": "get_promotions",
+            "parameters": {
+              "properties": {},
+              "type": "object"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "candidates": [
+      {
+        "content": {
+          "parts": [
+            {
+              "functionCall": {
+                "args": {
+                  "delivery_address": "123 Main St",
+                  "items": [
+                    {
+                      "name": "pepperoni pizza",
+                      "size": "large"
+                    },
+                    {
+                      "name": "hawaiian",
+                      "size": "medium"
+                    }
+                  ]
+                },
+                "name": "place_order"
+              },
+              "thoughtSignature": "CuoIAXLI2nyM/GxSn40+H+f+ZnIF/lOSS2V2z6xxgiq3wRFBkOj2hgxiNbh6FyNdcvRxrLqLDJsVEeXuAnfNRjkWbRi5dYoFaKdjSsczDsa2kC+N4dAuOyx8d7oULgsY7Db7F1czEyMF1Lubp6V2kJLDlYEshJNoZWRikAPqYsdCrIHFB7TvetELEWDZRys/qVRpgwXLL6GOqm6qylB1Ffop0++W3KxN2W+jL4Jw+v+bSUyB6u2iWnrPaHwDpEuL2RkH7JvlpDUPvhU8vUwDWvcDApV5pwb7kn4KGiSIA5GswfUCVnrfPNn0SktDGFxysdBHNlDfWLQoBzG8/LfpEkaOM+eSyMF0OmyXgIO/XKUuoEF84kT7OWerWPIMWbrQvIKqRrcVuzrn4sOJrPU6+oQgSrT6xsNgXw7qfBw0LprKiFtSaSc6HsXJXmwc8EHwxyxRotTvs6TQHg1dh2iu1DXmzdLnd/yDLdwoJw8Jq8DD6Qzya92jIkVUCc6QnFIH/yBmxtru10btUOXOGJWP92RBqDYc3e7qK/JE4hbD04GI6G2preUGtxcNGcnR5iI5OikFnc2fWLlPONa9331gAnD3OsowD3rsFf+SetUdw8bbxCw3KKhdacH3tlTh9iz/JlY5BcJN6/0B6bvULYTkn1V/nUsR0sLlPhw7N1EIhOQb299U4cPyTdxsh+6pAbSoootckMbDt6by85ksLMlMfs+j6qqQIXXfKjE8isOwr40VM5rI7hGmgmNPcuM1+8cPCEYnStRW1STC+Fm3cfhAKOiuAcv7/vNIoRN1eOq7Ah46hxCG6ET23t3gzq61HUYqtlHcAKW2Fk3aRbVWIgC1kdx8eqC4PbbsHMhZiVUsPvxxhC00XQlBAW1nMMFnjyAgCaK4QOUcGZRe9a4hhiaOuLuhHeYdK7IrBPC91Id46AMlfkESii3hRT1Z2AOuOcxZ61JXhW5FP3RNq4Sd23js/uBnX/3hYqkT0GYIjY+vsGGwIMfSfIjaFr16cUfHGao8e8N5RxrlKtGVfnQNGGWFeFkjvfswxAWNzolPgnYXGEq8OWsNjw2XpWOVtzQyktCx4WpPTQS8CwKJzF6t1ndg1juw/ln/zHCdyJBjP8XByCvyJJtgjd2FiYpEr0WPw+SoQBKFWMmnoZZydgbh0C0rywNR9NA0W+3N7fgy5RecAENeQu+eFBuI5W1llg4LSdhCJthD9JvcauPA1ci4XLdqWxhSb6bfdp/j+ArFpnJ/8qojLNN8N9nZqTckfCQ1gz9bwTFD9GPbQCETPR1yyLoidisQdDLdNm5BrQWQr8wYyrsjnidTL6cheCMwlucsmU8zHaKOzhL6m2/hGuZr4ffqJ5u8VPvXb99FP/HYWbL18j3xEU4FdoLEE5g0Fi2giM5Giu8e7YcilzpcHprmFzcmeC0yIQOizzwfuas/thze5cPW+2nkbSPndMK4ACM/84Iltzpx2v+VQ+a41GyCug7JtQoO2RTv306i+G4vv+U="
+            },
+            {
+              "functionCall": {
+                "args": {},
+                "name": "get_promotions"
+              }
+            }
+          ],
+          "role": "model"
+        },
+        "finishMessage": "Model generated function call(s).",
+        "finishReason": "STOP",
+        "index": 0
+      }
+    ],
+    "modelVersion": "gemini-2.5-pro",
+    "responseId": "_89had-aAuWK6dkP0LnewQ0",
+    "usageMetadata": {
+      "candidatesTokenCount": 62,
+      "promptTokenCount": 101,
+      "promptTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 101
+        }
+      ],
+      "thoughtsTokenCount": 293,
+      "totalTokenCount": 456
+    }
+  }
+}
