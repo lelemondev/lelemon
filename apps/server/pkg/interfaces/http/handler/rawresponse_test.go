@@ -283,6 +283,13 @@ func TestRawResponseAnthropic(t *testing.T) {
 		if span["StopReason"].(string) != "end_turn" {
 			t.Errorf("StopReason: expected 'end_turn', got '%v'", span["StopReason"])
 		}
+
+		// CRITICAL: Verify Output is extracted from Anthropic rawResponse
+		if span["Output"] == nil {
+			t.Error("Output should be extracted from Anthropic rawResponse")
+		} else if span["Output"].(string) != "Hello! How can I help you today?" {
+			t.Errorf("Output: expected 'Hello! How can I help you today?', got '%v'", span["Output"])
+		}
 	})
 
 	t.Run("extracts cache tokens from Anthropic response", func(t *testing.T) {
@@ -523,6 +530,13 @@ func TestRawResponseBedrock(t *testing.T) {
 		if span["StopReason"].(string) != "end_turn" {
 			t.Errorf("StopReason: expected 'end_turn', got '%v'", span["StopReason"])
 		}
+
+		// CRITICAL: Verify Output is extracted from rawResponse
+		if span["Output"] == nil {
+			t.Error("Output should be extracted from Bedrock Converse rawResponse")
+		} else if span["Output"].(string) != "Hello from Bedrock!" {
+			t.Errorf("Output: expected 'Hello from Bedrock!', got '%v'", span["Output"])
+		}
 	})
 
 	t.Run("extracts from Bedrock InvokeModel API response (Anthropic format)", func(t *testing.T) {
@@ -568,6 +582,13 @@ func TestRawResponseBedrock(t *testing.T) {
 		}
 		if int(span["OutputTokens"].(float64)) != 35 {
 			t.Errorf("OutputTokens: expected 35, got %v", span["OutputTokens"])
+		}
+
+		// CRITICAL: Verify Output is extracted from InvokeModel rawResponse
+		if span["Output"] == nil {
+			t.Error("Output should be extracted from Bedrock InvokeModel rawResponse")
+		} else if span["Output"].(string) != "Response from InvokeModel" {
+			t.Errorf("Output: expected 'Response from InvokeModel', got '%v'", span["Output"])
 		}
 	})
 
@@ -701,6 +722,13 @@ func TestRawResponseGemini(t *testing.T) {
 		}
 		if span["StopReason"].(string) != "STOP" {
 			t.Errorf("StopReason: expected 'STOP', got '%v'", span["StopReason"])
+		}
+
+		// CRITICAL: Verify Output is extracted from Gemini rawResponse
+		if span["Output"] == nil {
+			t.Error("Output should be extracted from Gemini rawResponse")
+		} else if span["Output"].(string) != "Hello from Gemini!" {
+			t.Errorf("Output: expected 'Hello from Gemini!', got '%v'", span["Output"])
 		}
 	})
 
