@@ -9,13 +9,17 @@
 // Run: go run scripts/generate_fixtures.go
 //
 // Required environment variables:
-//   ANTHROPIC_API_KEY - Anthropic API key
-//   OPENAI_API_KEY    - OpenAI API key
-//   GOOGLE_API_KEY    - Google Gemini API key
+//   ANTHROPIC_API_KEY   - Anthropic API key
+//   OPENAI_API_KEY      - OpenAI API key
+//   GOOGLE_API_KEY      - Google Gemini API key
+//   AWS_ACCESS_KEY_ID   - AWS access key (for Bedrock)
+//   AWS_SECRET_ACCESS_KEY - AWS secret key (for Bedrock)
+//   AWS_REGION          - AWS region (defaults to us-east-1)
 
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -26,6 +30,13 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
+	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime/document"
+	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
 )
 
 const fixturesDir = "pkg/domain/service/testdata/fixtures"
@@ -70,6 +81,15 @@ func main() {
 		fmt.Println("\n⏭️  Skipping Gemini (GOOGLE_API_KEY not set)")
 	}
 
+	// Bedrock - 2 scenarios: text, tool_use
+	if os.Getenv("AWS_ACCESS_KEY_ID") != "" && os.Getenv("AWS_SECRET_ACCESS_KEY") != "" {
+		fmt.Println("\n☁️  BEDROCK (claude-3-5-sonnet)")
+		fmt.Println("─────────────────────────────────────────────")
+		generateBedrockScenarios()
+	} else {
+		fmt.Println("\n⏭️  Skipping Bedrock (AWS credentials not set)")
+	}
+
 	fmt.Println("\n════════════════════════════════════════════════════════════")
 	fmt.Println("✅ Done! Fixtures saved to:", fixturesDir)
 	fmt.Println()
@@ -77,7 +97,7 @@ func main() {
 	fmt.Println("  • OpenAI: text, tools, reasoning (o1)")
 	fmt.Println("  • Anthropic: text, tool_use")
 	fmt.Println("  • Gemini: text, function_calls")
-	fmt.Println("  • Bedrock: synthetic fixture (no AWS access needed)")
+	fmt.Println("  • Bedrock: text, tool_use")
 }
 
 // ============================================================================
@@ -263,7 +283,7 @@ func generateOpenAIScenarios(apiKey string) {
 }
 
 // ============================================================================
-// GEMINI - 2 scenarios
+// GEMINI - 4 scenarios (text, functions, streaming, live)
 // ============================================================================
 
 func generateGeminiScenarios(apiKey string) {
@@ -337,6 +357,156 @@ func generateGeminiScenarios(apiKey string) {
 	} else {
 		fmt.Printf("    ❌ Failed: %v\n", err)
 	}
+
+	// Scenario 3: Streaming response (SSE)
+	fmt.Println("  📡 Scenario: streaming")
+	streamModel := "gemini-2.0-flash" // Use flash for faster streaming
+	url3 := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:streamGenerateContent?alt=sse&key=%s", streamModel, apiKey)
+	req3 := map[string]any{
+		"contents": []map[string]any{
+			{"parts": []map[string]any{{"text": "Count from 1 to 5, explaining each number briefly."}}},
+		},
+		"generationConfig": map[string]any{"maxOutputTokens": 500},
+	}
+	if chunks, aggregated, err := callGeminiStreaming(url3, req3); err == nil {
+		saveFixture("real_gemini_streaming.json", map[string]any{
+			"_description": "Gemini streamGenerateContent - SSE streaming response",
+			"_scenario":    "streaming",
+			"_note":        "Contains both individual chunks and aggregated response",
+			"_model":       streamModel,
+			"_captured":    time.Now().Format(time.RFC3339),
+			"request":      req3,
+			"chunks":       chunks,
+			"aggregated":   aggregated,
+		})
+		fmt.Println("    ✅ real_gemini_streaming.json")
+	} else {
+		fmt.Printf("    ❌ Failed: %v\n", err)
+	}
+
+	// Scenario 4: Gemini Live message format (synthetic - WebSocket based)
+	fmt.Println("  🎙️  Scenario: live (synthetic)")
+	generateGeminiLiveFixture()
+	fmt.Println("    ✅ gemini_live.json")
+}
+
+// generateGeminiLiveFixture creates a synthetic fixture for Gemini Live API
+// Based on the LiveServerMessage format used in WebSocket connections
+func generateGeminiLiveFixture() {
+	// Gemini Live uses WebSocket, so we create synthetic fixtures based on the API spec
+	liveModel := "gemini-2.5-flash-native-audio-preview-12-2025"
+
+	// Example: Text turn with transcriptions
+	textTurnMessage := map[string]any{
+		"serverContent": map[string]any{
+			"modelTurn": map[string]any{
+				"parts": []map[string]any{
+					{"text": "Hello! I'm here to help you. What would you like to know?"},
+				},
+			},
+			"outputTranscription": map[string]any{
+				"text": "Hello! I'm here to help you. What would you like to know?",
+			},
+			"turnComplete": true,
+		},
+	}
+
+	// Example: Audio turn with transcriptions
+	audioTurnMessage := map[string]any{
+		"serverContent": map[string]any{
+			"modelTurn": map[string]any{
+				"parts": []map[string]any{
+					{
+						"inlineData": map[string]any{
+							"mimeType": "audio/pcm;rate=24000",
+							"data":     "SGVsbG8gV29ybGQh", // base64 placeholder
+						},
+					},
+				},
+			},
+			"inputTranscription": map[string]any{
+				"text": "What's the weather like today?",
+			},
+			"outputTranscription": map[string]any{
+				"text": "I don't have access to real-time weather data, but I can help you find that information.",
+			},
+			"turnComplete": true,
+		},
+	}
+
+	// Example: Tool call in live session
+	toolCallMessage := map[string]any{
+		"toolCall": map[string]any{
+			"functionCalls": []map[string]any{
+				{
+					"id":   "call_abc123",
+					"name": "get_weather",
+					"args": map[string]any{
+						"location": "Seattle",
+						"units":    "celsius",
+					},
+				},
+			},
+		},
+	}
+
+	// Example: Interruption
+	interruptionMessage := map[string]any{
+		"serverContent": map[string]any{
+			"interrupted": true,
+		},
+	}
+
+	// Example: Session resumption update
+	resumptionMessage := map[string]any{
+		"sessionResumptionUpdate": map[string]any{
+			"resumable": true,
+			"newHandle": "CiQxMjM0NTY3OC1hYmNkLTEyMzQtYWJjZC0xMjM0NTY3ODkwYWI",
+		},
+	}
+
+	// Example: GoAway (server shutdown warning)
+	goAwayMessage := map[string]any{
+		"goAway": map[string]any{
+			"timeLeft": "30s",
+		},
+	}
+
+	saveFixture("gemini_live.json", map[string]any{
+		"_description": "Gemini Live API - WebSocket message formats",
+		"_scenario":    "live_streaming",
+		"_note":        "Synthetic fixture based on LiveServerMessage format. Gemini Live uses WebSocket, not HTTP.",
+		"_model":       liveModel,
+		"_captured":    time.Now().Format(time.RFC3339),
+		"messages": map[string]any{
+			"text_turn":         textTurnMessage,
+			"audio_turn":        audioTurnMessage,
+			"tool_call":         toolCallMessage,
+			"interruption":      interruptionMessage,
+			"session_resumption": resumptionMessage,
+			"go_away":           goAwayMessage,
+		},
+		"session_config": map[string]any{
+			"responseModalities": []string{"AUDIO"},
+			"speechConfig": map[string]any{
+				"voiceConfig": map[string]any{
+					"prebuiltVoiceConfig": map[string]any{
+						"voiceName": "Kore",
+					},
+				},
+			},
+			"realtimeInputConfig": map[string]any{
+				"automaticActivityDetection": map[string]any{
+					"disabled":                 false,
+					"startOfSpeechSensitivity": "START_SENSITIVITY_HIGH",
+					"endOfSpeechSensitivity":   "END_SENSITIVITY_HIGH",
+					"silenceDurationMs":        500,
+				},
+			},
+			"inputAudioTranscription":  map[string]any{},
+			"outputAudioTranscription": map[string]any{},
+		},
+	})
 }
 
 // ============================================================================
@@ -421,6 +591,105 @@ func callGemini(url string, request map[string]any) (map[string]any, error) {
 	return result, nil
 }
 
+// callGeminiStreaming calls the streaming endpoint and returns individual chunks + aggregated response
+func callGeminiStreaming(url string, request map[string]any) ([]map[string]any, map[string]any, error) {
+	body, _ := json.Marshal(request)
+	req, _ := http.NewRequest("POST", url, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "text/event-stream")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+	req = req.WithContext(ctx)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		respBody, _ := io.ReadAll(resp.Body)
+		return nil, nil, fmt.Errorf("status %d: %s", resp.StatusCode, truncate(string(respBody), 150))
+	}
+
+	// Parse SSE stream
+	var chunks []map[string]any
+	var aggregatedText strings.Builder
+	var totalInputTokens, totalOutputTokens int
+	var lastFinishReason string
+
+	scanner := bufio.NewScanner(resp.Body)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !strings.HasPrefix(line, "data: ") {
+			continue
+		}
+		data := strings.TrimPrefix(line, "data: ")
+		if data == "" || data == "[DONE]" {
+			continue
+		}
+
+		var chunk map[string]any
+		if err := json.Unmarshal([]byte(data), &chunk); err != nil {
+			continue
+		}
+		chunks = append(chunks, chunk)
+
+		// Extract text from candidates
+		if candidates, ok := chunk["candidates"].([]any); ok && len(candidates) > 0 {
+			if candidate, ok := candidates[0].(map[string]any); ok {
+				if content, ok := candidate["content"].(map[string]any); ok {
+					if parts, ok := content["parts"].([]any); ok {
+						for _, part := range parts {
+							if p, ok := part.(map[string]any); ok {
+								if text, ok := p["text"].(string); ok {
+									aggregatedText.WriteString(text)
+								}
+							}
+						}
+					}
+				}
+				if fr, ok := candidate["finishReason"].(string); ok {
+					lastFinishReason = fr
+				}
+			}
+		}
+
+		// Extract usage from the last chunk
+		if usage, ok := chunk["usageMetadata"].(map[string]any); ok {
+			if pt, ok := usage["promptTokenCount"].(float64); ok {
+				totalInputTokens = int(pt)
+			}
+			if ct, ok := usage["candidatesTokenCount"].(float64); ok {
+				totalOutputTokens = int(ct)
+			}
+		}
+	}
+
+	// Build aggregated response in standard Gemini format
+	aggregated := map[string]any{
+		"candidates": []map[string]any{
+			{
+				"content": map[string]any{
+					"parts": []map[string]any{
+						{"text": aggregatedText.String()},
+					},
+					"role": "model",
+				},
+				"finishReason": lastFinishReason,
+			},
+		},
+		"usageMetadata": map[string]any{
+			"promptTokenCount":     totalInputTokens,
+			"candidatesTokenCount": totalOutputTokens,
+			"totalTokenCount":      totalInputTokens + totalOutputTokens,
+		},
+	}
+
+	return chunks, aggregated, nil
+}
+
 // ============================================================================
 // HELPERS
 // ============================================================================
@@ -437,4 +706,207 @@ func truncate(s string, maxLen int) string {
 		return s
 	}
 	return s[:maxLen] + "..."
+}
+
+// ============================================================================
+// BEDROCK - 2 scenarios (using AWS SDK)
+// ============================================================================
+
+func generateBedrockScenarios() {
+	region := os.Getenv("AWS_REGION")
+	if region == "" {
+		region = "us-east-1"
+	}
+	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
+	secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
+	// Use inference profile for cross-region inference
+	model := "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+
+	// Create Bedrock client with explicit credentials
+	cfg, err := config.LoadDefaultConfig(context.Background(),
+		config.WithRegion(region),
+		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")),
+	)
+	if err != nil {
+		fmt.Printf("  ❌ Failed to load AWS config: %v\n", err)
+		return
+	}
+	client := bedrockruntime.NewFromConfig(cfg)
+
+	// Scenario 1: Text response
+	fmt.Println("  📝 Scenario: text_response")
+	input1 := &bedrockruntime.ConverseInput{
+		ModelId: aws.String(model),
+		Messages: []types.Message{
+			{
+				Role: types.ConversationRoleUser,
+				Content: []types.ContentBlock{
+					&types.ContentBlockMemberText{Value: "Explain containerization vs virtualization. Be concise."},
+				},
+			},
+		},
+		InferenceConfig: &types.InferenceConfiguration{
+			MaxTokens:   aws.Int32(1024),
+			Temperature: aws.Float32(0.7),
+		},
+	}
+
+	ctx := context.Background()
+	resp1, err := client.Converse(ctx, input1)
+	if err != nil {
+		fmt.Printf("    ❌ Failed: %v\n", err)
+	} else {
+		// Convert to map for fixture
+		respMap := converseOutputToMap(resp1)
+		reqMap := map[string]any{
+			"messages": []map[string]any{
+				{"role": "user", "content": []map[string]any{{"text": "Explain containerization vs virtualization. Be concise."}}},
+			},
+			"inferenceConfig": map[string]any{"maxTokens": 1024, "temperature": 0.7},
+		}
+		saveFixture("real_bedrock_text.json", map[string]any{
+			"_description": "Bedrock Converse API - Text response",
+			"_scenario":    "text_response",
+			"_model":       model,
+			"_captured":    time.Now().Format(time.RFC3339),
+			"request":      reqMap,
+			"response":     respMap,
+		})
+		fmt.Println("    ✅ real_bedrock_text.json")
+	}
+
+	// Scenario 2: Tool use
+	fmt.Println("  🔧 Scenario: tool_use")
+
+	// Create tool input schemas using document
+	weatherSchema := document.NewLazyDocument(map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"location": map[string]any{"type": "string", "description": "City name"},
+		},
+		"required": []string{"location"},
+	})
+	placesSchema := document.NewLazyDocument(map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"location": map[string]any{"type": "string"},
+			"type":     map[string]any{"type": "string"},
+		},
+		"required": []string{"location", "type"},
+	})
+
+	input2 := &bedrockruntime.ConverseInput{
+		ModelId: aws.String(model),
+		Messages: []types.Message{
+			{
+				Role: types.ConversationRoleUser,
+				Content: []types.ContentBlock{
+					&types.ContentBlockMemberText{Value: "Check the weather in Seattle and find nearby coffee shops."},
+				},
+			},
+		},
+		ToolConfig: &types.ToolConfiguration{
+			Tools: []types.Tool{
+				&types.ToolMemberToolSpec{
+					Value: types.ToolSpecification{
+						Name:        aws.String("get_weather"),
+						Description: aws.String("Get weather for a location"),
+						InputSchema: &types.ToolInputSchemaMemberJson{Value: weatherSchema},
+					},
+				},
+				&types.ToolMemberToolSpec{
+					Value: types.ToolSpecification{
+						Name:        aws.String("search_places"),
+						Description: aws.String("Search for places near a location"),
+						InputSchema: &types.ToolInputSchemaMemberJson{Value: placesSchema},
+					},
+				},
+			},
+		},
+		InferenceConfig: &types.InferenceConfiguration{
+			MaxTokens: aws.Int32(1024),
+		},
+	}
+
+	resp2, err := client.Converse(ctx, input2)
+	if err != nil {
+		fmt.Printf("    ❌ Failed: %v\n", err)
+	} else {
+		respMap := converseOutputToMap(resp2)
+		reqMap := map[string]any{
+			"messages": []map[string]any{
+				{"role": "user", "content": []map[string]any{{"text": "Check the weather in Seattle and find nearby coffee shops."}}},
+			},
+			"toolConfig": map[string]any{
+				"tools": []map[string]any{
+					{"toolSpec": map[string]any{"name": "get_weather", "description": "Get weather for a location"}},
+					{"toolSpec": map[string]any{"name": "search_places", "description": "Search for places near a location"}},
+				},
+			},
+			"inferenceConfig": map[string]any{"maxTokens": 1024},
+		}
+		saveFixture("real_bedrock_tools.json", map[string]any{
+			"_description": "Bedrock Converse API - Tool use",
+			"_scenario":    "tool_use",
+			"_model":       model,
+			"_captured":    time.Now().Format(time.RFC3339),
+			"request":      reqMap,
+			"response":     respMap,
+		})
+		fmt.Println("    ✅ real_bedrock_tools.json")
+	}
+}
+
+// converseOutputToMap converts the SDK response to a map matching the raw API response format
+func converseOutputToMap(resp *bedrockruntime.ConverseOutput) map[string]any {
+	result := map[string]any{}
+
+	// Output message
+	if resp.Output != nil {
+		switch v := resp.Output.(type) {
+		case *types.ConverseOutputMemberMessage:
+			content := []map[string]any{}
+			for _, block := range v.Value.Content {
+				switch b := block.(type) {
+				case *types.ContentBlockMemberText:
+					content = append(content, map[string]any{"text": b.Value})
+				case *types.ContentBlockMemberToolUse:
+					content = append(content, map[string]any{
+						"toolUse": map[string]any{
+							"toolUseId": b.Value.ToolUseId,
+							"name":      b.Value.Name,
+							"input":     b.Value.Input,
+						},
+					})
+				}
+			}
+			result["output"] = map[string]any{
+				"message": map[string]any{
+					"role":    string(v.Value.Role),
+					"content": content,
+				},
+			}
+		}
+	}
+
+	// Stop reason
+	result["stopReason"] = string(resp.StopReason)
+
+	// Usage
+	if resp.Usage != nil {
+		result["usage"] = map[string]any{
+			"inputTokens":  resp.Usage.InputTokens,
+			"outputTokens": resp.Usage.OutputTokens,
+			"totalTokens":  aws.ToInt32(resp.Usage.TotalTokens),
+		}
+	}
+
+	// Metrics
+	if resp.Metrics != nil {
+		result["metrics"] = map[string]any{
+			"latencyMs": resp.Metrics.LatencyMs,
+		}
+	}
+
+	return result
 }

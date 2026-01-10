@@ -104,6 +104,49 @@ func TestGeminiScenarios(t *testing.T) {
 
 		t.Logf("✓ tokens: %d→%d, tools: %d", result.InputTokens, result.OutputTokens, len(result.ToolUses))
 	})
+
+	t.Run("streaming_aggregated", func(t *testing.T) {
+		fixture := loadFixture(t, "gemini_streaming.json")
+		// Test the aggregated response (what SDK would give after collecting chunks)
+		result := ParseProviderResponse("gemini", fixture["aggregated"])
+
+		assertNotNil(t, result)
+		assertTokensPositive(t, result)
+		assertOutputIsString(t, result)
+		assertStopReason(t, result, "STOP")
+
+		t.Logf("✓ streaming aggregated: tokens: %d→%d", result.InputTokens, result.OutputTokens)
+	})
+
+	t.Run("live_text_turn", func(t *testing.T) {
+		fixture := loadFixture(t, "gemini_live.json")
+		messages := fixture["messages"].(map[string]any)
+		textTurn := messages["text_turn"].(map[string]any)
+
+		// Gemini Live has a different format - test if parser can handle it
+		result := ParseProviderResponse("gemini_live", textTurn)
+
+		// Live messages may not have all standard fields
+		if result != nil {
+			t.Logf("✓ live text turn parsed: output=%v", result.Output != nil)
+		} else {
+			t.Log("⚠ live text turn: parser returned nil (may need gemini_live support)")
+		}
+	})
+
+	t.Run("live_tool_call", func(t *testing.T) {
+		fixture := loadFixture(t, "gemini_live.json")
+		messages := fixture["messages"].(map[string]any)
+		toolCall := messages["tool_call"].(map[string]any)
+
+		result := ParseProviderResponse("gemini_live", toolCall)
+
+		if result != nil && len(result.ToolUses) > 0 {
+			t.Logf("✓ live tool call: %d tools", len(result.ToolUses))
+		} else {
+			t.Log("⚠ live tool call: no tool uses parsed (may need gemini_live support)")
+		}
+	})
 }
 
 // TestAnthropicScenarios tests Anthropic API scenarios (using synthetic fixtures)
@@ -164,8 +207,8 @@ func TestAnthropicScenarios(t *testing.T) {
 
 // TestBedrockScenarios tests Bedrock Converse API scenarios
 func TestBedrockScenarios(t *testing.T) {
-	t.Run("converse_text", func(t *testing.T) {
-		fixture := loadFixture(t, "bedrock_converse.json")
+	t.Run("text_response", func(t *testing.T) {
+		fixture := loadFixture(t, "real_bedrock_text.json")
 		result := ParseProviderResponse("bedrock", fixture["response"])
 
 		assertNotNil(t, result)
@@ -173,8 +216,27 @@ func TestBedrockScenarios(t *testing.T) {
 		assertOutputIsString(t, result)
 		assertStopReason(t, result, "end_turn")
 		assertSubType(t, result, "response")
+		assertNoToolUses(t, result)
 
-		t.Logf("✓ tokens: %d→%d", result.InputTokens, result.OutputTokens)
+		t.Logf("✓ tokens: %d→%d, stop: %s", result.InputTokens, result.OutputTokens, *result.StopReason)
+	})
+
+	t.Run("tool_use", func(t *testing.T) {
+		fixture := loadFixture(t, "real_bedrock_tools.json")
+		result := ParseProviderResponse("bedrock", fixture["response"])
+
+		assertNotNil(t, result)
+		assertTokensPositive(t, result)
+		assertStopReason(t, result, "tool_use")
+		assertSubType(t, result, "planning")
+		assertHasToolUses(t, result)
+
+		t.Logf("✓ tokens: %d→%d, tools: %d", result.InputTokens, result.OutputTokens, len(result.ToolUses))
+		for i, tu := range result.ToolUses {
+			if tu.ID == "" || tu.Name == "" {
+				t.Errorf("tool %d missing id or name", i)
+			}
+		}
 	})
 }
 
@@ -187,7 +249,7 @@ func TestAutoDetect(t *testing.T) {
 	}{
 		{"OpenAI format", "real_openai_text.json", "openai"},
 		{"Gemini format", "real_gemini_text.json", "gemini"},
-		{"Bedrock format", "bedrock_converse.json", "bedrock"},
+		{"Bedrock format", "real_bedrock_text.json", "bedrock"},
 	}
 
 	for _, tc := range testCases {

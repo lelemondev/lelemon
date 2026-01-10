@@ -1,0 +1,95 @@
+{
+  "_description": "Gemini Live API - WebSocket message formats",
+  "_scenario": "live_streaming",
+  "_note": "Synthetic fixture based on LiveServerMessage format. Gemini Live uses WebSocket, not HTTP.",
+  "_model": "gemini-2.5-flash-native-audio-preview-12-2025",
+  "_captured": "2026-01-10T02:00:00-03:00",
+  "messages": {
+    "text_turn": {
+      "serverContent": {
+        "modelTurn": {
+          "parts": [
+            {
+              "text": "Hello! I'm here to help you. What would you like to know?"
+            }
+          ]
+        },
+        "outputTranscription": {
+          "text": "Hello! I'm here to help you. What would you like to know?"
+        },
+        "turnComplete": true
+      }
+    },
+    "audio_turn": {
+      "serverContent": {
+        "modelTurn": {
+          "parts": [
+            {
+              "inlineData": {
+                "mimeType": "audio/pcm;rate=24000",
+                "data": "SGVsbG8gV29ybGQhIFRoaXMgaXMgYSBzYW1wbGUgYXVkaW8gY2h1bmsu"
+              }
+            }
+          ]
+        },
+        "inputTranscription": {
+          "text": "What's the weather like today?"
+        },
+        "outputTranscription": {
+          "text": "I don't have access to real-time weather data, but I can help you find that information."
+        },
+        "turnComplete": true
+      }
+    },
+    "tool_call": {
+      "toolCall": {
+        "functionCalls": [
+          {
+            "id": "call_abc123",
+            "name": "get_weather",
+            "args": {
+              "location": "Seattle",
+              "units": "celsius"
+            }
+          }
+        ]
+      }
+    },
+    "interruption": {
+      "serverContent": {
+        "interrupted": true
+      }
+    },
+    "session_resumption": {
+      "sessionResumptionUpdate": {
+        "resumable": true,
+        "newHandle": "CiQxMjM0NTY3OC1hYmNkLTEyMzQtYWJjZC0xMjM0NTY3ODkwYWI"
+      }
+    },
+    "go_away": {
+      "goAway": {
+        "timeLeft": "30s"
+      }
+    }
+  },
+  "session_config": {
+    "responseModalities": ["AUDIO"],
+    "speechConfig": {
+      "voiceConfig": {
+        "prebuiltVoiceConfig": {
+          "voiceName": "Kore"
+        }
+      }
+    },
+    "realtimeInputConfig": {
+      "automaticActivityDetection": {
+        "disabled": false,
+        "startOfSpeechSensitivity": "START_SENSITIVITY_HIGH",
+        "endOfSpeechSensitivity": "END_SENSITIVITY_HIGH",
+        "silenceDurationMs": 500
+      }
+    },
+    "inputAudioTranscription": {},
+    "outputAudioTranscription": {}
+  }
+}

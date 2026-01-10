@@ -1,0 +1,43 @@
+{
+  "_captured": "2026-01-10T01:27:10-03:00",
+  "_description": "Bedrock Converse API - Text response",
+  "_model": "us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+  "_scenario": "text_response",
+  "request": {
+    "inferenceConfig": {
+      "maxTokens": 1024,
+      "temperature": 0.7
+    },
+    "messages": [
+      {
+        "content": [
+          {
+            "text": "Explain containerization vs virtualization. Be concise."
+          }
+        ],
+        "role": "user"
+      }
+    ]
+  },
+  "response": {
+    "metrics": {
+      "latencyMs": 3836
+    },
+    "output": {
+      "message": {
+        "content": [
+          {
+            "text": "Containerization and virtualization are both methods of running isolated environments, but they differ in fundamental ways:\n\nVirtualization:\n- Creates complete virtual machines (VMs)\n- Each VM has its own operating system\n- Uses more resources (memory, storage)\n- Slower to start up\n- Better isolation\n- Example: VMware, VirtualBox\n\nContainerization:\n- Shares host OS kernel\n- Lightweight, only packages necessary components\n- Uses fewer resources\n- Starts up quickly\n- Less isolated but more efficient\n- Example: Docker, Kubernetes\n\nKey difference: VMs virtualize the entire hardware stack, while containers virtualize only the OS level."
+          }
+        ],
+        "role": "assistant"
+      }
+    },
+    "stopReason": "end_turn",
+    "usage": {
+      "inputTokens": 19,
+      "outputTokens": 148,
+      "totalTokens": 167
+    }
+  }
+}

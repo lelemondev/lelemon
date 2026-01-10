@@ -1,0 +1,65 @@
+{
+  "_captured": "2026-01-10T01:27:12-03:00",
+  "_description": "Bedrock Converse API - Tool use",
+  "_model": "us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+  "_scenario": "tool_use",
+  "request": {
+    "inferenceConfig": {
+      "maxTokens": 1024
+    },
+    "messages": [
+      {
+        "content": [
+          {
+            "text": "Check the weather in Seattle and find nearby coffee shops."
+          }
+        ],
+        "role": "user"
+      }
+    ],
+    "toolConfig": {
+      "tools": [
+        {
+          "toolSpec": {
+            "description": "Get weather for a location",
+            "name": "get_weather"
+          }
+        },
+        {
+          "toolSpec": {
+            "description": "Search for places near a location",
+            "name": "search_places"
+          }
+        }
+      ]
+    }
+  },
+  "response": {
+    "metrics": {
+      "latencyMs": 2184
+    },
+    "output": {
+      "message": {
+        "content": [
+          {
+            "text": "I'll help you check both the weather in Seattle and find coffee shops there. I'll use both available tools for this request.\n\n1. First, let's check the weather in Seattle:"
+          },
+          {
+            "toolUse": {
+              "input": {},
+              "name": "get_weather",
+              "toolUseId": "tooluse_AeNgcvEeQ5u-MCHAsTRo7w"
+            }
+          }
+        ],
+        "role": "assistant"
+      }
+    },
+    "stopReason": "tool_use",
+    "usage": {
+      "inputTokens": 458,
+      "outputTokens": 93,
+      "totalTokens": 551
+    }
+  }
+}

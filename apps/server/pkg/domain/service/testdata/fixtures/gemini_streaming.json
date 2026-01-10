@@ -1,0 +1,91 @@
+{
+  "_description": "Gemini streamGenerateContent - SSE streaming response",
+  "_scenario": "streaming",
+  "_note": "Synthetic fixture showing both individual SSE chunks and aggregated response",
+  "_model": "gemini-2.0-flash",
+  "_captured": "2026-01-10T02:00:00-03:00",
+  "request": {
+    "contents": [
+      {
+        "parts": [{"text": "Count from 1 to 5."}]
+      }
+    ],
+    "generationConfig": {
+      "maxOutputTokens": 200
+    }
+  },
+  "chunks": [
+    {
+      "candidates": [
+        {
+          "content": {
+            "parts": [{"text": "1. One - "}],
+            "role": "model"
+          }
+        }
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "content": {
+            "parts": [{"text": "The first number.\n2. Two - "}],
+            "role": "model"
+          }
+        }
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "content": {
+            "parts": [{"text": "The second number.\n3. Three - "}],
+            "role": "model"
+          }
+        }
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "content": {
+            "parts": [{"text": "The third number.\n4. Four - "}],
+            "role": "model"
+          }
+        }
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "content": {
+            "parts": [{"text": "The fourth number.\n5. Five - "}],
+            "role": "model"
+          },
+          "finishReason": "STOP"
+        }
+      ],
+      "usageMetadata": {
+        "promptTokenCount": 8,
+        "candidatesTokenCount": 45,
+        "totalTokenCount": 53
+      }
+    }
+  ],
+  "aggregated": {
+    "candidates": [
+      {
+        "content": {
+          "parts": [{"text": "1. One - The first number.\n2. Two - The second number.\n3. Three - The third number.\n4. Four - The fourth number.\n5. Five - The fifth number."}],
+          "role": "model"
+        },
+        "finishReason": "STOP"
+      }
+    ],
+    "usageMetadata": {
+      "promptTokenCount": 8,
+      "candidatesTokenCount": 45,
+      "totalTokenCount": 53
+    }
+  }
+}
