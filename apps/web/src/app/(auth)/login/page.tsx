@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { LemonIcon } from '@/components/lemon-icon';
+import { BetaBanner } from '@/components/beta-banner';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -131,26 +132,7 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Beta notice */}
-          <div className="mt-6 text-center">
-            <div className="inline-flex flex-col items-center gap-1 px-4 py-3 rounded-xl bg-[#18181B]/5 border border-[#18181B]/5">
-              <p className="text-sm font-medium text-[#18181B]/70">
-                <span className="mr-1">🍋</span> Fresh from main. We ship daily.
-              </p>
-              <p className="text-xs text-[#71717A]">
-                Found a bug?{' '}
-                <a
-                  href="https://github.com/lelemondev/lelemon/issues"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[#A16207] hover:underline"
-                >
-                  Tell us
-                </a>
-                {' '}before our CEO does.
-              </p>
-            </div>
-          </div>
+          <BetaBanner />
         </div>
       </main>
     </div>
