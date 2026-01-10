@@ -95,7 +95,7 @@ go build -o lelemon ./cmd/server
 
 # Dashboard (separate terminal)
 cd apps/web
-yarn install && yarn build && yarn start
+pnpm install && pnpm build && pnpm start
 ```
 
 ### Environment Variables
@@ -156,10 +156,9 @@ lelemon/
 ├── docker-compose.postgres.yml   # PostgreSQL
 ├── docker-compose.clickhouse.yml # ClickHouse
 ├── .env.example
-├── apps/
-│   ├── server/     # Go backend
-│   └── web/        # Next.js dashboard
-└── docs/
+└── apps/
+    ├── server/     # Go backend
+    └── web/        # Next.js dashboard
 ```
 
 ---
@@ -168,25 +167,14 @@ lelemon/
 
 ```bash
 # Install frontend dependencies
-yarn install
+pnpm install
 
 # Run dashboard in dev mode
-yarn dev
+pnpm dev
 
 # Run server
 cd apps/server && go run ./cmd/server
 ```
-
----
-
-## Roadmap
-
-See [docs/ROADMAP.md](docs/ROADMAP.md) for the full roadmap including:
-
-- Hierarchical tracing with `withTrace()` API
-- Extended thinking & tool use visualization
-- Vercel AI SDK integration
-- LangChain/LlamaIndex integrations
 
 ---
 
@@ -205,5 +193,3 @@ Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 ## Links
 
 - **SDK**: [@lelemondev/sdk](https://github.com/lelemondev/sdk)
-- **Documentation**: Coming soon
-- **Discord**: Coming soon

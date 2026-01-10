@@ -108,9 +108,6 @@ lelemon/
 │           ├── handler/           # Billing, org handlers
 │           ├── middleware/        # RBAC middleware
 │           └── extension.go       # Implements RouterExtension
-│
-└── docs/
-    └── ROADMAP.md
 ```
 
 ---
@@ -446,8 +443,8 @@ CGO_ENABLED=0 go build -o lelemon ./cmd/server
 
 # Frontend
 cd apps/web
-yarn build
-yarn start
+pnpm build
+pnpm start
 ```
 
 ---
