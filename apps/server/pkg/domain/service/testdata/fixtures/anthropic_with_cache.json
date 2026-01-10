@@ -1,0 +1,53 @@
+{
+  "_description": "Anthropic Messages API - Response with prompt caching",
+  "_source": "https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching",
+  "_captured": "2026-01-10",
+  "request": {
+    "model": "claude-3-5-sonnet-20241022",
+    "max_tokens": 1024,
+    "system": [
+      {
+        "type": "text",
+        "text": "You are an AI assistant specialized in analyzing legal documents. You have been provided with a comprehensive legal framework document that you should reference when answering questions.",
+        "cache_control": {
+          "type": "ephemeral"
+        }
+      }
+    ],
+    "messages": [
+      {
+        "role": "user",
+        "content": "What are the key provisions in Section 4.2?"
+      }
+    ]
+  },
+  "response": {
+    "id": "msg_01YcRm4nsNGpxzT3N9qhvSLK",
+    "type": "message",
+    "role": "assistant",
+    "model": "claude-3-5-sonnet-20241022",
+    "content": [
+      {
+        "type": "text",
+        "text": "Based on the legal framework document, Section 4.2 contains the following key provisions:\n\n1. **Liability Limitations**: The section establishes caps on financial liability for different categories of breach.\n\n2. **Indemnification Clauses**: Outlines mutual indemnification requirements between parties.\n\n3. **Force Majeure**: Defines circumstances under which obligations may be suspended.\n\nWould you like me to elaborate on any of these provisions?"
+      }
+    ],
+    "stop_reason": "end_turn",
+    "stop_sequence": null,
+    "usage": {
+      "input_tokens": 2159,
+      "output_tokens": 98,
+      "cache_creation_input_tokens": 2048,
+      "cache_read_input_tokens": 0
+    }
+  },
+  "expected": {
+    "output_type": "string",
+    "input_tokens": 2159,
+    "output_tokens": 98,
+    "cache_write_tokens": 2048,
+    "cache_read_tokens": 0,
+    "stop_reason": "end_turn",
+    "sub_type": "response"
+  }
+}

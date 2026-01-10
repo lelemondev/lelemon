@@ -1,0 +1,59 @@
+{
+  "_description": "OpenAI Chat Completions API - o1/o3 model with reasoning tokens",
+  "_source": "https://platform.openai.com/docs/guides/reasoning",
+  "_captured": "2026-01-10",
+  "_note": "o1 and o3 models include reasoning_tokens in completion_tokens_details",
+  "request": {
+    "model": "o1-preview",
+    "messages": [
+      {
+        "role": "user",
+        "content": "How many r's are in the word 'strawberry'?"
+      }
+    ],
+    "max_completion_tokens": 5000
+  },
+  "response": {
+    "id": "chatcmpl-AZGdJqkzXvCrw8KjL9mNoPqRsT",
+    "object": "chat.completion",
+    "created": 1736478920,
+    "model": "o1-preview-2024-12-17",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "There are **3 r's** in the word \"strawberry\".\n\nLet me break it down:\n- s-t-**r**-a-w-b-e-**r**-**r**-y\n\nThe letter 'r' appears at positions 3, 8, and 9.",
+          "refusal": null
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 15,
+      "completion_tokens": 312,
+      "total_tokens": 327,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "audio_tokens": 0
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 256,
+        "audio_tokens": 0,
+        "accepted_prediction_tokens": 0,
+        "rejected_prediction_tokens": 0
+      }
+    },
+    "system_fingerprint": "fp_o1_reasoning"
+  },
+  "expected": {
+    "output_type": "string",
+    "output_contains": "3 r's",
+    "input_tokens": 15,
+    "output_tokens": 312,
+    "reasoning_tokens": 256,
+    "stop_reason": "stop",
+    "sub_type": "response"
+  }
+}

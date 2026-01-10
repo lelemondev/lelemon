@@ -1,0 +1,57 @@
+{
+  "_description": "AWS Bedrock Converse API - Standard text response",
+  "_source": "https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html",
+  "_captured": "2026-01-10",
+  "request": {
+    "modelId": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+    "system": [
+      {
+        "text": "You are a helpful AI assistant."
+      }
+    ],
+    "messages": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "text": "What is the speed of light?"
+          }
+        ]
+      }
+    ],
+    "inferenceConfig": {
+      "maxTokens": 500,
+      "temperature": 0.7
+    }
+  },
+  "response": {
+    "output": {
+      "message": {
+        "role": "assistant",
+        "content": [
+          {
+            "text": "The speed of light in a vacuum is approximately **299,792,458 meters per second** (or about 300,000 km/s). This is often denoted as 'c' in physics equations.\n\nSome useful conversions:\n- ~186,282 miles per second\n- ~670,616,629 mph\n- Light travels about 1 foot per nanosecond\n\nThis speed is a fundamental constant of nature and is the maximum speed at which information can travel in the universe according to Einstein's theory of special relativity."
+          }
+        ]
+      }
+    },
+    "stopReason": "end_turn",
+    "usage": {
+      "inputTokens": 22,
+      "outputTokens": 108,
+      "totalTokens": 130
+    },
+    "metrics": {
+      "latencyMs": 1847
+    }
+  },
+  "expected": {
+    "output_type": "string",
+    "output_contains": "299,792,458",
+    "input_tokens": 22,
+    "output_tokens": 108,
+    "stop_reason": "end_turn",
+    "sub_type": "response",
+    "has_tool_uses": false
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "_description": "Anthropic Messages API - Tool use response",
+  "_source": "https://docs.anthropic.com/en/docs/build-with-claude/tool-use",
+  "_captured": "2026-01-10",
+  "request": {
+    "model": "claude-3-5-sonnet-20241022",
+    "max_tokens": 1024,
+    "tools": [
+      {
+        "name": "get_weather",
+        "description": "Get the current weather in a given location",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "location": {
+              "type": "string",
+              "description": "The city and state, e.g. San Francisco, CA"
+            },
+            "unit": {
+              "type": "string",
+              "enum": ["celsius", "fahrenheit"],
+              "description": "The unit of temperature"
+            }
+          },
+          "required": ["location"]
+        }
+      },
+      {
+        "name": "get_stock_price",
+        "description": "Get the current stock price for a given ticker symbol",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "ticker": {
+              "type": "string",
+              "description": "The stock ticker symbol, e.g. AAPL"
+            }
+          },
+          "required": ["ticker"]
+        }
+      }
+    ],
+    "messages": [
+      {
+        "role": "user",
+        "content": "What's the weather like in San Francisco and what's Apple's stock price?"
+      }
+    ]
+  },
+  "response": {
+    "id": "msg_01Aq9w958DYDHnjkT8raYM7G",
+    "type": "message",
+    "role": "assistant",
+    "model": "claude-3-5-sonnet-20241022",
+    "content": [
+      {
+        "type": "text",
+        "text": "I'll help you get both pieces of information. Let me check the weather in San Francisco and Apple's current stock price."
+      },
+      {
+        "type": "tool_use",
+        "id": "toolu_01A09q90qw8BGMcvPpQyPHVJ",
+        "name": "get_weather",
+        "input": {
+          "location": "San Francisco, CA",
+          "unit": "fahrenheit"
+        }
+      },
+      {
+        "type": "tool_use",
+        "id": "toolu_01BGEyQpAgvpkBzEVi5PWGXP",
+        "name": "get_stock_price",
+        "input": {
+          "ticker": "AAPL"
+        }
+      }
+    ],
+    "stop_reason": "tool_use",
+    "stop_sequence": null,
+    "usage": {
+      "input_tokens": 458,
+      "output_tokens": 152
+    }
+  },
+  "expected": {
+    "output_type": "array",
+    "input_tokens": 458,
+    "output_tokens": 152,
+    "stop_reason": "tool_use",
+    "sub_type": "planning",
+    "has_tool_uses": true,
+    "tool_uses_count": 2,
+    "tool_uses": [
+      {
+        "id": "toolu_01A09q90qw8BGMcvPpQyPHVJ",
+        "name": "get_weather",
+        "has_input": true
+      },
+      {
+        "id": "toolu_01BGEyQpAgvpkBzEVi5PWGXP",
+        "name": "get_stock_price",
+        "has_input": true
+      }
+    ]
+  }
+}

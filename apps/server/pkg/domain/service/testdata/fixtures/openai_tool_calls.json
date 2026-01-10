@@ -1,0 +1,111 @@
+{
+  "_description": "OpenAI Chat Completions API - Tool calls (function calling)",
+  "_source": "https://platform.openai.com/docs/guides/function-calling",
+  "_captured": "2026-01-10",
+  "request": {
+    "model": "gpt-4o",
+    "messages": [
+      {
+        "role": "user",
+        "content": "What's the weather like in Boston and New York?"
+      }
+    ],
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "get_current_weather",
+          "description": "Get the current weather in a given location",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "location": {
+                "type": "string",
+                "description": "The city and state, e.g. San Francisco, CA"
+              },
+              "unit": {
+                "type": "string",
+                "enum": ["celsius", "fahrenheit"]
+              }
+            },
+            "required": ["location"]
+          }
+        }
+      }
+    ],
+    "tool_choice": "auto"
+  },
+  "response": {
+    "id": "chatcmpl-AZHkLpMnQrStUvWxYz12345",
+    "object": "chat.completion",
+    "created": 1736478925,
+    "model": "gpt-4o-2024-08-06",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": null,
+          "tool_calls": [
+            {
+              "id": "call_abc123def456",
+              "type": "function",
+              "function": {
+                "name": "get_current_weather",
+                "arguments": "{\"location\": \"Boston, MA\", \"unit\": \"fahrenheit\"}"
+              }
+            },
+            {
+              "id": "call_xyz789ghi012",
+              "type": "function",
+              "function": {
+                "name": "get_current_weather",
+                "arguments": "{\"location\": \"New York, NY\", \"unit\": \"fahrenheit\"}"
+              }
+            }
+          ],
+          "refusal": null
+        },
+        "logprobs": null,
+        "finish_reason": "tool_calls"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 88,
+      "completion_tokens": 58,
+      "total_tokens": 146,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "audio_tokens": 0
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "audio_tokens": 0,
+        "accepted_prediction_tokens": 0,
+        "rejected_prediction_tokens": 0
+      }
+    },
+    "system_fingerprint": "fp_d28bcae782"
+  },
+  "expected": {
+    "output_type": "null",
+    "input_tokens": 88,
+    "output_tokens": 58,
+    "stop_reason": "tool_calls",
+    "sub_type": "planning",
+    "has_tool_uses": true,
+    "tool_uses_count": 2,
+    "tool_uses": [
+      {
+        "id": "call_abc123def456",
+        "name": "get_current_weather",
+        "has_input": true
+      },
+      {
+        "id": "call_xyz789ghi012",
+        "name": "get_current_weather",
+        "has_input": true
+      }
+    ]
+  }
+}

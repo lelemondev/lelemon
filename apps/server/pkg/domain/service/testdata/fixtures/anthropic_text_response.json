@@ -1,0 +1,44 @@
+{
+  "_description": "Anthropic Messages API - Standard text response",
+  "_source": "https://docs.anthropic.com/en/api/messages",
+  "_captured": "2026-01-10",
+  "request": {
+    "model": "claude-3-5-sonnet-20241022",
+    "max_tokens": 1024,
+    "system": "You are a helpful coding assistant.",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Explain recursion in programming briefly."
+      }
+    ]
+  },
+  "response": {
+    "id": "msg_01XFDUDYJgAACzvnptvVoYEL",
+    "type": "message",
+    "role": "assistant",
+    "model": "claude-3-5-sonnet-20241022",
+    "content": [
+      {
+        "type": "text",
+        "text": "Recursion is a programming technique where a function calls itself to solve a problem. It breaks down complex problems into smaller, similar subproblems.\n\nKey components:\n1. **Base case**: A condition that stops the recursion\n2. **Recursive case**: The function calls itself with modified parameters\n\nExample (factorial):\n```python\ndef factorial(n):\n    if n <= 1:  # base case\n        return 1\n    return n * factorial(n - 1)  # recursive case\n```\n\nCommon uses: tree traversal, sorting algorithms (quicksort, mergesort), mathematical computations, and parsing nested structures."
+      }
+    ],
+    "stop_reason": "end_turn",
+    "stop_sequence": null,
+    "usage": {
+      "input_tokens": 18,
+      "output_tokens": 142
+    }
+  },
+  "expected": {
+    "output_type": "string",
+    "output_contains": "Recursion is a programming technique",
+    "input_tokens": 18,
+    "output_tokens": 142,
+    "stop_reason": "end_turn",
+    "sub_type": "response",
+    "has_tool_uses": false,
+    "has_thinking": false
+  }
+}

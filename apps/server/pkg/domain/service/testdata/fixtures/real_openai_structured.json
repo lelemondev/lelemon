@@ -1,0 +1,60 @@
+{
+  "_captured": "2026-01-10T00:41:32Z",
+  "_description": "OpenAI - Structured JSON output (production scenario)",
+  "_model": "gpt-4o",
+  "_scenario": "Entity extraction with JSON response format",
+  "_source": "Live API call",
+  "request": {
+    "max_tokens": 800,
+    "messages": [
+      {
+        "content": "You extract structured data from text. Output valid JSON only.",
+        "role": "system"
+      },
+      {
+        "content": "Extract entities from this email:\n\nSubject: Re: Partnership Proposal - Q2 2024\n\nHi Michael,\n\nThanks for the detailed proposal. I've reviewed it with our team at Innovate Solutions (our CEO, Jennifer Walsh, was particularly impressed).\n\nWe'd like to move forward with Option B - the $150,000 annual contract with quarterly deliverables. Our legal team (contact: david.chen@innovatesolutions.com) will send over the MSA by Friday.\n\nCan we schedule a kickoff call for the week of January 22nd? I'm available Monday or Wednesday afternoon.\n\nBest regards,\nAmanda Foster\nVP of Partnerships\nInnovate Solutions\namanda.foster@innovatesolutions.com\n+1 (555) 234-5678",
+        "role": "user"
+      }
+    ],
+    "model": "gpt-4o",
+    "response_format": {
+      "type": "json_object"
+    }
+  },
+  "response": {
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "logprobs": null,
+        "message": {
+          "annotations": [],
+          "content": "{\n  \"email_subject\": \"Re: Partnership Proposal - Q2 2024\",\n  \"sender\": {\n    \"name\": \"Amanda Foster\",\n    \"position\": \"VP of Partnerships\",\n    \"company\": \"Innovate Solutions\",\n    \"email\": \"amanda.foster@innovatesolutions.com\",\n    \"phone\": \"+1 (555) 234-5678\"\n  },\n  \"recipient\": \"Michael\",\n  \"mentioned_people\": [\n    {\n      \"name\": \"Jennifer Walsh\",\n      \"position\": \"CEO\",\n      \"company\": \"Innovate Solutions\"\n    },\n    {\n      \"name\": \"David Chen\",\n      \"position\": \"Legal Team Contact\",\n      \"email\": \"david.chen@innovatesolutions.com\",\n      \"company\": \"Innovate Solutions\"\n    }\n  ],\n  \"entities\": {\n    \"company\": \"Innovate Solutions\",\n    \"options\": \"Option B\",\n    \"contract_value\": \"$150,000\",\n    \"contract_terms\": \"annual contract with quarterly deliverables\",\n    \"kickoff_call_dates\": {\n      \"week_of\": \"January 22nd\",\n      \"available_days\": [\"Monday afternoon\", \"Wednesday afternoon\"]\n    }\n  },\n  \"action_items\": [\n    \"Proceed with Option B contract\",\n    \"Legal team to send MSA by Friday\",\n    \"Schedule kickoff call for week of January 22nd\"\n  ]\n}",
+          "refusal": null,
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1768016490,
+    "id": "chatcmpl-CwK8wS4ID198cPYxMUMnjOEhCYGYv",
+    "model": "gpt-4o-2024-08-06",
+    "object": "chat.completion",
+    "service_tier": "default",
+    "system_fingerprint": "fp_deacdd5f6f",
+    "usage": {
+      "completion_tokens": 291,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": 0,
+        "audio_tokens": 0,
+        "reasoning_tokens": 0,
+        "rejected_prediction_tokens": 0
+      },
+      "prompt_tokens": 174,
+      "prompt_tokens_details": {
+        "audio_tokens": 0,
+        "cached_tokens": 0
+      },
+      "total_tokens": 465
+    }
+  }
+}
