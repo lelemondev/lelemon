@@ -265,6 +265,23 @@ export function MessageRenderer({ input, output }: MessageRendererProps) {
             <MessageCard event={currentUserMessage} defaultExpanded />
           )}
 
+          {/* Fallback: Show raw input if no messages were extracted */}
+          {!currentUserMessage && previousMessages.length === 0 && !parsedData.system && input != null && (
+            <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 overflow-hidden">
+              <div className="flex items-center gap-2 px-3 py-2 border-b border-amber-200 dark:border-amber-800">
+                <svg className="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                </svg>
+                <span className="text-xs font-semibold uppercase text-amber-600 dark:text-amber-400">Input</span>
+              </div>
+              <div className="px-4 py-3">
+                <pre className="text-sm text-amber-900 dark:text-amber-100 whitespace-pre-wrap leading-relaxed overflow-auto max-h-64">
+                  {typeof input === 'string' ? input : JSON.stringify(input, null, 2)}
+                </pre>
+              </div>
+            </div>
+          )}
+
           {/* Final Response */}
           {outputContent && (
             <MessageCard event={{ type: 'response', content: outputContent }} defaultExpanded />
