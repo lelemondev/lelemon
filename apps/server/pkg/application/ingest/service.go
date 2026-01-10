@@ -336,6 +336,16 @@ func (s *Service) eventToSpan(traceID string, event IngestEvent) entity.Span {
 		}
 	}
 
+	// DEBUG: Store raw request info for debugging SDK issues
+	metadata["_debug"] = map[string]any{
+		"hasRawResponse":   event.RawResponse != nil,
+		"hasOutput":        event.Output != nil,
+		"hasInputTokens":   event.InputTokens != nil,
+		"hasOutputTokens":  event.OutputTokens != nil,
+		"provider":         event.Provider,
+		"spanType":         event.SpanType,
+	}
+
 	span := entity.Span{
 		TraceID:   traceID,
 		Type:      spanType,
