@@ -55,3 +55,6 @@ __debug_bin*
 CLAUDE.local.md
 lelemon-check.db
 *.db
+
+# Confidential documents
+docs/PRIVATE-ESTIMATE.md
