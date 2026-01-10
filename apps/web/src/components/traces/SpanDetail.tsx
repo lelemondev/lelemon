@@ -671,8 +671,10 @@ export function SpanDetail({ span, allSpans, onClose }: SpanDetailProps) {
           <SpanTypeIcon type={span.type} size="lg" />
           <div>
             <h3 className="font-semibold text-lg text-zinc-900 dark:text-white">
-              {span.type === 'llm' && span.subType
-                ? `LLM (${span.subType === 'planning' ? 'Planning' : 'Response'})`
+              {span.type === 'llm'
+                ? span.subType === 'planning'
+                  ? 'Planning'
+                  : 'Generation'
                 : span.name}
             </h3>
             <div className="flex items-center gap-2 mt-1">

@@ -27,8 +27,14 @@ export function SpanTreeNode({
 
   // Display name based on type
   const getDisplayName = () => {
-    if (isLlm && span.subType) {
-      return `LLM (${span.subType === 'planning' ? 'Planning' : 'Response'})`;
+    if (isLlm) {
+      // For LLM spans, show descriptive name based on subType
+      if (span.subType === 'planning') return 'Planning';
+      if (span.subType === 'response') return 'Generation';
+      // Fallback: if name is same as model, show generic name
+      if (span.name === span.model || span.name?.includes('anthropic') || span.name?.includes('gpt')) {
+        return 'Generation';
+      }
     }
     if (isToolUse) {
       return 'Tool Usage';
