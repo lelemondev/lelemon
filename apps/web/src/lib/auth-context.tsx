@@ -19,6 +19,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithToken: (token: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => void;
   refreshToken: () => Promise<void>;
@@ -79,6 +80,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/dashboard');
   }, [router, saveAuth]);
 
+  const loginWithToken = useCallback(async (newToken: string) => {
+    // Fetch user info using the token
+    const response = await fetch(`${API_URL}/api/v1/auth/me`, {
+      headers: {
+        'Authorization': `Bearer ${newToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to authenticate with token');
+    }
+
+    const userData = await response.json();
+    saveAuth(newToken, userData);
+  }, [saveAuth]);
+
   const register = useCallback(async (email: string, password: string, name: string) => {
     const response = await fetch(`${API_URL}/api/v1/auth/register`, {
       method: 'POST',
@@ -132,6 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         isAuthenticated: !!token && !!user,
         login,
+        loginWithToken,
         register,
         logout,
         refreshToken,
