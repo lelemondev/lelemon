@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { LemonIcon } from '@/components/lemon-icon';
 
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { loginWithToken } = useAuth();
@@ -37,29 +37,44 @@ export default function AuthCallbackPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#FAFDF7] flex flex-col items-center justify-center px-6">
-        <div className="text-center">
-          <LemonIcon className="w-16 h-16 mx-auto mb-6 opacity-50" />
-          <h1 className="text-2xl font-bold text-[#18181B] mb-2">Authentication Failed</h1>
-          <p className="text-[#71717A] mb-6">{error}</p>
-          <a
-            href="/login"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#FACC15] text-[#18181B] font-semibold hover:bg-[#EAB308] transition-all"
-          >
-            Back to Login
-          </a>
-        </div>
+      <div className="text-center">
+        <LemonIcon className="w-16 h-16 mx-auto mb-6 opacity-50" />
+        <h1 className="text-2xl font-bold text-[#18181B] mb-2">Authentication Failed</h1>
+        <p className="text-[#71717A] mb-6">{error}</p>
+        <a
+          href="/login"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#FACC15] text-[#18181B] font-semibold hover:bg-[#EAB308] transition-all"
+        >
+          Back to Login
+        </a>
       </div>
     );
   }
 
   return (
+    <div className="text-center">
+      <LemonIcon className="w-16 h-16 mx-auto mb-6 animate-pulse" />
+      <h1 className="text-2xl font-bold text-[#18181B] mb-2">Signing you in...</h1>
+      <p className="text-[#71717A]">Please wait while we complete authentication</p>
+    </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="text-center">
+      <LemonIcon className="w-16 h-16 mx-auto mb-6 animate-pulse" />
+      <h1 className="text-2xl font-bold text-[#18181B] mb-2">Loading...</h1>
+    </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
     <div className="min-h-screen bg-[#FAFDF7] flex flex-col items-center justify-center px-6">
-      <div className="text-center">
-        <LemonIcon className="w-16 h-16 mx-auto mb-6 animate-pulse" />
-        <h1 className="text-2xl font-bold text-[#18181B] mb-2">Signing you in...</h1>
-        <p className="text-[#71717A]">Please wait while we complete authentication</p>
-      </div>
+      <Suspense fallback={<LoadingFallback />}>
+        <AuthCallbackContent />
+      </Suspense>
     </div>
   );
 }
