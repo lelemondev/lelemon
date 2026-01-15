@@ -63,7 +63,7 @@ jobs:
           node-version: '18'
 
       - name: Deploy to Cloudflare Pages
-        run: npx wrangler@3 pages deploy dist --project-name=lelemon-inmobiliarias --commit-dirty=true --branch=main
+        run: npx wrangler@3 pages project create lelemon-inmobiliarias --production-branch=main 2>/dev/null || true && npx wrangler@3 pages deploy dist --project-name=lelemon-inmobiliarias --commit-dirty=true --branch=main
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
