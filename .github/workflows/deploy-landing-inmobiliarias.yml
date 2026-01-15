@@ -1,0 +1,69 @@
+name: Deploy Landing Inmobiliarias
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/landing-inmobiliarias/**'
+      - '.github/workflows/deploy-landing-inmobiliarias.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-landing-inmobiliarias-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build landing (Astro)
+        run: pnpm --filter landing-inmobiliarias build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: landing-inmobiliarias-build
+          path: apps/landing-inmobiliarias/dist
+          retention-days: 1
+
+  deploy:
+    name: Deploy to Cloudflare
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: landing-inmobiliarias-build
+          path: dist
+
+      - name: Setup Node.js 18 (for wrangler compatibility)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Deploy to Cloudflare Pages
+        run: npx wrangler@3 pages deploy dist --project-name=lelemon-inmobiliarias --commit-dirty=true --branch=main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

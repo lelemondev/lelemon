@@ -1,0 +1,915 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const founder = {
+  name: "Camilo Alaniz",
+  role: "Founder & AI Engineer",
+  image: "https://res.cloudinary.com/dborlhema/image/upload/v1768233343/Gemini_Generated_Image_xk43skxk43skxk43_xbkzto.png",
+  linkedin: "https://www.linkedin.com/in/kmilo93sd",
+  bio: [
+    "10+ años en tecnología",
+    "Ex Nubox - Senior Engineer",
+    "Cat lover",
+  ],
+  badges: [
+    { name: "Google for Startups 2026", color: "green" },
+    { name: "AWS Activate 2026", color: "orange" },
+  ],
+};
+
+const stats = [
+  { value: "78%", label: "de las ventas van al primer agente que responde", source: "NAR" },
+  { value: "21x", label: "más probable cerrar si respondes en menos de 5 minutos", source: "MIT" },
+  { value: "391%", label: "más conversiones al responder en menos de 1 minuto", source: "Velocify" },
+];
+
+const benefits = [
+  {
+    icon: "clock",
+    title: "Respuesta inmediata, siempre",
+    description: "Cada consulta respondida en segundos. Mientras duermes, muestras propiedades o estás en una visita.",
+    stat: "24/7",
+    statLabel: "disponible",
+  },
+  {
+    icon: "filter",
+    title: "Solo clientes serios",
+    description: "Filtra automáticamente quién tiene presupuesto real, financiamiento aprobado y urgencia de compra.",
+    stat: "80%",
+    statLabel: "menos tiempo perdido",
+  },
+  {
+    icon: "calendar",
+    title: "Visitas agendadas automáticamente",
+    description: "Coordina día, hora y dirección sin que tú escribas un solo mensaje. Llega listo a mostrar.",
+    stat: "0",
+    statLabel: "idas y vueltas",
+  },
+];
+
+const painPoints = [
+  {
+    quote: "No puedo desconectar nunca, siempre pendiente del celular",
+    pain: "Sin vida personal",
+  },
+  {
+    quote: "Paso el día contestando: ¿precio?, ¿ubicación?, ¿metros?...",
+    pain: "Preguntas repetitivas",
+  },
+  {
+    quote: "Quedamos el martes... no, mejor miércoles... al final no llegó",
+    pain: "Coordinación infinita",
+  },
+  {
+    quote: "De 20 que me escriben, 2 son clientes reales",
+    pain: "Curiosos sin intención",
+  },
+];
+
+const steps = [
+  {
+    number: "1",
+    title: "Conecta tu WhatsApp",
+    description: "En 1 día configuramos tu número con tu catálogo de propiedades. Sin cambiar de número.",
+    icon: "link",
+  },
+  {
+    number: "2",
+    title: "Lelemon atiende 24/7",
+    description: "Responde consultas, envía fichas, califica interés y agenda visitas. Como tu mejor asistente.",
+    icon: "bot",
+  },
+  {
+    number: "3",
+    title: "Tú cierras la venta",
+    description: "Recibes clientes filtrados con visita agendada. Solo te enfocas en lo que mejor haces: vender.",
+    icon: "trophy",
+  },
+];
+
+const objections = [
+  {
+    question: "¿Mis clientes sabrán que es automático?",
+    answer: "No. Las respuestas son naturales y personalizadas. Tus clientes sienten que hablan contigo.",
+  },
+  {
+    question: "¿Qué pasa si el cliente pregunta algo muy específico?",
+    answer: "Lelemon te notifica y tú tomas el control. Nunca pierde un cliente por no saber responder.",
+  },
+  {
+    question: "¿Funciona con mi número actual de WhatsApp?",
+    answer: "Sí. Usamos tu número actual, sin cambios. Tus clientes siguen escribiéndote al mismo contacto.",
+  },
+  {
+    question: "¿Cuánto tiempo toma configurarlo?",
+    answer: "1 día. Subes tu catálogo, definimos las respuestas y listo. Al día siguiente ya está funcionando.",
+  },
+];
+---
+
+<Layout title="Lelemon para Inmobiliarias | Nunca pierdas un cliente por tardar en responder">
+  <!-- Navbar -->
+  <nav class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-[#FAFDF7]/80 backdrop-blur-md border-b border-gray-200/50" id="navbar">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <a href="/" class="flex items-center group">
+          <img src="/logo.svg" alt="Lelemon" class="h-10 transition-transform duration-300 group-hover:scale-105" />
+        </a>
+        <a
+          href="https://wa.me/56977066965?text=Hola,%20me%20interesa%20Lelemon%20para%20mi%20inmobiliaria"
+          target="_blank"
+          class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-[#18181B] bg-[#FACC15] hover:bg-[#EAB308] rounded-xl transition-all duration-200 shadow-[0_4px_14px_-4px_rgba(250,204,21,0.5)] hover:shadow-[0_6px_20px_-4px_rgba(250,204,21,0.6)] hover:-translate-y-0.5"
+        >
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+          </svg>
+          Hablar con ventas
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <!-- Hero Section -->
+    <section class="relative min-h-screen flex items-center px-4 sm:px-6 lg:px-8 overflow-hidden pt-20">
+      <!-- Background -->
+      <div class="absolute inset-0 bg-[#FAFDF7] -z-10">
+        <div class="absolute -top-20 -right-20 w-[500px] h-[500px] bg-gradient-to-bl from-[#FACC15]/25 via-[#FEF08A]/15 to-transparent rounded-full blur-3xl animate-blob"></div>
+        <div class="absolute -bottom-32 -left-32 w-[400px] h-[400px] bg-gradient-to-tr from-[#FACC15]/20 to-transparent rounded-full blur-3xl animate-blob animation-delay-2000"></div>
+        <div class="absolute top-1/2 left-1/3 w-[300px] h-[300px] bg-gradient-to-r from-[#84cc16]/15 to-transparent rounded-full blur-2xl animate-blob animation-delay-4000"></div>
+      </div>
+
+      <div class="max-w-7xl mx-auto w-full py-16 lg:py-24">
+        <div class="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+          <!-- Left column - Content -->
+          <div class="space-y-8">
+            <!-- Badge -->
+            <div class="animate-fade-in">
+              <span class="inline-flex items-center gap-2 bg-[#FACC15]/10 border border-[#FACC15]/30 px-4 py-2 rounded-full">
+                <span class="relative flex h-2 w-2">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FACC15] opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2 w-2 bg-[#EAB308]"></span>
+                </span>
+                <span class="text-sm font-medium text-[#A16207]">Para corredores de propiedades</span>
+              </span>
+            </div>
+
+            <!-- Heading -->
+            <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.1] tracking-tight text-[#18181B] animate-fade-in animation-delay-100">
+              Atiende más clientes
+              <span class="relative inline-block mt-2">
+                <span class="text-[#CA8A04]">sin trabajar más horas</span>
+                <svg class="absolute -bottom-2 left-0 w-full h-3" viewBox="0 0 300 12" fill="none" preserveAspectRatio="none">
+                  <path d="M2 9C50 3 100 3 150 6C200 9 250 5 298 8" stroke="#FACC15" stroke-width="4" stroke-linecap="round" class="animate-draw" />
+                </svg>
+              </span>
+            </h1>
+
+            <!-- Description -->
+            <p class="text-lg lg:text-xl text-[#52525B] max-w-xl leading-relaxed animate-fade-in animation-delay-200">
+              <strong class="text-[#18181B]">Lelemon responde por WhatsApp en segundos</strong>, filtra curiosos y agenda visitas automáticamente. Tú solo llegas a cerrar.
+            </p>
+
+            <!-- CTAs -->
+            <div class="flex flex-col sm:flex-row gap-4 animate-fade-in animation-delay-300">
+              <a
+                href="https://wa.me/56977066965?text=Hola,%20quiero%20ver%20una%20demo%20de%20Lelemon%20para%20inmobiliarias"
+                target="_blank"
+                class="group inline-flex items-center justify-center gap-2 px-8 py-4 text-base font-semibold text-[#18181B] bg-[#FACC15] hover:bg-[#EAB308] rounded-xl transition-all duration-200 shadow-[0_4px_20px_-4px_rgba(250,204,21,0.5)] hover:shadow-[0_8px_30px_-4px_rgba(250,204,21,0.6)] hover:-translate-y-1"
+              >
+                <svg class="w-5 h-5 transition-transform group-hover:scale-110" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                </svg>
+                Ver demo en vivo
+              </a>
+              <a
+                href="#problema"
+                class="inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-[#3F3F46] bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md group"
+              >
+                Cómo funciona
+                <svg class="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+              </a>
+            </div>
+
+            <!-- Trust indicators -->
+            <div class="flex items-center gap-6 pt-4 animate-fade-in animation-delay-400">
+              <div class="flex items-center gap-2 text-sm text-[#71717A]">
+                <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                Setup en 1 día
+              </div>
+              <div class="flex items-center gap-2 text-sm text-[#71717A]">
+                <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                Sin cambiar tu número
+              </div>
+            </div>
+          </div>
+
+          <!-- Right column - Visual -->
+          <div class="relative hidden lg:block">
+            <div class="relative">
+              <!-- Phone mockup with chat -->
+              <div class="relative mx-auto w-[300px] animate-fade-in animation-delay-300">
+                <!-- Phone frame -->
+                <div class="relative bg-[#18181B] rounded-[3rem] p-3 shadow-2xl">
+                  <div class="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-[#18181B] rounded-b-2xl"></div>
+                  <!-- Screen -->
+                  <div class="bg-[#ECE5DD] rounded-[2.5rem] overflow-hidden h-[500px]">
+                    <!-- WhatsApp header -->
+                    <div class="bg-[#075E54] px-4 py-3 flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-[#FACC15] flex items-center justify-center">
+                        <span class="text-lg">🍋</span>
+                      </div>
+                      <div class="flex-1">
+                        <p class="text-white font-medium text-sm">Tu Asistente Lelemon</p>
+                        <p class="text-green-200 text-xs">en línea</p>
+                      </div>
+                    </div>
+                    <!-- Messages -->
+                    <div class="p-3 space-y-2 overflow-hidden">
+                      <!-- User message -->
+                      <div class="flex justify-end animate-message animation-delay-500">
+                        <div class="bg-[#DCF8C6] rounded-lg rounded-tr-none px-3 py-2 max-w-[200px] shadow-sm">
+                          <p class="text-sm text-[#303030]">Hola, vi el depto de 3D2B en Providencia, ¿sigue disponible?</p>
+                          <p class="text-[10px] text-gray-500 text-right mt-1">14:32</p>
+                        </div>
+                      </div>
+                      <!-- Bot response -->
+                      <div class="flex justify-start animate-message animation-delay-1000">
+                        <div class="bg-white rounded-lg rounded-tl-none px-3 py-2 max-w-[220px] shadow-sm">
+                          <p class="text-sm text-[#303030]">¡Hola! Sí, el departamento en Av. Providencia 2150 sigue disponible 🏠</p>
+                          <p class="text-[10px] text-gray-500 text-right mt-1">14:32</p>
+                        </div>
+                      </div>
+                      <!-- Bot follow up -->
+                      <div class="flex justify-start animate-message animation-delay-1500">
+                        <div class="bg-white rounded-lg rounded-tl-none px-3 py-2 max-w-[220px] shadow-sm">
+                          <p class="text-sm text-[#303030]">Tiene 85m², terraza de 12m² y estacionamiento. UF 5.200.</p>
+                          <p class="text-sm text-[#303030] mt-2">¿Te gustaría agendar una visita? Tengo disponibilidad mañana a las 11:00 o 17:00 🗓️</p>
+                          <p class="text-[10px] text-gray-500 text-right mt-1">14:32</p>
+                        </div>
+                      </div>
+                      <!-- User confirms -->
+                      <div class="flex justify-end animate-message animation-delay-2000">
+                        <div class="bg-[#DCF8C6] rounded-lg rounded-tr-none px-3 py-2 max-w-[200px] shadow-sm">
+                          <p class="text-sm text-[#303030]">Mañana a las 17:00 me acomoda</p>
+                          <p class="text-[10px] text-gray-500 text-right mt-1">14:33</p>
+                        </div>
+                      </div>
+                      <!-- Bot confirms -->
+                      <div class="flex justify-start animate-message animation-delay-2500">
+                        <div class="bg-white rounded-lg rounded-tl-none px-3 py-2 max-w-[220px] shadow-sm">
+                          <p class="text-sm text-[#303030]">¡Perfecto! Quedas agendado para mañana 17:00 ✅</p>
+                          <p class="text-sm text-[#303030] mt-1">Te enviaré un recordatorio. ¡Nos vemos!</p>
+                          <p class="text-[10px] text-gray-500 text-right mt-1">14:33</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <!-- Floating badges -->
+                <div class="absolute -left-52 top-8 bg-white rounded-xl shadow-lg px-4 py-3 animate-float">
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                      <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <span class="text-sm font-medium text-gray-700">Visita agendada</span>
+                  </div>
+                </div>
+                <div class="absolute -right-48 top-24 bg-white rounded-xl shadow-lg px-4 py-3 animate-float animation-delay-1000">
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                      <svg class="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    </div>
+                    <span class="text-sm font-medium text-gray-700">Respuesta: 3 seg</span>
+                  </div>
+                </div>
+                <div class="absolute -left-44 bottom-40 bg-white rounded-xl shadow-lg px-4 py-3 animate-float animation-delay-2000">
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <span class="text-sm font-medium text-gray-700">Lead calificado</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scroll indicator -->
+      <div class="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce hidden lg:block">
+        <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+        </svg>
+      </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="py-12 px-4 sm:px-6 lg:px-8 bg-white border-y border-gray-100">
+      <div class="max-w-5xl mx-auto">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
+          {stats.map((stat, index) => (
+            <div class="text-center animate-on-scroll" style={`--delay: ${index * 100}ms`}>
+              <div class="text-4xl lg:text-5xl font-bold text-[#CA8A04] mb-2">{stat.value}</div>
+              <p class="text-gray-600 text-sm lg:text-base">{stat.label}</p>
+              <p class="text-xs text-gray-400 mt-1">Fuente: {stat.source}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- Problem Section -->
+    <section id="problema" class="py-24 px-4 sm:px-6 lg:px-8 bg-[#FAFDF7]">
+      <div class="max-w-5xl mx-auto">
+        <div class="text-center mb-16">
+          <span class="inline-flex items-center gap-2 bg-red-50 border border-red-100 px-4 py-1.5 rounded-full mb-4">
+            <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+            <span class="text-sm font-medium text-red-700">El problema</span>
+          </span>
+          <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#18181B] mb-6">
+            ¿Te suena familiar?
+          </h2>
+          <p class="text-lg text-[#52525B] max-w-2xl mx-auto">
+            Esto le pasa a 8 de cada 10 corredores de propiedades todos los días
+          </p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-6">
+          {painPoints.map((point, index) => (
+            <div
+              class="group bg-white border border-gray-100 rounded-2xl p-6 hover:border-red-200 hover:shadow-lg transition-all duration-300 animate-on-scroll"
+              style={`--delay: ${index * 100}ms`}
+            >
+              <div class="flex items-start gap-4">
+                <div class="flex-shrink-0 w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center group-hover:bg-red-100 transition-colors">
+                  <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-[#18181B] font-medium italic mb-2">"{point.quote}"</p>
+                  <span class="text-sm text-red-600 font-medium">{point.pain}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div class="text-center mt-12">
+          <p class="text-xl font-medium text-[#18181B]">
+            Cada minuto que tardas en responder,
+            <span class="text-red-600">es un cliente que se va con otro</span>.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Solution Section -->
+    <section class="py-24 px-4 sm:px-6 lg:px-8 bg-white">
+      <div class="max-w-6xl mx-auto">
+        <div class="text-center mb-16">
+          <span class="inline-flex items-center gap-2 bg-green-50 border border-green-100 px-4 py-1.5 rounded-full mb-4">
+            <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+            <span class="text-sm font-medium text-green-700">La solución</span>
+          </span>
+          <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#18181B] mb-6">
+            Lelemon responde por ti, <span class="text-[#CA8A04]">siempre</span>
+          </h2>
+          <p class="text-lg text-[#52525B] max-w-2xl mx-auto">
+            Como tener un asistente experto que nunca duerme, nunca se cansa y nunca pierde un cliente
+          </p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-8">
+          {benefits.map((benefit, index) => (
+            <div
+              class="group relative bg-gradient-to-b from-white to-gray-50/50 rounded-2xl p-8 border border-gray-100 hover:border-yellow-200 shadow-sm hover:shadow-xl transition-all duration-300 animate-on-scroll"
+              style={`--delay: ${index * 150}ms`}
+            >
+              <!-- Accent top border on hover -->
+              <div class="absolute top-0 left-6 right-6 h-1 bg-gradient-to-r from-yellow-400 to-amber-500 rounded-full scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
+
+              <div class="w-14 h-14 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-xl flex items-center justify-center mb-6 shadow-lg shadow-yellow-200/50 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
+                {benefit.icon === "clock" && (
+                  <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                )}
+                {benefit.icon === "filter" && (
+                  <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                  </svg>
+                )}
+                {benefit.icon === "calendar" && (
+                  <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                  </svg>
+                )}
+              </div>
+
+              <!-- Stat badge -->
+              <div class="inline-flex items-center gap-2 bg-yellow-50 px-3 py-1 rounded-full mb-4">
+                <span class="text-lg font-bold text-[#CA8A04]">{benefit.stat}</span>
+                <span class="text-sm text-[#A16207]">{benefit.statLabel}</span>
+              </div>
+
+              <h3 class="text-xl font-bold text-[#18181B] mb-3">{benefit.title}</h3>
+              <p class="text-[#52525B] leading-relaxed">{benefit.description}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- How it Works Section -->
+    <section class="py-24 px-4 sm:px-6 lg:px-8 bg-[#FAFDF7]">
+      <div class="max-w-5xl mx-auto">
+        <div class="text-center mb-16">
+          <span class="inline-flex items-center gap-2 bg-[#FACC15]/10 border border-[#FACC15]/30 px-4 py-1.5 rounded-full mb-4">
+            <span class="text-base">⚡</span>
+            <span class="text-sm font-medium text-[#A16207]">Así de simple</span>
+          </span>
+          <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#18181B] mb-6">
+            Funcionando en 1 día
+          </h2>
+          <p class="text-lg text-[#52525B] max-w-2xl mx-auto">
+            Sin instalaciones complicadas. Sin cambiar tu forma de trabajar.
+          </p>
+        </div>
+
+        <div class="relative">
+          <!-- Connection line -->
+          <div class="hidden md:block absolute top-24 left-[16%] right-[16%] h-0.5 bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-200"></div>
+
+          <div class="grid md:grid-cols-3 gap-8 md:gap-12">
+            {steps.map((step, index) => (
+              <div class="relative text-center animate-on-scroll" style={`--delay: ${index * 200}ms`}>
+                <!-- Step number -->
+                <div class="relative inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-2xl shadow-xl shadow-yellow-200/50 mb-8 group-hover:scale-110 transition-transform duration-300">
+                  <span class="text-3xl font-bold text-white">{step.number}</span>
+                  <!-- Pulse ring -->
+                  <div class="absolute inset-0 rounded-2xl bg-yellow-400 animate-ping opacity-20"></div>
+                </div>
+
+                <h3 class="text-xl font-bold text-[#18181B] mb-4">{step.title}</h3>
+                <p class="text-[#52525B] leading-relaxed">{step.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Social Proof / What you get Section -->
+    <section class="py-24 px-4 sm:px-6 lg:px-8 bg-white">
+      <div class="max-w-5xl mx-auto">
+        <div class="text-center mb-16">
+          <span class="inline-flex items-center gap-2 bg-blue-50 border border-blue-100 px-4 py-1.5 rounded-full mb-4">
+            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span class="text-sm font-medium text-blue-700">Lo que obtienes</span>
+          </span>
+          <h2 class="text-3xl sm:text-4xl font-bold text-[#18181B] mb-6">
+            Todo lo que necesitas para vender más
+          </h2>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-6">
+          <div class="flex items-start gap-4 p-6 bg-gray-50 rounded-xl animate-on-scroll" style="--delay: 0ms">
+            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <h4 class="font-semibold text-[#18181B] mb-1">Respuestas inteligentes 24/7</h4>
+              <p class="text-sm text-[#52525B]">Responde preguntas sobre ubicación, precio, metros, amenidades y más.</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-4 p-6 bg-gray-50 rounded-xl animate-on-scroll" style="--delay: 100ms">
+            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <h4 class="font-semibold text-[#18181B] mb-1">Calificación automática de leads</h4>
+              <p class="text-sm text-[#52525B]">Detecta presupuesto, urgencia y seriedad antes de que tú intervengas.</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-4 p-6 bg-gray-50 rounded-xl animate-on-scroll" style="--delay: 200ms">
+            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <h4 class="font-semibold text-[#18181B] mb-1">Agendamiento automático</h4>
+              <p class="text-sm text-[#52525B]">Coordina visitas según tu disponibilidad real. Sin dobles reservas.</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-4 p-6 bg-gray-50 rounded-xl animate-on-scroll" style="--delay: 300ms">
+            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <h4 class="font-semibold text-[#18181B] mb-1">Envío de fichas y fotos</h4>
+              <p class="text-sm text-[#52525B]">Comparte información detallada de cada propiedad automáticamente.</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-4 p-6 bg-gray-50 rounded-xl animate-on-scroll" style="--delay: 400ms">
+            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <h4 class="font-semibold text-[#18181B] mb-1">Notificaciones en tiempo real</h4>
+              <p class="text-sm text-[#52525B]">Recibe alertas cuando un cliente calificado está listo para ti.</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-4 p-6 bg-gray-50 rounded-xl animate-on-scroll" style="--delay: 500ms">
+            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <h4 class="font-semibold text-[#18181B] mb-1">Traspaso inteligente</h4>
+              <p class="text-sm text-[#52525B]">Cuando el cliente necesita algo específico, te pasa la conversación.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="py-24 px-4 sm:px-6 lg:px-8 bg-[#FAFDF7]">
+      <div class="max-w-3xl mx-auto">
+        <div class="text-center mb-16">
+          <span class="inline-flex items-center gap-2 bg-gray-100 border border-gray-200 px-4 py-1.5 rounded-full mb-4">
+            <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span class="text-sm font-medium text-gray-700">Preguntas frecuentes</span>
+          </span>
+          <h2 class="text-3xl sm:text-4xl font-bold text-[#18181B]">
+            ¿Tienes dudas?
+          </h2>
+        </div>
+
+        <div class="space-y-4">
+          {objections.map((item, index) => (
+            <div class="bg-white border border-gray-100 rounded-xl overflow-hidden animate-on-scroll" style={`--delay: ${index * 100}ms`}>
+              <details class="group">
+                <summary class="flex items-center justify-between p-6 cursor-pointer hover:bg-gray-50 transition-colors">
+                  <span class="font-medium text-[#18181B] pr-4">{item.question}</span>
+                  <svg class="w-5 h-5 text-gray-400 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </summary>
+                <div class="px-6 pb-6 text-[#52525B]">
+                  {item.answer}
+                </div>
+              </details>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- Team Section -->
+    <section class="py-24 px-4 sm:px-6 lg:px-8 bg-white">
+      <div class="max-w-4xl mx-auto">
+        <div class="text-center mb-16">
+          <span class="inline-block bg-yellow-100 text-yellow-800 text-sm font-medium px-4 py-1.5 rounded-full mb-4">
+            Equipo
+          </span>
+          <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+            Quién está detrás
+          </h2>
+          <p class="text-lg text-gray-600 max-w-2xl mx-auto">
+            Comprometidos con transformar la atención al cliente en Latinoamérica
+          </p>
+        </div>
+
+        <div class="flex justify-center">
+          <div class="group relative bg-white rounded-3xl p-8 border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 max-w-md animate-on-scroll">
+            <div class="absolute top-0 left-8 right-8 h-1 bg-gradient-to-r from-transparent via-yellow-400 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-500"></div>
+
+            <div class="flex flex-col sm:flex-row items-center gap-6">
+              <div class="relative w-32 h-32 sm:w-36 sm:h-36 rounded-2xl overflow-hidden border-2 border-gray-100 group-hover:border-yellow-300 transition-all duration-300 shadow-lg flex-shrink-0">
+                <img
+                  src={founder.image}
+                  alt={founder.name}
+                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  loading="lazy"
+                />
+              </div>
+
+              <div class="text-center sm:text-left">
+                <h3 class="text-xl sm:text-2xl font-bold text-gray-900 mb-1">
+                  {founder.name}
+                </h3>
+                <p class="text-yellow-600 font-medium mb-2">
+                  {founder.role}
+                </p>
+
+                <ul class="text-gray-500 text-sm mb-4 space-y-1">
+                  {founder.bio.map((item, idx) => (
+                    <li class="flex items-center gap-2">
+                      <span class="w-1 h-1 bg-yellow-400 rounded-full"></span>
+                      {item}
+                      {idx === 2 && <span class="text-base">🐱</span>}
+                    </li>
+                  ))}
+                </ul>
+
+                <div class="flex flex-wrap gap-2 mb-4 justify-center sm:justify-start">
+                  {founder.badges.map((badge) => (
+                    <span
+                      class={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${
+                        badge.color === "green"
+                          ? "bg-green-50 text-green-700"
+                          : "bg-orange-50 text-orange-700"
+                      }`}
+                    >
+                      <span class={`w-1.5 h-1.5 rounded-full ${
+                        badge.color === "green" ? "bg-green-500" : "bg-orange-500"
+                      }`}></span>
+                      {badge.name}
+                    </span>
+                  ))}
+                </div>
+
+                <a
+                  href={founder.linkedin}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-50 border border-gray-200 hover:bg-blue-50 hover:border-blue-300 transition-all duration-300 text-gray-700 hover:text-blue-600"
+                >
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                  </svg>
+                  <span class="text-sm font-medium">LinkedIn</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Final CTA Section -->
+    <section class="py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      <!-- Background gradient -->
+      <div class="absolute inset-0 bg-gradient-to-br from-[#FACC15] via-[#EAB308] to-[#CA8A04]"></div>
+      <div class="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cg fill=%22none%22 fill-rule=%22evenodd%22%3E%3Cg fill=%22%23ffffff%22 fill-opacity=%220.05%22%3E%3Cpath d=%22M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-50"></div>
+
+      <div class="max-w-3xl mx-auto text-center relative z-10">
+        <div class="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full mb-8">
+          <span class="relative flex h-3 w-3">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
+          </span>
+          <span class="text-sm font-medium text-[#18181B]">Disponibilidad limitada esta semana</span>
+        </div>
+
+        <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#18181B] mb-6">
+          Deja de perder clientes hoy
+        </h2>
+        <p class="text-xl text-[#3F3F46] mb-10 max-w-2xl mx-auto">
+          En 15 minutos te mostramos cómo Lelemon puede responder por ti. Sin compromiso.
+        </p>
+
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+          <a
+            href="https://wa.me/56977066965?text=Hola,%20quiero%20agendar%20una%20demo%20de%20Lelemon%20para%20mi%20inmobiliaria"
+            target="_blank"
+            class="group inline-flex items-center justify-center gap-3 bg-[#18181B] hover:bg-[#27272A] text-white font-semibold px-10 py-5 rounded-xl text-lg transition-all duration-300 shadow-xl hover:shadow-2xl hover:-translate-y-1"
+          >
+            <svg class="w-6 h-6 transition-transform group-hover:scale-110" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+            </svg>
+            Agendar demo gratuita
+          </a>
+        </div>
+
+        <p class="mt-8 text-[#3F3F46]">
+          O escríbenos directamente al <a href="https://wa.me/56977066965" class="font-semibold underline decoration-2 decoration-[#18181B]/30 hover:decoration-[#18181B] transition-all">+56 9 7706 6965</a>
+        </p>
+
+        <!-- Trust badges -->
+        <div class="flex flex-wrap items-center justify-center gap-6 mt-12 pt-8 border-t border-[#18181B]/10">
+          <div class="flex items-center gap-2 text-sm text-[#3F3F46]">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            Datos protegidos
+          </div>
+          <div class="flex items-center gap-2 text-sm text-[#3F3F46]">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Setup en 1 día
+          </div>
+          <div class="flex items-center gap-2 text-sm text-[#3F3F46]">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+            </svg>
+            Soporte humano
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-12 px-4 sm:px-6 lg:px-8 bg-[#18181B]">
+      <div class="max-w-5xl mx-auto">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+          <div class="flex items-center gap-2">
+            <img src="/logo-white.svg" alt="Lelemon" class="h-8" />
+          </div>
+          <div class="flex flex-col md:flex-row items-center gap-4 md:gap-8 text-sm text-gray-400">
+            <a href="https://lelemon.cl" class="hover:text-white transition-colors">www.lelemon.cl</a>
+            <a href="mailto:info@lelemon.dev" class="hover:text-white transition-colors">info@lelemon.dev</a>
+            <a href="https://wa.me/56977066965" class="hover:text-white transition-colors">+56 9 7706 6965</a>
+          </div>
+        </div>
+        <div class="mt-8 pt-8 border-t border-gray-800 text-center">
+          <p class="text-sm text-gray-500">
+            © 2026 Lelemon. Todos los derechos reservados.
+          </p>
+        </div>
+      </div>
+    </footer>
+  </main>
+</Layout>
+
+<style>
+  /* Base animations */
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes draw {
+    from {
+      stroke-dashoffset: 300;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  @keyframes blob {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+    }
+    33% {
+      transform: translate(30px, -30px) scale(1.1);
+    }
+    66% {
+      transform: translate(-20px, 20px) scale(0.9);
+    }
+  }
+
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  @keyframes message {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Animation classes */
+  .animate-fade-in {
+    animation: fade-in 0.6s ease-out forwards;
+    opacity: 0;
+  }
+
+  .animate-draw {
+    stroke-dasharray: 300;
+    stroke-dashoffset: 300;
+    animation: draw 1s ease-out 0.5s forwards;
+  }
+
+  .animate-blob {
+    animation: blob 7s infinite ease-in-out;
+  }
+
+  .animate-float {
+    animation: float 3s infinite ease-in-out;
+  }
+
+  .animate-message {
+    opacity: 0;
+    animation: message 0.4s ease-out forwards;
+  }
+
+  /* Animation delays */
+  .animation-delay-100 { animation-delay: 100ms; }
+  .animation-delay-200 { animation-delay: 200ms; }
+  .animation-delay-300 { animation-delay: 300ms; }
+  .animation-delay-400 { animation-delay: 400ms; }
+  .animation-delay-500 { animation-delay: 500ms; }
+  .animation-delay-1000 { animation-delay: 1000ms; }
+  .animation-delay-1500 { animation-delay: 1500ms; }
+  .animation-delay-2000 { animation-delay: 2000ms; }
+  .animation-delay-2500 { animation-delay: 2500ms; }
+  .animation-delay-4000 { animation-delay: 4000ms; }
+
+  /* Scroll animations */
+  .animate-on-scroll {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+    transition-delay: var(--delay, 0ms);
+  }
+
+  .animate-on-scroll.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Details/Summary styling */
+  details summary::-webkit-details-marker {
+    display: none;
+  }
+</style>
+
+<script>
+  // Intersection Observer for scroll animations
+  const observerOptions = {
+    threshold: 0.1,
+    rootMargin: '0px 0px -50px 0px'
+  };
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, observerOptions);
+
+  document.querySelectorAll('.animate-on-scroll').forEach(el => {
+    observer.observe(el);
+  });
+
+  // Navbar scroll effect
+  const navbar = document.getElementById('navbar');
+  let lastScroll = 0;
+
+  window.addEventListener('scroll', () => {
+    const currentScroll = window.pageYOffset;
+
+    if (currentScroll > 50) {
+      navbar?.classList.add('shadow-sm');
+    } else {
+      navbar?.classList.remove('shadow-sm');
+    }
+
+    lastScroll = currentScroll;
+  });
+</script>
