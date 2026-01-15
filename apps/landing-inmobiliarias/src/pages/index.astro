@@ -18,9 +18,9 @@ const founder = {
 };
 
 const stats = [
-  { value: "78%", label: "de las ventas van al primer agente que responde", source: "NAR" },
-  { value: "21x", label: "más probable cerrar si respondes en menos de 5 minutos", source: "MIT" },
-  { value: "391%", label: "más conversiones al responder en menos de 1 minuto", source: "Velocify" },
+  { value: "78%", label: "de las ventas van al primer corredor que responde" },
+  { value: "21x", label: "más probable cerrar si respondes en menos de 5 minutos" },
+  { value: "391%", label: "más conversiones al responder en menos de 1 minuto" },
 ];
 
 const benefits = [
@@ -89,6 +89,10 @@ const steps = [
 
 const objections = [
   {
+    question: "¿Cómo funciona exactamente?",
+    answer: "Conectamos un asistente a tu número de WhatsApp. Cuando un cliente te escribe, el asistente responde automáticamente con la información de tus propiedades. No necesitas instalar nada ni cambiar de número.",
+  },
+  {
     question: "¿Mis clientes sabrán que es automático?",
     answer: "No. Las respuestas son naturales y personalizadas. Tus clientes sienten que hablan contigo.",
   },
@@ -107,7 +111,7 @@ const objections = [
 ];
 ---
 
-<Layout title="Lelemon para Inmobiliarias | Nunca pierdas un cliente por tardar en responder">
+<Layout title="Lelemon para Corredores de Propiedades | Atiende más clientes sin trabajar más horas">
   <!-- Navbar -->
   <nav class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-[#FAFDF7]/80 backdrop-blur-md border-b border-gray-200/50" id="navbar">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -116,7 +120,7 @@ const objections = [
           <img src="/logo.svg" alt="Lelemon" class="h-10 transition-transform duration-300 group-hover:scale-105" />
         </a>
         <a
-          href="https://wa.me/56977066965?text=Hola,%20me%20interesa%20Lelemon%20para%20mi%20inmobiliaria"
+          href="https://wa.me/56977066965?text=Hola,%20me%20interesa%20Lelemon%20para%20corredores"
           target="_blank"
           class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-[#18181B] bg-[#FACC15] hover:bg-[#EAB308] rounded-xl transition-all duration-200 shadow-[0_4px_14px_-4px_rgba(250,204,21,0.5)] hover:shadow-[0_6px_20px_-4px_rgba(250,204,21,0.6)] hover:-translate-y-0.5"
         >
@@ -167,7 +171,7 @@ const objections = [
 
             <!-- Description -->
             <p class="text-lg lg:text-xl text-[#52525B] max-w-xl leading-relaxed animate-fade-in animation-delay-200">
-              <strong class="text-[#18181B]">Lelemon responde por WhatsApp en segundos</strong>, filtra curiosos y agenda visitas automáticamente. Tú solo llegas a cerrar.
+              Conectamos un <strong class="text-[#18181B]">asistente inteligente a tu WhatsApp</strong>. Tus clientes escriben al mismo número de siempre, pero ahora les responde automáticamente: contesta preguntas, filtra curiosos y agenda visitas. <strong class="text-[#18181B]">Tú solo llegas a cerrar.</strong>
             </p>
 
             <!-- CTAs -->
@@ -325,7 +329,6 @@ const objections = [
             <div class="text-center animate-on-scroll" style={`--delay: ${index * 100}ms`}>
               <div class="text-4xl lg:text-5xl font-bold text-[#CA8A04] mb-2">{stat.value}</div>
               <p class="text-gray-600 text-sm lg:text-base">{stat.label}</p>
-              <p class="text-xs text-gray-400 mt-1">Fuente: {stat.source}</p>
             </div>
           ))}
         </div>
@@ -706,7 +709,7 @@ const objections = [
 
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
           <a
-            href="https://wa.me/56977066965?text=Hola,%20quiero%20agendar%20una%20demo%20de%20Lelemon%20para%20mi%20inmobiliaria"
+            href="https://wa.me/56977066965?text=Hola,%20quiero%20agendar%20una%20demo%20de%20Lelemon%20para%20corredores"
             target="_blank"
             class="group inline-flex items-center justify-center gap-3 bg-[#18181B] hover:bg-[#27272A] text-white font-semibold px-10 py-5 rounded-xl text-lg transition-all duration-300 shadow-xl hover:shadow-2xl hover:-translate-y-1"
           >
