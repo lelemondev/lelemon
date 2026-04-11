@@ -140,26 +140,38 @@ func (p *EventProcessor) buildTrace(projectID, traceID string, events []IngestEv
 		trace.ID = traceID
 	}
 
-	// Extract trace name from agent span or _traceName metadata
+	// Extract trace name and tags from agent span (root span has the trace-level data)
 	for _, event := range events {
-		if event.SpanType == "agent" && event.Name != "" {
-			trace.Name = &event.Name
+		if event.SpanType == "agent" {
+			if event.Name != "" {
+				trace.Name = &event.Name
+			}
+			if event.Tags != nil {
+				trace.Tags = event.Tags
+			}
+			if event.SessionID != "" {
+				trace.SessionID = &event.SessionID
+			}
+			if event.UserID != "" {
+				trace.UserID = &event.UserID
+			}
 			break
 		}
 	}
+
+	// Fallback to first event if no agent span found
 	if trace.Name == nil && firstEvent.Metadata != nil {
 		if name, ok := firstEvent.Metadata["_traceName"].(string); ok && name != "" {
 			trace.Name = &name
 		}
 	}
-
-	if firstEvent.SessionID != "" {
+	if trace.SessionID == nil && firstEvent.SessionID != "" {
 		trace.SessionID = &firstEvent.SessionID
 	}
-	if firstEvent.UserID != "" {
+	if trace.UserID == nil && firstEvent.UserID != "" {
 		trace.UserID = &firstEvent.UserID
 	}
-	if firstEvent.Tags != nil {
+	if trace.Tags == nil && firstEvent.Tags != nil {
 		trace.Tags = firstEvent.Tags
 	}
 	if firstEvent.Input != nil {

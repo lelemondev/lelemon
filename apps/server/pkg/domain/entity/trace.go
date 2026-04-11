@@ -43,6 +43,7 @@ type TraceWithMetrics struct {
 }
 
 type TraceFilter struct {
+	Name      *string
 	SessionID *string
 	UserID    *string
 	Status    *TraceStatus
