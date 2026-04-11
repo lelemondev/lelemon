@@ -108,6 +108,11 @@ lelemon/
 │           ├── handler/           # Billing, org handlers
 │           ├── middleware/        # RBAC middleware
 │           └── extension.go       # Implements RouterExtension
+│
+└── .claude/                       # Claude Code configuration
+    ├── settings.json
+    ├── agents/                    # Custom agent definitions
+    └── rules/                     # Code pattern rules
 ```
 
 ---
@@ -159,6 +164,18 @@ go test ./...                 # Run tests
 
 # Use go.work from root for workspace-aware commands
 cd ../.. && go build ./ee/server/...
+```
+
+### Docker Development (Hot Reload)
+```bash
+# Development with hot reload (recommended)
+docker-compose -f docker-compose.dev.yml up -d
+
+# Production-like build
+docker-compose up -d
+
+# Backend: http://localhost:8080
+# Frontend: http://localhost:3000
 ```
 
 ---
@@ -425,13 +442,20 @@ docker-compose up -d
 docker-compose -f docker-compose.postgres.yml up -d
 ```
 
-### Railway
+### Railway (OSS)
 ```bash
 # Backend: Connect to apps/server
 # Set DATABASE_URL to PostgreSQL
 
 # Frontend: Connect to apps/web
 # Set NEXT_PUBLIC_API_URL to backend URL
+```
+
+### DigitalOcean (Enterprise)
+```bash
+# API: https://api.lelemon.dev (Docker on Droplet)
+# Dashboard: https://lelemon.dev (Docker on Droplet)
+# Uses docker-compose with PostgreSQL
 ```
 
 ### Manual
@@ -468,7 +492,9 @@ When working on this codebase:
 4. **Dashboard is frontend-only** - No database or API routes in Next.js
 5. **API client normalizes responses** - Go uses PascalCase, JS uses camelCase
 6. **Use TodoWrite** - Track multi-step tasks
+7. **Keep OSS and EE separate** - Enterprise code lives in `ee/server/` and `apps/web/src/ee/`
+8. **EE extends OSS** - Enterprise uses RouterExtension interface to extend core functionality
 
 ---
 
-**License:** AGPL-3.0
+**License:** AGPL-3.0 (excludes `ee/` folder which is proprietary)

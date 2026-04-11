@@ -1,8 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(yarn:*)",
+      "Bash(pnpm:*)",
       "Bash(npm run:*)",
+      "Bash(go run:*)",
+      "Bash(go build:*)",
+      "Bash(go test:*)",
+      "Bash(docker-compose:*)",
       "Bash(git status:*)",
       "Bash(git diff:*)",
       "Bash(git log:*)",
@@ -10,16 +14,18 @@
       "Bash(git commit:*)",
       "Bash(git branch:*)",
       "Bash(git checkout:*)",
-      "Bash(supabase:*)",
-      "WebFetch(domain:lelemon.dev)"
+      "WebFetch(domain:lelemon.dev)",
+      "WebFetch(domain:api.lelemon.dev)"
     ],
     "deny": [
       "Read(.env)",
       "Read(.env.*)",
       "Read(apps/web/.env)",
       "Read(apps/web/.env.*)",
-      "Read(supabase/.env)",
-      "Read(supabase/.env.*)",
+      "Read(apps/server/.env)",
+      "Read(apps/server/.env.*)",
+      "Read(ee/server/.env)",
+      "Read(ee/server/.env.*)",
       "Read(**/*.key)",
       "Read(**/*.secret)",
       "Bash(rm -rf:*)",

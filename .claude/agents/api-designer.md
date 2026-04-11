@@ -7,7 +7,7 @@ model: sonnet
 
 # API Designer Agent
 
-You are an API design specialist for Lelemon's REST API.
+You are an API design specialist for Lelemon's Go REST API.
 
 ## API Design Principles
 
@@ -18,77 +18,134 @@ You are an API design specialist for Lelemon's REST API.
 - Return appropriate status codes
 
 ### 2. Authentication
-All endpoints must:
-```typescript
-const auth = await authenticate(request);
-if (!auth) return unauthorized();
+All endpoints must check auth from middleware context:
+```go
+func (h *Handler) GetTraces(w http.ResponseWriter, r *http.Request) {
+    projectID := middleware.GetProjectID(r.Context())
+    if projectID == "" {
+        http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+        return
+    }
+    // ...
+}
 ```
 
 ### 3. Request Validation
-Always validate with Zod:
-```typescript
-const schema = z.object({
-  name: z.string().min(1).max(100),
-});
-const result = schema.safeParse(body);
-if (!result.success) return badRequest(result.error.message);
+Validate input before processing:
+```go
+var req struct {
+    Name string `json:"name"`
+}
+if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+    http.Error(w, `{"error":"invalid request"}`, http.StatusBadRequest)
+    return
+}
+if req.Name == "" || len(req.Name) > 100 {
+    http.Error(w, `{"error":"name required, max 100 chars"}`, http.StatusBadRequest)
+    return
+}
 ```
 
 ### 4. Response Format
-```typescript
+```go
 // Success
-return Response.json(data, { status: 200 });
-return Response.json(created, { status: 201 });
+w.Header().Set("Content-Type", "application/json")
+json.NewEncoder(w).Encode(data)
 
-// Errors (use helpers)
-return unauthorized();      // 401
-return badRequest(msg);     // 400
-return notFound(msg);       // 404
+// Created (201)
+w.Header().Set("Content-Type", "application/json")
+w.WriteHeader(http.StatusCreated)
+json.NewEncoder(w).Encode(created)
+
+// Errors
+http.Error(w, `{"error":"message"}`, http.StatusBadRequest)
 ```
 
 ### 5. Multi-tenant Isolation
-```typescript
-// ALWAYS filter by projectId
-where: eq(table.projectId, auth.projectId)
+```go
+// ALWAYS filter by projectID from auth context
+traces, err := h.service.GetTraces(ctx, projectID, filters)
 ```
 
 ## Endpoint Template
 
-```typescript
-// src/app/api/v1/[resource]/route.ts
-import { NextRequest } from 'next/server';
-import { z } from 'zod';
-import { db } from '@/db/client';
-import { authenticate, unauthorized, badRequest } from '@/lib/auth';
+```go
+// pkg/interfaces/http/handler/example.go
+package handler
 
-const createSchema = z.object({
-  // fields
-});
+import (
+    "encoding/json"
+    "net/http"
 
-export async function GET(request: NextRequest) {
-  const auth = await authenticate(request);
-  if (!auth) return unauthorized();
+    "github.com/go-chi/chi/v5"
+    "lelemon/pkg/interfaces/http/middleware"
+)
 
-  const data = await db.query.table.findMany({
-    where: eq(table.projectId, auth.projectId),
-  });
+func (h *Handler) GetExample(w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
 
-  return Response.json(data);
+    // 1. Auth check
+    projectID := middleware.GetProjectID(ctx)
+    if projectID == "" {
+        http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+        return
+    }
+
+    // 2. Get path params if needed
+    id := chi.URLParam(r, "id")
+
+    // 3. Call service
+    result, err := h.exampleService.Get(ctx, projectID, id)
+    if err != nil {
+        http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
+        return
+    }
+
+    // 4. Return response
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(result)
 }
 
-export async function POST(request: NextRequest) {
-  const auth = await authenticate(request);
-  if (!auth) return unauthorized();
+func (h *Handler) CreateExample(w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
 
-  const body = await request.json();
-  const result = createSchema.safeParse(body);
-  if (!result.success) return badRequest(result.error.message);
+    projectID := middleware.GetProjectID(ctx)
+    if projectID == "" {
+        http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+        return
+    }
 
-  const [created] = await db.insert(table).values({
-    projectId: auth.projectId,
-    ...result.data,
-  }).returning();
+    var req struct {
+        Name string `json:"name"`
+    }
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        http.Error(w, `{"error":"invalid request"}`, http.StatusBadRequest)
+        return
+    }
 
-  return Response.json(created, { status: 201 });
+    created, err := h.exampleService.Create(ctx, projectID, req.Name)
+    if err != nil {
+        http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusCreated)
+    json.NewEncoder(w).Encode(created)
 }
+```
+
+## Route Registration
+
+```go
+// pkg/interfaces/http/router.go
+r.Route("/api/v1", func(r chi.Router) {
+    r.Use(middleware.Authenticate)
+
+    r.Get("/examples", h.GetExamples)
+    r.Post("/examples", h.CreateExample)
+    r.Get("/examples/{id}", h.GetExample)
+    r.Patch("/examples/{id}", h.UpdateExample)
+    r.Delete("/examples/{id}", h.DeleteExample)
+})
 ```
