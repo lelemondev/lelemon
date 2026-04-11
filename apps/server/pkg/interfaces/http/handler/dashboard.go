@@ -559,20 +559,17 @@ func (h *DashboardHandler) verifyProjectOwnership(w http.ResponseWriter, r *http
 	}
 
 	projectID := chi.URLParam(r, "id")
-	projects, err := h.projectSvc.List(r.Context(), user.Email)
+	owned, err := h.projectSvc.IsOwner(r.Context(), projectID, user.Email)
 	if err != nil {
 		http.Error(w, `{"error":"Internal server error"}`, http.StatusInternalServerError)
 		return "", false
 	}
-
-	for _, p := range projects {
-		if p.ID == projectID {
-			return projectID, true
-		}
+	if !owned {
+		http.Error(w, `{"error":"Project not found"}`, http.StatusNotFound)
+		return "", false
 	}
 
-	http.Error(w, `{"error":"Project not found"}`, http.StatusNotFound)
-	return "", false
+	return projectID, true
 }
 
 func dashboardRespondJSON(w http.ResponseWriter, data any) {

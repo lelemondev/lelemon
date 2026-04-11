@@ -76,6 +76,11 @@ func (s *Service) List(ctx context.Context, ownerEmail string) ([]entity.Project
 	return s.store.ListProjectsByOwner(ctx, ownerEmail)
 }
 
+// IsOwner checks if the given email owns the project (single query, no N+1)
+func (s *Service) IsOwner(ctx context.Context, projectID, ownerEmail string) (bool, error) {
+	return s.store.IsProjectOwner(ctx, projectID, ownerEmail)
+}
+
 // Update updates a project by ID (for dashboard)
 func (s *Service) Update(ctx context.Context, projectID string, ownerEmail string, req *UpdateProjectRequest) error {
 	// Verify ownership
