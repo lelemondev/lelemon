@@ -1,0 +1,46 @@
+# Lelemon - Development with Hot Reload
+# Usage: docker-compose -f docker-compose.dev.yml up -d
+# Changes to source code are reflected immediately
+
+services:
+  lelemon-api:
+    build: ./apps/server
+    ports:
+      - "8080:8080"
+    volumes:
+      - lelemon_data:/data
+    environment:
+      - PORT=8080
+      - DATABASE_URL=sqlite:///data/lelemon.db
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      - LOG_FORMAT=json
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-change-in-prod}
+      - FRONTEND_URL=http://localhost:3000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  lelemon-web:
+    image: node:20-alpine
+    working_dir: /app
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8080
+      - NODE_ENV=development
+    command: sh -c "corepack enable pnpm && pnpm install && pnpm dev"
+    depends_on:
+      lelemon-api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  lelemon_data:
