@@ -163,6 +163,24 @@ func (s *Service) GetCurrentUser(ctx context.Context, userID string) (*UserRespo
 	return userToResponse(user), nil
 }
 
+// RefreshToken verifies the user still exists and returns a fresh token
+func (s *Service) RefreshToken(ctx context.Context, userID string) (*AuthResponse, error) {
+	user, err := s.store.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	token, err := s.jwt.GenerateToken(user.ID, user.Email)
+	if err != nil {
+		return nil, err
+	}
+
+	return &AuthResponse{
+		Token: token,
+		User:  userToResponse(user),
+	}, nil
+}
+
 // IsOAuthConfigured returns true if OAuth is configured
 func (s *Service) IsOAuthConfigured() bool {
 	return s.oauth.IsConfigured()

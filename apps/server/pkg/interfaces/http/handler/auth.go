@@ -194,7 +194,7 @@ func generateState() string {
 	return base64.URLEncoding.EncodeToString(b)
 }
 
-// Refresh handles POST /api/v1/auth/refresh (optional - for token refresh)
+// Refresh handles POST /api/v1/auth/refresh
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUser(r.Context())
 	if user == nil {
@@ -202,15 +202,12 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get fresh user data and generate new token
-	result, err := h.service.GetCurrentUser(r.Context(), user.UserID)
+	result, err := h.service.RefreshToken(r.Context(), user.UserID)
 	if err != nil {
 		http.Error(w, `{"error":"Internal server error"}`, http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{
-		"user": result,
-	})
+	json.NewEncoder(w).Encode(result)
 }
