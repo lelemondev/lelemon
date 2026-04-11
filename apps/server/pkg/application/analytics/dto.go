@@ -14,3 +14,11 @@ type UsageRequest struct {
 	To          *time.Time `json:"to,omitempty"`
 	Granularity string     `json:"granularity,omitempty"` // "hour" | "day" | "week"
 }
+
+// PeriodRequest holds from/to with optional fields
+type PeriodRequest struct {
+	From   *time.Time
+	To     *time.Time
+	Prefix string // for tag filtering
+	Limit  int    // for top-N queries
+}

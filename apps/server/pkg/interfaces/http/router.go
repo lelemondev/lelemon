@@ -115,6 +115,12 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			analyticsHandler := handler.NewAnalyticsHandler(cfg.AnalyticsSvc)
 			r.Get("/analytics/summary", analyticsHandler.Summary)
 			r.Get("/analytics/usage", analyticsHandler.Usage)
+			r.Get("/analytics/models", analyticsHandler.Models)
+			r.Get("/analytics/tags", analyticsHandler.Tags)
+			r.Get("/analytics/top-users", analyticsHandler.TopUsers)
+			r.Get("/analytics/heatmap", analyticsHandler.Heatmap)
+			r.Get("/analytics/latency/distribution", analyticsHandler.LatencyDistribution)
+			r.Get("/analytics/latency/timeseries", analyticsHandler.LatencyTimeSeries)
 
 			// Project (current - via API key)
 			projectHandler := handler.NewProjectHandler(cfg.ProjectSvc)

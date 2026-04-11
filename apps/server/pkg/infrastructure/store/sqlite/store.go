@@ -989,3 +989,256 @@ func (s *Store) GetUsageTimeSeries(ctx context.Context, projectID string, opts e
 
 	return dataPoints, nil
 }
+
+func (s *Store) GetModelStats(ctx context.Context, projectID string, period entity.Period) ([]entity.ModelStats, error) {
+	query := `
+		SELECT
+			COALESCE(s.model, 'unknown') as model,
+			COALESCE(s.provider, 'unknown') as provider,
+			COUNT(*) as requests,
+			COALESCE(SUM(s.input_tokens + s.output_tokens), 0) as total_tokens,
+			COALESCE(SUM(s.input_tokens), 0) as input_tokens,
+			COALESCE(SUM(s.output_tokens), 0) as output_tokens,
+			COALESCE(SUM(s.cost_usd), 0) as total_cost,
+			COALESCE(AVG(s.duration_ms), 0) as avg_latency
+		FROM spans s
+		JOIN traces t ON s.trace_id = t.id
+		WHERE t.project_id = ? AND t.created_at >= ? AND t.created_at <= ?
+			AND s.model IS NOT NULL AND s.model != ''
+		GROUP BY s.model, s.provider
+		ORDER BY total_cost DESC
+	`
+	rows, err := s.db.QueryContext(ctx, query, projectID, period.From.Format(time.RFC3339), period.To.Format(time.RFC3339))
+	if err != nil {
+		return nil, fmt.Errorf("GetModelStats: %w", err)
+	}
+	defer rows.Close()
+
+	var results []entity.ModelStats
+	for rows.Next() {
+		var m entity.ModelStats
+		var avgLat float64
+		if err := rows.Scan(&m.Model, &m.Provider, &m.Requests, &m.TotalTokens,
+			&m.InputTokens, &m.OutputTokens, &m.TotalCostUSD, &avgLat); err != nil {
+			return nil, fmt.Errorf("GetModelStats scan: %w", err)
+		}
+		m.AvgLatencyMs = int(avgLat)
+		results = append(results, m)
+	}
+	return results, nil
+}
+
+func (s *Store) GetTagStats(ctx context.Context, projectID string, period entity.Period, prefix string) ([]entity.TagStats, error) {
+	// SQLite doesn't have unnest; use JSON each
+	query := `
+		SELECT
+			trim(je.value, '"') as tag,
+			COUNT(DISTINCT t.id) as traces,
+			COALESCE(SUM(s.input_tokens + s.output_tokens), 0) as total_tokens,
+			COALESCE(SUM(s.cost_usd), 0) as total_cost,
+			COALESCE(AVG(s.duration_ms), 0) as avg_latency
+		FROM traces t
+		JOIN spans s ON s.trace_id = t.id,
+		json_each(t.tags) as je
+		WHERE t.project_id = ? AND t.created_at >= ? AND t.created_at <= ?
+			AND (? = '' OR trim(je.value, '"') LIKE ? || '%')
+		GROUP BY tag
+		ORDER BY total_cost DESC
+	`
+	rows, err := s.db.QueryContext(ctx, query, projectID, period.From.Format(time.RFC3339), period.To.Format(time.RFC3339), prefix, prefix)
+	if err != nil {
+		return nil, fmt.Errorf("GetTagStats: %w", err)
+	}
+	defer rows.Close()
+
+	var results []entity.TagStats
+	for rows.Next() {
+		var t entity.TagStats
+		var avgLat float64
+		if err := rows.Scan(&t.Tag, &t.Traces, &t.TotalTokens, &t.TotalCostUSD, &avgLat); err != nil {
+			return nil, fmt.Errorf("GetTagStats scan: %w", err)
+		}
+		t.AvgLatencyMs = int(avgLat)
+		results = append(results, t)
+	}
+	return results, nil
+}
+
+func (s *Store) GetTopUsers(ctx context.Context, projectID string, period entity.Period, limit int) ([]entity.UserStats, error) {
+	query := `
+		SELECT
+			t.user_id,
+			COUNT(DISTINCT t.id) as traces,
+			COALESCE(SUM(s.input_tokens + s.output_tokens), 0) as total_tokens,
+			COALESCE(SUM(s.cost_usd), 0) as total_cost,
+			COALESCE(AVG(s.duration_ms), 0) as avg_latency,
+			MAX(t.created_at) as last_active
+		FROM traces t
+		JOIN spans s ON s.trace_id = t.id
+		WHERE t.project_id = ? AND t.created_at >= ? AND t.created_at <= ?
+			AND t.user_id IS NOT NULL AND t.user_id != ''
+		GROUP BY t.user_id
+		ORDER BY total_cost DESC
+		LIMIT ?
+	`
+	rows, err := s.db.QueryContext(ctx, query, projectID, period.From.Format(time.RFC3339), period.To.Format(time.RFC3339), limit)
+	if err != nil {
+		return nil, fmt.Errorf("GetTopUsers: %w", err)
+	}
+	defer rows.Close()
+
+	var results []entity.UserStats
+	for rows.Next() {
+		var u entity.UserStats
+		var avgLat float64
+		var lastActive string
+		if err := rows.Scan(&u.UserID, &u.Traces, &u.TotalTokens, &u.TotalCostUSD, &avgLat, &lastActive); err != nil {
+			return nil, fmt.Errorf("GetTopUsers scan: %w", err)
+		}
+		u.AvgLatencyMs = int(avgLat)
+		u.LastActive, _ = time.Parse(time.RFC3339, lastActive)
+		results = append(results, u)
+	}
+	return results, nil
+}
+
+func (s *Store) GetHourlyHeatmap(ctx context.Context, projectID string, period entity.Period) ([]entity.HourlyHeatmap, error) {
+	query := `
+		SELECT
+			CAST(strftime('%H', t.created_at) AS INTEGER) as hour,
+			CAST(strftime('%w', t.created_at) AS INTEGER) as day,
+			COUNT(DISTINCT t.id) as traces,
+			COALESCE(SUM(s.input_tokens + s.output_tokens), 0) as tokens,
+			COALESCE(SUM(s.cost_usd), 0) as cost
+		FROM traces t
+		JOIN spans s ON s.trace_id = t.id
+		WHERE t.project_id = ? AND t.created_at >= ? AND t.created_at <= ?
+		GROUP BY strftime('%H', t.created_at), strftime('%w', t.created_at)
+		ORDER BY day, hour
+	`
+	rows, err := s.db.QueryContext(ctx, query, projectID, period.From.Format(time.RFC3339), period.To.Format(time.RFC3339))
+	if err != nil {
+		return nil, fmt.Errorf("GetHourlyHeatmap: %w", err)
+	}
+	defer rows.Close()
+
+	var results []entity.HourlyHeatmap
+	for rows.Next() {
+		var h entity.HourlyHeatmap
+		if err := rows.Scan(&h.Hour, &h.Day, &h.Traces, &h.Tokens, &h.CostUSD); err != nil {
+			return nil, fmt.Errorf("GetHourlyHeatmap scan: %w", err)
+		}
+		results = append(results, h)
+	}
+	return results, nil
+}
+
+func (s *Store) GetLatencyDistribution(ctx context.Context, projectID string, period entity.Period) ([]entity.LatencyBucket, error) {
+	query := `
+		SELECT
+			CASE
+				WHEN s.duration_ms < 100 THEN '0-100ms'
+				WHEN s.duration_ms < 500 THEN '100-500ms'
+				WHEN s.duration_ms < 1000 THEN '500ms-1s'
+				WHEN s.duration_ms < 2000 THEN '1-2s'
+				WHEN s.duration_ms < 5000 THEN '2-5s'
+				WHEN s.duration_ms < 10000 THEN '5-10s'
+				ELSE '10s+'
+			END as bucket,
+			CASE
+				WHEN s.duration_ms < 100 THEN 0
+				WHEN s.duration_ms < 500 THEN 100
+				WHEN s.duration_ms < 1000 THEN 500
+				WHEN s.duration_ms < 2000 THEN 1000
+				WHEN s.duration_ms < 5000 THEN 2000
+				WHEN s.duration_ms < 10000 THEN 5000
+				ELSE 10000
+			END as min_ms,
+			CASE
+				WHEN s.duration_ms < 100 THEN 100
+				WHEN s.duration_ms < 500 THEN 500
+				WHEN s.duration_ms < 1000 THEN 1000
+				WHEN s.duration_ms < 2000 THEN 2000
+				WHEN s.duration_ms < 5000 THEN 5000
+				WHEN s.duration_ms < 10000 THEN 10000
+				ELSE 999999
+			END as max_ms,
+			COUNT(*) as count
+		FROM spans s
+		JOIN traces t ON s.trace_id = t.id
+		WHERE t.project_id = ? AND t.created_at >= ? AND t.created_at <= ?
+			AND s.duration_ms IS NOT NULL AND s.duration_ms > 0
+		GROUP BY bucket, min_ms, max_ms
+		ORDER BY min_ms
+	`
+	rows, err := s.db.QueryContext(ctx, query, projectID, period.From.Format(time.RFC3339), period.To.Format(time.RFC3339))
+	if err != nil {
+		return nil, fmt.Errorf("GetLatencyDistribution: %w", err)
+	}
+	defer rows.Close()
+
+	var results []entity.LatencyBucket
+	for rows.Next() {
+		var b entity.LatencyBucket
+		if err := rows.Scan(&b.Bucket, &b.MinMs, &b.MaxMs, &b.Count); err != nil {
+			return nil, fmt.Errorf("GetLatencyDistribution scan: %w", err)
+		}
+		results = append(results, b)
+	}
+	return results, nil
+}
+
+func (s *Store) GetLatencyTimeSeries(ctx context.Context, projectID string, opts entity.TimeSeriesOpts) ([]entity.LatencyPoint, error) {
+	dateLen := 10
+	if opts.Granularity == "hour" {
+		dateLen = 13
+	}
+
+	// SQLite lacks PERCENTILE_CONT. We approximate percentiles using
+	// subqueries with LIMIT/OFFSET based on the count per time bucket.
+	// This uses median for p50, and ordered offset for p95/p99.
+	query := fmt.Sprintf(`
+		WITH bucketed AS (
+			SELECT
+				substr(t.created_at, 1, %d) as date,
+				s.duration_ms
+			FROM spans s
+			JOIN traces t ON s.trace_id = t.id
+			WHERE t.project_id = ? AND t.created_at >= ? AND t.created_at <= ?
+				AND s.duration_ms IS NOT NULL AND s.duration_ms > 0
+		),
+		counts AS (
+			SELECT date, COUNT(*) as cnt FROM bucketed GROUP BY date
+		)
+		SELECT
+			b.date,
+			(SELECT duration_ms FROM bucketed b2 WHERE b2.date = b.date ORDER BY duration_ms LIMIT 1 OFFSET (c.cnt * 50 / 100)) as p50,
+			(SELECT duration_ms FROM bucketed b2 WHERE b2.date = b.date ORDER BY duration_ms LIMIT 1 OFFSET (c.cnt * 95 / 100)) as p95,
+			(SELECT duration_ms FROM bucketed b2 WHERE b2.date = b.date ORDER BY duration_ms LIMIT 1 OFFSET (c.cnt * 99 / 100)) as p99
+		FROM counts c
+		JOIN bucketed b ON b.date = c.date
+		GROUP BY b.date
+		ORDER BY b.date
+	`, dateLen)
+
+	rows, err := s.db.QueryContext(ctx, query, projectID, opts.From.Format(time.RFC3339), opts.To.Format(time.RFC3339))
+	if err != nil {
+		return nil, fmt.Errorf("GetLatencyTimeSeries: %w", err)
+	}
+	defer rows.Close()
+
+	var results []entity.LatencyPoint
+	for rows.Next() {
+		var p entity.LatencyPoint
+		var dateStr string
+		var p50, p95 float64
+		if err := rows.Scan(&dateStr, &p50, &p95, &p.P99); err != nil {
+			return nil, fmt.Errorf("GetLatencyTimeSeries scan: %w", err)
+		}
+		p.P50 = int(p50)
+		p.P95 = int(p95)
+		p.Time, _ = time.Parse("2006-01-02", dateStr)
+		results = append(results, p)
+	}
+	return results, nil
+}

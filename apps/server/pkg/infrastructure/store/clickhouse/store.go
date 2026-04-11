@@ -958,3 +958,189 @@ func (s *Store) GetUsageTimeSeries(ctx context.Context, projectID string, opts e
 
 	return dataPoints, nil
 }
+
+func (s *Store) GetModelStats(ctx context.Context, projectID string, period entity.Period) ([]entity.ModelStats, error) {
+	query := `
+		SELECT
+			s.model, s.provider, COUNT(*) as requests,
+			SUM(s.input_tokens + s.output_tokens) as total_tokens,
+			SUM(s.input_tokens) as input_tokens, SUM(s.output_tokens) as output_tokens,
+			SUM(s.cost_usd) as total_cost, AVG(s.duration_ms) as avg_latency,
+			quantile(0.50)(s.duration_ms) as p50, quantile(0.95)(s.duration_ms) as p95, quantile(0.99)(s.duration_ms) as p99
+		FROM spans s JOIN traces t ON s.trace_id = t.id
+		WHERE t.project_id = ? AND t.created_at >= ? AND t.created_at <= ? AND s.model != ''
+		GROUP BY s.model, s.provider ORDER BY total_cost DESC
+	`
+	rows, err := s.conn.Query(ctx, query, uuid.MustParse(projectID), period.From, period.To)
+	if err != nil {
+		return nil, fmt.Errorf("GetModelStats: %w", err)
+	}
+	defer rows.Close()
+	var results []entity.ModelStats
+	for rows.Next() {
+		var m entity.ModelStats
+		var avgLat, p50, p95, p99 float64
+		if err := rows.Scan(&m.Model, &m.Provider, &m.Requests, &m.TotalTokens,
+			&m.InputTokens, &m.OutputTokens, &m.TotalCostUSD, &avgLat, &p50, &p95, &p99); err != nil {
+			return nil, fmt.Errorf("GetModelStats scan: %w", err)
+		}
+		m.AvgLatencyMs = int(avgLat)
+		m.P50LatencyMs = int(p50)
+		m.P95LatencyMs = int(p95)
+		m.P99LatencyMs = int(p99)
+		results = append(results, m)
+	}
+	return results, nil
+}
+
+func (s *Store) GetTagStats(ctx context.Context, projectID string, period entity.Period, prefix string) ([]entity.TagStats, error) {
+	query := `
+		SELECT tag, COUNT(DISTINCT t.id) as traces,
+			SUM(s.input_tokens + s.output_tokens) as total_tokens,
+			SUM(s.cost_usd) as total_cost, AVG(s.duration_ms) as avg_latency
+		FROM traces t JOIN spans s ON s.trace_id = t.id
+		ARRAY JOIN t.tags as tag
+		WHERE t.project_id = ? AND t.created_at >= ? AND t.created_at <= ?
+			AND (? = '' OR tag LIKE concat(?, '%'))
+		GROUP BY tag ORDER BY total_cost DESC
+	`
+	rows, err := s.conn.Query(ctx, query, uuid.MustParse(projectID), period.From, period.To, prefix, prefix)
+	if err != nil {
+		return nil, fmt.Errorf("GetTagStats: %w", err)
+	}
+	defer rows.Close()
+	var results []entity.TagStats
+	for rows.Next() {
+		var t entity.TagStats
+		var avgLat float64
+		if err := rows.Scan(&t.Tag, &t.Traces, &t.TotalTokens, &t.TotalCostUSD, &avgLat); err != nil {
+			return nil, fmt.Errorf("GetTagStats scan: %w", err)
+		}
+		t.AvgLatencyMs = int(avgLat)
+		results = append(results, t)
+	}
+	return results, nil
+}
+
+func (s *Store) GetTopUsers(ctx context.Context, projectID string, period entity.Period, limit int) ([]entity.UserStats, error) {
+	query := `
+		SELECT t.user_id, COUNT(DISTINCT t.id) as traces,
+			SUM(s.input_tokens + s.output_tokens) as total_tokens,
+			SUM(s.cost_usd) as total_cost, AVG(s.duration_ms) as avg_latency,
+			MAX(t.created_at) as last_active
+		FROM traces t JOIN spans s ON s.trace_id = t.id
+		WHERE t.project_id = ? AND t.created_at >= ? AND t.created_at <= ?
+			AND t.user_id != ''
+		GROUP BY t.user_id ORDER BY total_cost DESC LIMIT ?
+	`
+	rows, err := s.conn.Query(ctx, query, uuid.MustParse(projectID), period.From, period.To, limit)
+	if err != nil {
+		return nil, fmt.Errorf("GetTopUsers: %w", err)
+	}
+	defer rows.Close()
+	var results []entity.UserStats
+	for rows.Next() {
+		var u entity.UserStats
+		var avgLat float64
+		if err := rows.Scan(&u.UserID, &u.Traces, &u.TotalTokens, &u.TotalCostUSD, &avgLat, &u.LastActive); err != nil {
+			return nil, fmt.Errorf("GetTopUsers scan: %w", err)
+		}
+		u.AvgLatencyMs = int(avgLat)
+		results = append(results, u)
+	}
+	return results, nil
+}
+
+func (s *Store) GetHourlyHeatmap(ctx context.Context, projectID string, period entity.Period) ([]entity.HourlyHeatmap, error) {
+	query := `
+		SELECT toHour(t.created_at) as hour, toDayOfWeek(t.created_at, 1) % 7 as day,
+			COUNT(DISTINCT t.id) as traces,
+			SUM(s.input_tokens + s.output_tokens) as tokens, SUM(s.cost_usd) as cost
+		FROM traces t JOIN spans s ON s.trace_id = t.id
+		WHERE t.project_id = ? AND t.created_at >= ? AND t.created_at <= ?
+		GROUP BY hour, day ORDER BY day, hour
+	`
+	rows, err := s.conn.Query(ctx, query, uuid.MustParse(projectID), period.From, period.To)
+	if err != nil {
+		return nil, fmt.Errorf("GetHourlyHeatmap: %w", err)
+	}
+	defer rows.Close()
+	var results []entity.HourlyHeatmap
+	for rows.Next() {
+		var h entity.HourlyHeatmap
+		if err := rows.Scan(&h.Hour, &h.Day, &h.Traces, &h.Tokens, &h.CostUSD); err != nil {
+			return nil, fmt.Errorf("GetHourlyHeatmap scan: %w", err)
+		}
+		results = append(results, h)
+	}
+	return results, nil
+}
+
+func (s *Store) GetLatencyDistribution(ctx context.Context, projectID string, period entity.Period) ([]entity.LatencyBucket, error) {
+	query := `
+		SELECT
+			multiIf(s.duration_ms < 100, '0-100ms', s.duration_ms < 500, '100-500ms',
+				s.duration_ms < 1000, '500ms-1s', s.duration_ms < 2000, '1-2s',
+				s.duration_ms < 5000, '2-5s', s.duration_ms < 10000, '5-10s', '10s+') as bucket,
+			multiIf(s.duration_ms < 100, 0, s.duration_ms < 500, 100,
+				s.duration_ms < 1000, 500, s.duration_ms < 2000, 1000,
+				s.duration_ms < 5000, 2000, s.duration_ms < 10000, 5000, 10000) as min_ms,
+			multiIf(s.duration_ms < 100, 100, s.duration_ms < 500, 500,
+				s.duration_ms < 1000, 1000, s.duration_ms < 2000, 2000,
+				s.duration_ms < 5000, 5000, s.duration_ms < 10000, 10000, 999999) as max_ms,
+			COUNT(*) as count
+		FROM spans s JOIN traces t ON s.trace_id = t.id
+		WHERE t.project_id = ? AND t.created_at >= ? AND t.created_at <= ?
+			AND s.duration_ms > 0
+		GROUP BY bucket, min_ms, max_ms ORDER BY min_ms
+	`
+	rows, err := s.conn.Query(ctx, query, uuid.MustParse(projectID), period.From, period.To)
+	if err != nil {
+		return nil, fmt.Errorf("GetLatencyDistribution: %w", err)
+	}
+	defer rows.Close()
+	var results []entity.LatencyBucket
+	for rows.Next() {
+		var b entity.LatencyBucket
+		if err := rows.Scan(&b.Bucket, &b.MinMs, &b.MaxMs, &b.Count); err != nil {
+			return nil, fmt.Errorf("GetLatencyDistribution scan: %w", err)
+		}
+		results = append(results, b)
+	}
+	return results, nil
+}
+
+func (s *Store) GetLatencyTimeSeries(ctx context.Context, projectID string, opts entity.TimeSeriesOpts) ([]entity.LatencyPoint, error) {
+	dateExpr := "toDate(t.created_at)"
+	if opts.Granularity == "hour" {
+		dateExpr = "toStartOfHour(t.created_at)"
+	}
+	query := fmt.Sprintf(`
+		SELECT %s as time,
+			quantile(0.50)(s.duration_ms) as p50,
+			quantile(0.95)(s.duration_ms) as p95,
+			quantile(0.99)(s.duration_ms) as p99
+		FROM spans s JOIN traces t ON s.trace_id = t.id
+		WHERE t.project_id = ? AND t.created_at >= ? AND t.created_at <= ?
+			AND s.duration_ms > 0
+		GROUP BY time ORDER BY time
+	`, dateExpr)
+	rows, err := s.conn.Query(ctx, query, uuid.MustParse(projectID), opts.From, opts.To)
+	if err != nil {
+		return nil, fmt.Errorf("GetLatencyTimeSeries: %w", err)
+	}
+	defer rows.Close()
+	var results []entity.LatencyPoint
+	for rows.Next() {
+		var p entity.LatencyPoint
+		var p50, p95, p99 float64
+		if err := rows.Scan(&p.Time, &p50, &p95, &p99); err != nil {
+			return nil, fmt.Errorf("GetLatencyTimeSeries scan: %w", err)
+		}
+		p.P50 = int(p50)
+		p.P95 = int(p95)
+		p.P99 = int(p99)
+		results = append(results, p)
+	}
+	return results, nil
+}

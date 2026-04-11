@@ -56,6 +56,12 @@ type TraceStore interface {
 type AnalyticsStore interface {
 	GetStats(ctx context.Context, projectID string, period entity.Period) (*entity.Stats, error)
 	GetUsageTimeSeries(ctx context.Context, projectID string, opts entity.TimeSeriesOpts) ([]entity.DataPoint, error)
+	GetModelStats(ctx context.Context, projectID string, period entity.Period) ([]entity.ModelStats, error)
+	GetTagStats(ctx context.Context, projectID string, period entity.Period, prefix string) ([]entity.TagStats, error)
+	GetTopUsers(ctx context.Context, projectID string, period entity.Period, limit int) ([]entity.UserStats, error)
+	GetHourlyHeatmap(ctx context.Context, projectID string, period entity.Period) ([]entity.HourlyHeatmap, error)
+	GetLatencyDistribution(ctx context.Context, projectID string, period entity.Period) ([]entity.LatencyBucket, error)
+	GetLatencyTimeSeries(ctx context.Context, projectID string, opts entity.TimeSeriesOpts) ([]entity.LatencyPoint, error)
 }
 
 // UserStore handles user operations (for dashboard auth)
