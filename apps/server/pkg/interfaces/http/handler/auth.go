@@ -28,6 +28,31 @@ func NewAuthHandler(service *auth.Service, frontendURL string) *AuthHandler {
 	}
 }
 
+// setAuthCookie sets the JWT as an httpOnly cookie on the response
+func (h *AuthHandler) setAuthCookie(w http.ResponseWriter, r *http.Request, token string) {
+	secure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
+	http.SetCookie(w, &http.Cookie{
+		Name:     "lelemon_session",
+		Value:    token,
+		Path:     "/",
+		MaxAge:   86400, // 24 hours
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+// clearAuthCookie removes the session cookie
+func clearAuthCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "lelemon_session",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+	})
+}
+
 // Register handles POST /api/v1/auth/register
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req auth.RegisterRequest
@@ -64,6 +89,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.setAuthCookie(w, r, result.Token)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(result)
@@ -95,6 +121,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.setAuthCookie(w, r, result.Token)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(result)
 }
@@ -223,6 +250,13 @@ func (h *AuthHandler) ExchangeOAuthToken(w http.ResponseWriter, r *http.Request)
 	})
 }
 
+// Logout handles POST /api/v1/auth/logout
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	clearAuthCookie(w)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
 func generateState() string {
 	b := make([]byte, 32)
 	rand.Read(b)
@@ -243,6 +277,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.setAuthCookie(w, r, result.Token)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(result)
 }

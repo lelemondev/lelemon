@@ -19,31 +19,17 @@ type UserContext struct {
 	Email  string
 }
 
-// SessionAuth creates middleware that authenticates requests via JWT
+// SessionAuth creates middleware that authenticates requests via JWT.
+// Checks httpOnly cookie first, then falls back to Authorization header.
 func SessionAuth(jwtService *auth.JWTService) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Extract token from Authorization header
-			authHeader := r.Header.Get("Authorization")
-			if authHeader == "" {
+			token := extractSessionToken(r)
+			if token == "" {
 				http.Error(w, `{"error":"Unauthorized"}`, http.StatusUnauthorized)
 				return
 			}
 
-			// Parse Bearer token
-			parts := strings.SplitN(authHeader, " ", 2)
-			if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-				http.Error(w, `{"error":"Invalid authorization header"}`, http.StatusUnauthorized)
-				return
-			}
-
-			token := parts[1]
-			if token == "" {
-				http.Error(w, `{"error":"Token required"}`, http.StatusUnauthorized)
-				return
-			}
-
-			// Validate token
 			claims, err := jwtService.ValidateToken(token)
 			if err != nil {
 				if err == auth.ErrExpiredToken {
@@ -54,7 +40,6 @@ func SessionAuth(jwtService *auth.JWTService) func(http.Handler) http.Handler {
 				return
 			}
 
-			// Add user to context
 			userCtx := &UserContext{
 				UserID: claims.UserID,
 				Email:  claims.Email,
@@ -63,6 +48,25 @@ func SessionAuth(jwtService *auth.JWTService) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+// extractSessionToken gets the JWT from cookie first, then Authorization header
+func extractSessionToken(r *http.Request) string {
+	// 1. Try httpOnly cookie (preferred, secure)
+	if cookie, err := r.Cookie("lelemon_session"); err == nil && cookie.Value != "" {
+		return cookie.Value
+	}
+
+	// 2. Fall back to Authorization header (backward compat, SDK usage)
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		return ""
+	}
+	parts := strings.SplitN(authHeader, " ", 2)
+	if len(parts) == 2 && strings.ToLower(parts[0]) == "bearer" {
+		return parts[1]
+	}
+	return ""
 }
 
 // GetUser retrieves the authenticated user from context
