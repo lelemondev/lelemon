@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/mail"
+	"net/url"
 	"strings"
 
 	"github.com/lelemon/server/pkg/application/auth"
@@ -115,7 +116,7 @@ func (h *AuthHandler) GoogleAuth(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   600, // 10 minutes
 		HttpOnly: true,
-		Secure:   r.TLS != nil,
+		Secure:   r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https",
 		SameSite: http.SameSiteLaxMode,
 	})
 
@@ -145,7 +146,7 @@ func (h *AuthHandler) GoogleCallback(w http.ResponseWriter, r *http.Request) {
 
 	// Check for error
 	if errParam := r.URL.Query().Get("error"); errParam != "" {
-		http.Redirect(w, r, h.frontendURL+"/login?error="+errParam, http.StatusTemporaryRedirect)
+		http.Redirect(w, r, h.frontendURL+"/login?error="+url.QueryEscape(errParam), http.StatusTemporaryRedirect)
 		return
 	}
 
