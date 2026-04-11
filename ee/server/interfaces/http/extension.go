@@ -95,8 +95,9 @@ func (e *EnterpriseExtension) MountRoutes(r chi.Router, deps *coreHttp.RouterDep
 					Get("/billing/usage", billingHandler.GetUsage)
 			})
 
-			// Dashboard - Enterprise analytics routes (project-scoped)
+			// Dashboard - Enterprise analytics routes (project-scoped, requires project:read)
 			r.Route("/dashboard/projects/{projectId}/analytics", func(r chi.Router) {
+				r.Use(middleware.RequirePermission(e.rbacSvc, entity.PermProjectRead, deps.GetUserID))
 				r.Get("/cost-breakdown", analyticsHandler.GetCostBreakdown)
 				r.Get("/errors", analyticsHandler.GetErrorMetrics)
 			})
