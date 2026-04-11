@@ -29,6 +29,7 @@ type ProjectStore interface {
 	UpdateProject(ctx context.Context, id string, updates entity.ProjectUpdate) error
 	DeleteProject(ctx context.Context, id string) error
 	ListProjectsByOwner(ctx context.Context, email string) ([]entity.Project, error)
+	IsProjectOwner(ctx context.Context, projectID, ownerEmail string) (bool, error)
 	RotateAPIKey(ctx context.Context, id string, newKey, newHash string) error
 }
 

@@ -348,6 +348,17 @@ func (s *Store) ListProjectsByOwner(ctx context.Context, email string) ([]entity
 	return projects, nil
 }
 
+func (s *Store) IsProjectOwner(ctx context.Context, projectID, ownerEmail string) (bool, error) {
+	var count int
+	err := s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM projects WHERE id = ? AND owner_email = ?`,
+		projectID, ownerEmail).Scan(&count)
+	if err != nil {
+		return false, fmt.Errorf("IsProjectOwner: %w", err)
+	}
+	return count > 0, nil
+}
+
 func (s *Store) RotateAPIKey(ctx context.Context, id string, newKey, newHash string) error {
 	_, err := s.db.ExecContext(ctx, `
 		UPDATE projects SET api_key = ?, api_key_hash = ?, updated_at = ? WHERE id = ?
