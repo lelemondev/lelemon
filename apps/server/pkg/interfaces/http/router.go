@@ -80,6 +80,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 		// OAuth routes (no rate limit - redirect-based)
 		r.Get("/auth/google", authHandler.GoogleAuth)
 		r.Get("/auth/google/callback", authHandler.GoogleCallback)
+		r.Post("/auth/oauth/exchange", authHandler.ExchangeOAuthToken)
 
 		// Auth routes (session auth required)
 		r.Group(func(r chi.Router) {

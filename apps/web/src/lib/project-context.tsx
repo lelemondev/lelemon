@@ -68,9 +68,10 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         const newProject = await dashboardAPI.createProject('My Project');
         data = [newProject];
 
-        // Redirect to config with API key for onboarding (use ref to avoid dependency)
+        // Redirect to config for onboarding, pass API key via sessionStorage (not URL)
         if (pathnameRef.current !== '/dashboard/config' && newProject.apiKey) {
-          routerRef.current.push(`/dashboard/config?welcome=true&key=${encodeURIComponent(newProject.apiKey)}`);
+          sessionStorage.setItem('lelemon_welcome_key', newProject.apiKey);
+          routerRef.current.push('/dashboard/config?welcome=true');
         }
       }
 
