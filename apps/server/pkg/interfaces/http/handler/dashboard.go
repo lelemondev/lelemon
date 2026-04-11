@@ -549,3 +549,157 @@ func (h *DashboardHandler) DeleteAllTraces(w http.ResponseWriter, r *http.Reques
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]int64{"Deleted": deleted})
 }
+
+// verifyProjectOwnership checks the user owns the project. Returns projectID or writes error.
+func (h *DashboardHandler) verifyProjectOwnership(w http.ResponseWriter, r *http.Request) (string, bool) {
+	user := middleware.GetUser(r.Context())
+	if user == nil {
+		http.Error(w, `{"error":"Unauthorized"}`, http.StatusUnauthorized)
+		return "", false
+	}
+
+	projectID := chi.URLParam(r, "id")
+	projects, err := h.projectSvc.List(r.Context(), user.Email)
+	if err != nil {
+		http.Error(w, `{"error":"Internal server error"}`, http.StatusInternalServerError)
+		return "", false
+	}
+
+	for _, p := range projects {
+		if p.ID == projectID {
+			return projectID, true
+		}
+	}
+
+	http.Error(w, `{"error":"Project not found"}`, http.StatusNotFound)
+	return "", false
+}
+
+func dashboardRespondJSON(w http.ResponseWriter, data any) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"data": data})
+}
+
+// GetModelStats handles GET /api/v1/dashboard/projects/{id}/analytics/models
+func (h *DashboardHandler) GetModelStats(w http.ResponseWriter, r *http.Request) {
+	projectID, ok := h.verifyProjectOwnership(w, r)
+	if !ok {
+		return
+	}
+	req, ok := parsePeriodParams(w, r)
+	if !ok {
+		return
+	}
+	result, err := h.analyticsSvc.GetModelStats(r.Context(), projectID, req)
+	if err != nil {
+		http.Error(w, `{"error":"Internal server error"}`, http.StatusInternalServerError)
+		return
+	}
+	dashboardRespondJSON(w, result)
+}
+
+// GetTagStats handles GET /api/v1/dashboard/projects/{id}/analytics/tags
+func (h *DashboardHandler) GetTagStats(w http.ResponseWriter, r *http.Request) {
+	projectID, ok := h.verifyProjectOwnership(w, r)
+	if !ok {
+		return
+	}
+	req, ok := parsePeriodParams(w, r)
+	if !ok {
+		return
+	}
+	result, err := h.analyticsSvc.GetTagStats(r.Context(), projectID, req)
+	if err != nil {
+		http.Error(w, `{"error":"Internal server error"}`, http.StatusInternalServerError)
+		return
+	}
+	dashboardRespondJSON(w, result)
+}
+
+// GetTopUsers handles GET /api/v1/dashboard/projects/{id}/analytics/top-users
+func (h *DashboardHandler) GetTopUsers(w http.ResponseWriter, r *http.Request) {
+	projectID, ok := h.verifyProjectOwnership(w, r)
+	if !ok {
+		return
+	}
+	req, ok := parsePeriodParams(w, r)
+	if !ok {
+		return
+	}
+	result, err := h.analyticsSvc.GetTopUsers(r.Context(), projectID, req)
+	if err != nil {
+		http.Error(w, `{"error":"Internal server error"}`, http.StatusInternalServerError)
+		return
+	}
+	dashboardRespondJSON(w, result)
+}
+
+// GetHeatmap handles GET /api/v1/dashboard/projects/{id}/analytics/heatmap
+func (h *DashboardHandler) GetHeatmap(w http.ResponseWriter, r *http.Request) {
+	projectID, ok := h.verifyProjectOwnership(w, r)
+	if !ok {
+		return
+	}
+	req, ok := parsePeriodParams(w, r)
+	if !ok {
+		return
+	}
+	result, err := h.analyticsSvc.GetHourlyHeatmap(r.Context(), projectID, req)
+	if err != nil {
+		http.Error(w, `{"error":"Internal server error"}`, http.StatusInternalServerError)
+		return
+	}
+	dashboardRespondJSON(w, result)
+}
+
+// GetLatencyDistribution handles GET /api/v1/dashboard/projects/{id}/analytics/latency/distribution
+func (h *DashboardHandler) GetLatencyDistribution(w http.ResponseWriter, r *http.Request) {
+	projectID, ok := h.verifyProjectOwnership(w, r)
+	if !ok {
+		return
+	}
+	req, ok := parsePeriodParams(w, r)
+	if !ok {
+		return
+	}
+	result, err := h.analyticsSvc.GetLatencyDistribution(r.Context(), projectID, req)
+	if err != nil {
+		http.Error(w, `{"error":"Internal server error"}`, http.StatusInternalServerError)
+		return
+	}
+	dashboardRespondJSON(w, result)
+}
+
+// GetLatencyTimeSeries handles GET /api/v1/dashboard/projects/{id}/analytics/latency/timeseries
+func (h *DashboardHandler) GetLatencyTimeSeries(w http.ResponseWriter, r *http.Request) {
+	projectID, ok := h.verifyProjectOwnership(w, r)
+	if !ok {
+		return
+	}
+
+	req := &analytics.UsageRequest{}
+	if v := r.URL.Query().Get("from"); v != "" {
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			req.From = &t
+		}
+	}
+	if v := r.URL.Query().Get("to"); v != "" {
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			req.To = &t
+		}
+	}
+	if v := r.URL.Query().Get("granularity"); v != "" {
+		if !entity.ValidGranularity(v) {
+			http.Error(w, `{"error":"Invalid granularity"}`, http.StatusBadRequest)
+			return
+		}
+		req.Granularity = v
+	}
+
+	result, err := h.analyticsSvc.GetLatencyTimeSeries(r.Context(), projectID, req)
+	if err != nil {
+		http.Error(w, `{"error":"Internal server error"}`, http.StatusInternalServerError)
+		return
+	}
+	dashboardRespondJSON(w, result)
+}

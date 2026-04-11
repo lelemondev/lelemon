@@ -225,6 +225,68 @@ export interface ErrorFilter {
   topLimit?: number;
 }
 
+// Analytics V2 types
+export interface ModelStats {
+  model: string;
+  provider: string;
+  requests: number;
+  totalTokens: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalCostUsd: number;
+  avgLatencyMs: number;
+  p50LatencyMs: number;
+  p95LatencyMs: number;
+  p99LatencyMs: number;
+}
+
+export interface TagStats {
+  tag: string;
+  traces: number;
+  totalTokens: number;
+  totalCostUsd: number;
+  avgLatencyMs: number;
+}
+
+export interface UserStats {
+  userId: string;
+  traces: number;
+  totalTokens: number;
+  totalCostUsd: number;
+  avgLatencyMs: number;
+  lastActive: string;
+}
+
+export interface HourlyHeatmap {
+  hour: number;
+  day: number;
+  traces: number;
+  tokens: number;
+  costUsd: number;
+}
+
+export interface LatencyBucket {
+  bucket: string;
+  minMs: number;
+  maxMs: number;
+  count: number;
+}
+
+export interface LatencyPoint {
+  time: string;
+  p50: number;
+  p95: number;
+  p99: number;
+}
+
+export interface AnalyticsParams {
+  from?: string;
+  to?: string;
+  prefix?: string;
+  limit?: number;
+  granularity?: string;
+}
+
 class APIError extends Error {
   status: number;
 
@@ -297,6 +359,34 @@ function normalizeProject(p: Record<string, unknown>): Project {
     createdAt: (p.CreatedAt as string) || (p.createdAt as string),
     updatedAt: (p.UpdatedAt as string) || (p.updatedAt as string),
   };
+}
+
+// PascalCase → camelCase normalizer for Go JSON responses.
+// Handles: TotalCostUSD → totalCostUsd, UserID → userId, P50LatencyMs → p50LatencyMs
+function normalizeRecord(obj: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    // Lowercase first char, then fix common Go abbreviations
+    const camel = key.charAt(0).toLowerCase() + key.slice(1);
+    const normalized = camel
+      .replace(/USD/g, 'Usd')
+      .replace(/(?<![a-z])ID(?![a-z])/g, 'Id')
+      .replace(/URL/g, 'Url');
+    result[normalized] = value ?? null;
+  }
+  return result;
+}
+
+function buildAnalyticsUrl(base: string, params?: AnalyticsParams): string {
+  if (!params) return base;
+  const sp = new URLSearchParams();
+  if (params.from) sp.set('from', params.from);
+  if (params.to) sp.set('to', params.to);
+  if (params.prefix) sp.set('prefix', params.prefix);
+  if (params.limit) sp.set('limit', String(params.limit));
+  if (params.granularity) sp.set('granularity', params.granularity);
+  const qs = sp.toString();
+  return qs ? `${base}?${qs}` : base;
 }
 
 function normalizeStats(s: Record<string, unknown>): Stats {
@@ -496,6 +586,43 @@ export const dashboardAPI = {
     const queryStr = searchParams.toString();
     const url = `/api/v1/dashboard/projects/${projectId}/analytics/cost-breakdown${queryStr ? '?' + queryStr : ''}`;
     return request<CostBreakdownResult>('GET', url);
+  },
+
+  // Analytics V2
+  async getModelStats(projectId: string, params?: AnalyticsParams): Promise<ModelStats[]> {
+    const url = buildAnalyticsUrl(`/api/v1/dashboard/projects/${projectId}/analytics/models`, params);
+    const data = await request<{ data: Record<string, unknown>[] }>('GET', url);
+    return (data.data || []).map(normalizeRecord) as unknown as ModelStats[];
+  },
+
+  async getTagStats(projectId: string, params?: AnalyticsParams): Promise<TagStats[]> {
+    const url = buildAnalyticsUrl(`/api/v1/dashboard/projects/${projectId}/analytics/tags`, params);
+    const data = await request<{ data: Record<string, unknown>[] }>('GET', url);
+    return (data.data || []).map(normalizeRecord) as unknown as TagStats[];
+  },
+
+  async getTopUsers(projectId: string, params?: AnalyticsParams): Promise<UserStats[]> {
+    const url = buildAnalyticsUrl(`/api/v1/dashboard/projects/${projectId}/analytics/top-users`, params);
+    const data = await request<{ data: Record<string, unknown>[] }>('GET', url);
+    return (data.data || []).map(normalizeRecord) as unknown as UserStats[];
+  },
+
+  async getHeatmap(projectId: string, params?: AnalyticsParams): Promise<HourlyHeatmap[]> {
+    const url = buildAnalyticsUrl(`/api/v1/dashboard/projects/${projectId}/analytics/heatmap`, params);
+    const data = await request<{ data: Record<string, unknown>[] }>('GET', url);
+    return (data.data || []).map(normalizeRecord) as unknown as HourlyHeatmap[];
+  },
+
+  async getLatencyDistribution(projectId: string, params?: AnalyticsParams): Promise<LatencyBucket[]> {
+    const url = buildAnalyticsUrl(`/api/v1/dashboard/projects/${projectId}/analytics/latency/distribution`, params);
+    const data = await request<{ data: Record<string, unknown>[] }>('GET', url);
+    return (data.data || []).map(normalizeRecord) as unknown as LatencyBucket[];
+  },
+
+  async getLatencyTimeSeries(projectId: string, params?: AnalyticsParams): Promise<LatencyPoint[]> {
+    const url = buildAnalyticsUrl(`/api/v1/dashboard/projects/${projectId}/analytics/latency/timeseries`, params);
+    const data = await request<{ data: Record<string, unknown>[] }>('GET', url);
+    return (data.data || []).map(normalizeRecord) as unknown as LatencyPoint[];
   },
 
   // Enterprise - Error Analytics

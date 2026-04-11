@@ -149,6 +149,14 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Get("/dashboard/projects/{id}/sessions", dashboardHandler.GetSessions)
 			r.Get("/dashboard/projects/{id}/stats", dashboardHandler.GetStats)
 			r.Get("/dashboard/projects/{id}/usage", dashboardHandler.GetUsage)
+
+			// Analytics V2 (dashboard auth, project-scoped)
+			r.Get("/dashboard/projects/{id}/analytics/models", dashboardHandler.GetModelStats)
+			r.Get("/dashboard/projects/{id}/analytics/tags", dashboardHandler.GetTagStats)
+			r.Get("/dashboard/projects/{id}/analytics/top-users", dashboardHandler.GetTopUsers)
+			r.Get("/dashboard/projects/{id}/analytics/heatmap", dashboardHandler.GetHeatmap)
+			r.Get("/dashboard/projects/{id}/analytics/latency/distribution", dashboardHandler.GetLatencyDistribution)
+			r.Get("/dashboard/projects/{id}/analytics/latency/timeseries", dashboardHandler.GetLatencyTimeSeries)
 		})
 	})
 
