@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect, useMemo } from 'react';
+import { Suspense, useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useProject } from '@/lib/project-context';
@@ -24,6 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { TagsFilter, DateRangeFilter } from '@/components/filters';
 
 function formatRelativeTime(dateString: string): string {
   const date = new Date(dateString);
@@ -54,14 +55,39 @@ function TracesPageContent() {
   const sessionIdFromUrl = searchParams.get('sessionId');
 
   // Filters
-  const [search, setSearch] = useState('');
+  const [nameSearch, setNameSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sessionFilter, setSessionFilter] = useState<string>(sessionIdFromUrl || 'all');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [dateFrom, setDateFrom] = useState<Date | null>(null);
+  const [dateTo, setDateTo] = useState<Date | null>(null);
 
   // Polling interval in ms
   const POLLING_INTERVAL = 5000;
 
-  // Fetch traces when project ID changes, with polling
+  // Build filter params for API
+  const buildFilterParams = useCallback(() => {
+    const params: {
+      name?: string;
+      status?: string;
+      sessionId?: string;
+      tags?: string[];
+      from?: string;
+      to?: string;
+      limit: number;
+    } = { limit: 100 };
+
+    if (nameSearch) params.name = nameSearch;
+    if (statusFilter !== 'all') params.status = statusFilter;
+    if (sessionFilter !== 'all') params.sessionId = sessionFilter;
+    if (selectedTags.length > 0) params.tags = selectedTags;
+    if (dateFrom) params.from = dateFrom.toISOString();
+    if (dateTo) params.to = dateTo.toISOString();
+
+    return params;
+  }, [nameSearch, statusFilter, sessionFilter, selectedTags, dateFrom, dateTo]);
+
+  // Fetch traces when project ID or filters change, with polling
   const projectId = currentProject?.id;
   useEffect(() => {
     if (!projectId) {
@@ -75,7 +101,8 @@ function TracesPageContent() {
     const fetchTraces = async (showLoading = false) => {
       if (showLoading) setIsLoading(true);
       try {
-        const result = await dashboardAPI.getTraces(projectId, { limit: 100 });
+        const params = buildFilterParams();
+        const result = await dashboardAPI.getTraces(projectId, params);
         if (isMounted) {
           setTraces(result.data);
         }
@@ -101,7 +128,7 @@ function TracesPageContent() {
       isMounted = false;
       clearInterval(intervalId);
     };
-  }, [projectId]);
+  }, [projectId, buildFilterParams]);
 
   // Get unique sessions from traces
   const allSessions = useMemo(() => {
@@ -112,34 +139,30 @@ function TracesPageContent() {
     return Array.from(sessionSet).sort();
   }, [traces]);
 
-  // Filter traces
-  const filteredTraces = useMemo(() => {
-    return traces.filter((trace) => {
-      // Search filter
-      if (search) {
-        const searchLower = search.toLowerCase();
-        const matchesSession = trace.sessionId?.toLowerCase().includes(searchLower);
-        const matchesUser = trace.userId?.toLowerCase().includes(searchLower);
-        const matchesId = trace.id.toLowerCase().includes(searchLower);
-        if (!matchesSession && !matchesUser && !matchesId) return false;
-      }
-
-      // Status filter
-      if (statusFilter !== 'all' && trace.status !== statusFilter) return false;
-
-      // Session filter
-      if (sessionFilter !== 'all' && trace.sessionId !== sessionFilter) return false;
-
-      return true;
+  // Get unique tags from traces
+  const availableTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    traces.forEach((trace) => {
+      trace.tags?.forEach((tag: string) => tagSet.add(tag));
     });
-  }, [traces, search, statusFilter, sessionFilter]);
+    return Array.from(tagSet).sort();
+  }, [traces]);
 
-  // Clear selection if selected trace is filtered out
+  // No more client-side filtering - backend handles it
+  const filteredTraces = traces;
+
+  // Clear selection if selected trace is no longer in list
   useEffect(() => {
-    if (selectedTraceId && !filteredTraces.find(t => t.id === selectedTraceId)) {
-      setSelectedTraceId(filteredTraces[0]?.id ?? null);
+    if (selectedTraceId && !traces.find(t => t.id === selectedTraceId)) {
+      setSelectedTraceId(traces[0]?.id ?? null);
     }
-  }, [filteredTraces, selectedTraceId]);
+  }, [traces, selectedTraceId]);
+
+  // Handle date range change
+  const handleDateRangeChange = (from: Date | null, to: Date | null) => {
+    setDateFrom(from);
+    setDateTo(to);
+  };
 
   if (!currentProject) {
     return (
@@ -160,7 +183,16 @@ function TracesPageContent() {
     );
   }
 
-  const hasActiveFilters = search || statusFilter !== 'all' || sessionFilter !== 'all';
+  const hasActiveFilters = nameSearch || statusFilter !== 'all' || sessionFilter !== 'all' || selectedTags.length > 0 || dateFrom || dateTo;
+
+  const clearAllFilters = () => {
+    setNameSearch('');
+    setStatusFilter('all');
+    setSessionFilter('all');
+    setSelectedTags([]);
+    setDateFrom(null);
+    setDateTo(null);
+  };
 
   // When a trace is selected, use edge-to-edge layout
   if (selectedTraceId) {
@@ -173,9 +205,9 @@ function TracesPageContent() {
             {/* Compact Filters */}
             <div className="flex-shrink-0 p-2 border-b border-zinc-200 dark:border-zinc-700 space-y-2 bg-zinc-50 dark:bg-zinc-800/50">
               <Input
-                placeholder="Search..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by name..."
+                value={nameSearch}
+                onChange={(e) => setNameSearch(e.target.value)}
                 className="h-7 text-xs"
               />
               <div className="flex gap-1">
@@ -266,9 +298,9 @@ function TracesPageContent() {
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex-1 min-w-[200px] max-w-sm">
               <Input
-                placeholder="Search by session, user, or trace ID..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by name..."
+                value={nameSearch}
+                onChange={(e) => setNameSearch(e.target.value)}
                 className="h-9"
               />
             </div>
@@ -298,15 +330,21 @@ function TracesPageContent() {
                 </SelectContent>
               </Select>
             )}
+            <TagsFilter
+              availableTags={availableTags}
+              selectedTags={selectedTags}
+              onChange={setSelectedTags}
+            />
+            <DateRangeFilter
+              from={dateFrom}
+              to={dateTo}
+              onChange={handleDateRangeChange}
+            />
             {hasActiveFilters && (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => {
-                  setSearch('');
-                  setStatusFilter('all');
-                  setSessionFilter('all');
-                }}
+                onClick={clearAllFilters}
               >
                 Clear filters
               </Button>

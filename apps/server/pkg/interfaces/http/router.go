@@ -142,6 +142,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Get("/dashboard/projects/{id}/traces/{traceId}", dashboardHandler.GetTrace)
 			r.Get("/dashboard/projects/{id}/sessions", dashboardHandler.GetSessions)
 			r.Get("/dashboard/projects/{id}/stats", dashboardHandler.GetStats)
+			r.Get("/dashboard/projects/{id}/usage", dashboardHandler.GetUsage)
 		})
 	})
 

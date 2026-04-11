@@ -262,6 +262,28 @@ func (h *DashboardHandler) GetTraces(w http.ResponseWriter, r *http.Request) {
 		status := entity.TraceStatus(v)
 		filter.Status = &status
 	}
+	if v := r.URL.Query().Get("name"); v != "" {
+		filter.Name = &v
+	}
+	if v := r.URL.Query().Get("sessionId"); v != "" {
+		filter.SessionID = &v
+	}
+	if v := r.URL.Query().Get("userId"); v != "" {
+		filter.UserID = &v
+	}
+	if tags := r.URL.Query()["tags"]; len(tags) > 0 {
+		filter.Tags = tags
+	}
+	if v := r.URL.Query().Get("from"); v != "" {
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			filter.From = &t
+		}
+	}
+	if v := r.URL.Query().Get("to"); v != "" {
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			filter.To = &t
+		}
+	}
 
 	result, err := h.traceSvc.List(r.Context(), projectID, filter)
 	if err != nil {
@@ -424,6 +446,62 @@ func (h *DashboardHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(result)
+}
+
+// GetUsage handles GET /api/v1/dashboard/projects/{id}/usage
+func (h *DashboardHandler) GetUsage(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUser(r.Context())
+	if user == nil {
+		http.Error(w, `{"error":"Unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+
+	projectID := chi.URLParam(r, "id")
+
+	// Verify ownership
+	projects, err := h.projectSvc.List(r.Context(), user.Email)
+	if err != nil {
+		http.Error(w, `{"error":"Internal server error"}`, http.StatusInternalServerError)
+		return
+	}
+
+	found := false
+	for _, p := range projects {
+		if p.ID == projectID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		http.Error(w, `{"error":"Project not found"}`, http.StatusNotFound)
+		return
+	}
+
+	req := &analytics.UsageRequest{}
+	if v := r.URL.Query().Get("from"); v != "" {
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			req.From = &t
+		}
+	}
+	if v := r.URL.Query().Get("to"); v != "" {
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			req.To = &t
+		}
+	}
+	if v := r.URL.Query().Get("granularity"); v != "" {
+		req.Granularity = v
+	}
+
+	result, err := h.analyticsSvc.GetUsage(r.Context(), projectID, req)
+	if err != nil {
+		http.Error(w, `{"error":"Internal server error"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"data": result,
+	})
 }
 
 // DeleteAllTraces handles DELETE /api/v1/dashboard/projects/{id}/traces

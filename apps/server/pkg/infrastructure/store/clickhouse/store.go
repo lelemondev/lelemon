@@ -139,6 +139,9 @@ func (s *Store) Migrate(ctx context.Context) error {
 		PARTITION BY toYYYYMM(started_at)
 		ORDER BY (trace_id, started_at, id)`,
 
+		// Phase 7.3: Add name field to traces table
+		`ALTER TABLE traces ADD COLUMN IF NOT EXISTS name Nullable(String)`,
+
 		// Phase 7.1: Add extended fields to existing spans table
 		`ALTER TABLE spans ADD COLUMN IF NOT EXISTS stop_reason Nullable(String)`,
 		`ALTER TABLE spans ADD COLUMN IF NOT EXISTS cache_read_tokens Nullable(UInt32)`,
@@ -596,6 +599,10 @@ func (s *Store) ListTraces(ctx context.Context, projectID string, filter entity.
 	where := []string{"t.project_id = ?"}
 	args := []any{uuid.MustParse(projectID)}
 
+	if filter.Name != nil && *filter.Name != "" {
+		where = append(where, "t.name ILIKE ?")
+		args = append(args, "%"+*filter.Name+"%")
+	}
 	if filter.SessionID != nil {
 		where = append(where, "t.session_id = ?")
 		args = append(args, *filter.SessionID)
@@ -607,6 +614,11 @@ func (s *Store) ListTraces(ctx context.Context, projectID string, filter entity.
 	if filter.Status != nil {
 		where = append(where, "t.status = ?")
 		args = append(args, string(*filter.Status))
+	}
+	// Tags filter (OR logic - trace must have AT LEAST ONE of the specified tags)
+	if len(filter.Tags) > 0 {
+		where = append(where, "hasAny(t.tags, ?)")
+		args = append(args, filter.Tags)
 	}
 	if filter.From != nil {
 		where = append(where, "t.created_at >= ?")
@@ -637,7 +649,7 @@ func (s *Store) ListTraces(ctx context.Context, projectID string, filter entity.
 	}
 
 	query := fmt.Sprintf(`
-		SELECT t.id, t.project_id, t.session_id, t.user_id, t.status, t.tags, t.metadata, t.created_at, t.updated_at,
+		SELECT t.id, t.project_id, t.name, t.session_id, t.user_id, t.status, t.tags, t.metadata, t.created_at, t.updated_at,
 		       count(s.id) as total_spans,
 		       sum(coalesce(s.input_tokens, 0) + coalesce(s.output_tokens, 0)) as total_tokens,
 		       sum(coalesce(s.cost_usd, 0)) as total_cost,
@@ -645,7 +657,7 @@ func (s *Store) ListTraces(ctx context.Context, projectID string, filter entity.
 		FROM traces FINAL AS t
 		LEFT JOIN spans AS s ON s.trace_id = t.id
 		WHERE %s
-		GROUP BY t.id, t.project_id, t.session_id, t.user_id, t.status, t.tags, t.metadata, t.created_at, t.updated_at
+		GROUP BY t.id, t.project_id, t.name, t.session_id, t.user_id, t.status, t.tags, t.metadata, t.created_at, t.updated_at
 		ORDER BY t.created_at DESC
 		LIMIT ? OFFSET ?
 	`, whereClause)
@@ -664,7 +676,7 @@ func (s *Store) ListTraces(ctx context.Context, projectID string, filter entity.
 		var tags []string
 		var metadataJSON string
 
-		err := rows.Scan(&tid, &pid, &t.SessionID, &t.UserID, &t.Status, &tags, &metadataJSON,
+		err := rows.Scan(&tid, &pid, &t.Name, &t.SessionID, &t.UserID, &t.Status, &tags, &metadataJSON,
 			&t.CreatedAt, &t.UpdatedAt, &t.TotalSpans, &t.TotalTokens, &t.TotalCostUSD, &t.TotalDurationMs)
 		if err != nil {
 			return nil, err

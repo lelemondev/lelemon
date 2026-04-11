@@ -133,7 +133,7 @@ export interface Stats {
 }
 
 export interface UsageDataPoint {
-  date: string;
+  time: string;
   traces: number;
   spans: number;
   tokens: number;
@@ -166,6 +166,63 @@ export interface SessionsPage {
   total: number;
   limit: number;
   offset: number;
+}
+
+// Enterprise - Cost Analytics
+export interface CostBreakdown {
+  tag: string;
+  totalCost: number;
+  totalTokens: number;
+  traceCount: number;
+  percentage: number;
+}
+
+export interface CostBreakdownResult {
+  breakdowns: CostBreakdown[];
+  totalCost: number;
+  totalTokens: number;
+  totalTraces: number;
+  from: string | null;
+  to: string | null;
+}
+
+export interface CostBreakdownFilter {
+  tagPrefix?: string;
+  from?: string;
+  to?: string;
+  limit?: number;
+}
+
+// Enterprise - Error Analytics
+export interface TagErrorRate {
+  tag: string;
+  totalTraces: number;
+  errorTraces: number;
+  errorRate: number;
+}
+
+export interface ErrorSummary {
+  message: string;
+  count: number;
+  lastOccurred: string;
+  affectedTags: string[];
+}
+
+export interface ErrorMetrics {
+  totalTraces: number;
+  errorTraces: number;
+  errorRate: number;
+  byTag: TagErrorRate[];
+  topErrors: ErrorSummary[];
+  from: string | null;
+  to: string | null;
+}
+
+export interface ErrorFilter {
+  tagPrefix?: string;
+  from?: string;
+  to?: string;
+  topLimit?: number;
 }
 
 class APIError extends Error {
@@ -333,9 +390,11 @@ export const dashboardAPI = {
   },
 
   async getTraces(projectId: string, params?: {
+    name?: string;
     sessionId?: string;
     userId?: string;
     status?: string;
+    tags?: string[];
     from?: string;
     to?: string;
     limit?: number;
@@ -345,7 +404,12 @@ export const dashboardAPI = {
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined) {
-          searchParams.set(key, String(value));
+          // Handle tags array separately
+          if (key === 'tags' && Array.isArray(value)) {
+            value.forEach((tag: string) => searchParams.append('tags', tag));
+          } else {
+            searchParams.set(key, String(value));
+          }
         }
       });
     }
@@ -375,6 +439,23 @@ export const dashboardAPI = {
     return normalizeStats(data);
   },
 
+  async getUsage(projectId: string, params?: { from?: string; to?: string; granularity?: string }): Promise<UsageDataPoint[]> {
+    const searchParams = new URLSearchParams();
+    if (params?.from) searchParams.set('from', params.from);
+    if (params?.to) searchParams.set('to', params.to);
+    if (params?.granularity) searchParams.set('granularity', params.granularity);
+    const queryStr = searchParams.toString();
+    const url = `/api/v1/dashboard/projects/${projectId}/usage${queryStr ? '?' + queryStr : ''}`;
+    const data = await request<{ data: Record<string, unknown>[] }>('GET', url);
+    return (data.data || []).map((d) => ({
+      time: (d.Time as string) || '',
+      traces: (d.Traces as number) || 0,
+      spans: (d.Spans as number) || 0,
+      tokens: (d.Tokens as number) || 0,
+      costUsd: (d.CostUSD as number) || 0,
+    }));
+  },
+
   async getSessions(projectId: string, params?: {
     limit?: number;
     offset?: number;
@@ -401,6 +482,34 @@ export const dashboardAPI = {
   async deleteAllTraces(projectId: string): Promise<{ deleted: number }> {
     const data = await request<Record<string, unknown>>('DELETE', `/api/v1/dashboard/projects/${projectId}/traces`);
     return { deleted: (data.Deleted as number) || 0 };
+  },
+
+  // Enterprise - Cost Analytics
+  async getCostBreakdown(projectId: string, filter?: CostBreakdownFilter): Promise<CostBreakdownResult> {
+    const searchParams = new URLSearchParams();
+    if (filter) {
+      if (filter.tagPrefix) searchParams.set('tagPrefix', filter.tagPrefix);
+      if (filter.from) searchParams.set('from', filter.from);
+      if (filter.to) searchParams.set('to', filter.to);
+      if (filter.limit) searchParams.set('limit', String(filter.limit));
+    }
+    const queryStr = searchParams.toString();
+    const url = `/api/v1/dashboard/projects/${projectId}/analytics/cost-breakdown${queryStr ? '?' + queryStr : ''}`;
+    return request<CostBreakdownResult>('GET', url);
+  },
+
+  // Enterprise - Error Analytics
+  async getErrorMetrics(projectId: string, filter?: ErrorFilter): Promise<ErrorMetrics> {
+    const searchParams = new URLSearchParams();
+    if (filter) {
+      if (filter.tagPrefix) searchParams.set('tagPrefix', filter.tagPrefix);
+      if (filter.from) searchParams.set('from', filter.from);
+      if (filter.to) searchParams.set('to', filter.to);
+      if (filter.topLimit) searchParams.set('topLimit', String(filter.topLimit));
+    }
+    const queryStr = searchParams.toString();
+    const url = `/api/v1/dashboard/projects/${projectId}/analytics/errors${queryStr ? '?' + queryStr : ''}`;
+    return request<ErrorMetrics>('GET', url);
   },
 };
 

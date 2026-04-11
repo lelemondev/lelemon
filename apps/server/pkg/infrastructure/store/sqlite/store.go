@@ -600,6 +600,10 @@ func (s *Store) ListTraces(ctx context.Context, projectID string, filter entity.
 	where := []string{"t.project_id = ?"}
 	args := []any{projectID}
 
+	if filter.Name != nil && *filter.Name != "" {
+		where = append(where, "t.name LIKE ?")
+		args = append(args, "%"+*filter.Name+"%")
+	}
 	if filter.SessionID != nil {
 		where = append(where, "t.session_id = ?")
 		args = append(args, *filter.SessionID)
@@ -611,6 +615,15 @@ func (s *Store) ListTraces(ctx context.Context, projectID string, filter entity.
 	if filter.Status != nil {
 		where = append(where, "t.status = ?")
 		args = append(args, string(*filter.Status))
+	}
+	// Tags filter (OR logic - trace must have AT LEAST ONE of the specified tags)
+	if len(filter.Tags) > 0 {
+		tagConditions := make([]string, len(filter.Tags))
+		for i, tag := range filter.Tags {
+			tagConditions[i] = "t.tags LIKE ?"
+			args = append(args, "%\""+tag+"\"%")
+		}
+		where = append(where, "("+strings.Join(tagConditions, " OR ")+")")
 	}
 	if filter.From != nil {
 		where = append(where, "t.created_at >= ?")

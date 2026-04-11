@@ -149,6 +149,7 @@ type TraceData struct {
 	TotalSpans     int     `json:"TotalSpans"`
 	TotalTokens    int     `json:"TotalTokens"`
 	TotalCostUSD   float64 `json:"TotalCostUSD"`
+	Tags           []any   `json:"Tags"`
 }
 
 // StatsResponse for parsing analytics

@@ -85,19 +85,16 @@ export default defineConfig({
   ],
 
   // Run local dev server before starting the tests
-  webServer: [
+  // When using Docker Compose, set PLAYWRIGHT_SKIP_WEBSERVER=1 to skip starting servers
+  webServer: process.env.PLAYWRIGHT_SKIP_WEBSERVER ? undefined : [
     {
       command: 'pnpm run dev',
       url: 'http://localhost:3000',
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: true,
       timeout: 120 * 1000,
+      env: {
+        NEXT_PUBLIC_API_URL: process.env.PLAYWRIGHT_API_URL || 'http://127.0.0.1:8080',
+      },
     },
-    // Uncomment to also start backend
-    // {
-    //   command: 'cd ../server && go run ./cmd/server',
-    //   url: 'http://localhost:8080/health',
-    //   reuseExistingServer: !process.env.CI,
-    //   timeout: 120 * 1000,
-    // },
   ],
 });
