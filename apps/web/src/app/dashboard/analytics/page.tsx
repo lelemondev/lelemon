@@ -321,16 +321,29 @@ export default function AnalyticsPage() {
               <CardHeader><CardTitle>Cost by Model</CardTitle></CardHeader>
               <CardContent className="pt-2">
                 {modelPieData.length > 0 ? (
-                  <ChartContainer config={modelPieConfig} className="h-72 w-full">
-                    <PieChart>
-                      <Pie data={modelPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={({ name, percent }) => `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`}>
-                        {modelPieData.map((entry, i) => (
-                          <Cell key={i} fill={entry.fill} />
-                        ))}
-                      </Pie>
-                      <ChartTooltip content={<ChartTooltipContent formatter={(value) => formatCost(value as number)} />} />
-                    </PieChart>
-                  </ChartContainer>
+                  <div>
+                    <ChartContainer config={modelPieConfig} className="h-52 w-full">
+                      <PieChart>
+                        <Pie data={modelPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80}>
+                          {modelPieData.map((entry, i) => (
+                            <Cell key={i} fill={entry.fill} />
+                          ))}
+                        </Pie>
+                        <ChartTooltip content={<ChartTooltipContent formatter={(value) => formatCost(value as number)} />} />
+                      </PieChart>
+                    </ChartContainer>
+                    <div className="mt-3 space-y-1.5">
+                      {modelPieData.map((m) => (
+                        <div key={m.name} className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: m.fill }} />
+                            <span className="text-muted-foreground truncate max-w-[180px]">{m.name}</span>
+                          </div>
+                          <span className="font-mono font-medium">{formatCost(m.value)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 ) : <div className="h-72 flex items-center justify-center text-muted-foreground">No model data.</div>}
               </CardContent>
             </Card>
