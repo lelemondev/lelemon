@@ -81,6 +81,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 		r.Get("/auth/google", authHandler.GoogleAuth)
 		r.Get("/auth/google/callback", authHandler.GoogleCallback)
 		r.Post("/auth/oauth/exchange", authHandler.ExchangeOAuthToken)
+		r.Post("/auth/logout", authHandler.Logout)
 
 		// Auth routes (session auth required)
 		r.Group(func(r chi.Router) {

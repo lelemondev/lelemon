@@ -3,7 +3,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
-// API URL: use env var if set, otherwise relative (proxied by Next.js in dev)
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 export interface User {
@@ -15,7 +14,6 @@ export interface User {
 
 interface AuthContextType {
   user: User | null;
-  token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -27,46 +25,67 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const TOKEN_KEY = 'lelemon_token';
 const USER_KEY = 'lelemon_user';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  // Load auth state from localStorage on mount
-  useEffect(() => {
-    const savedToken = localStorage.getItem(TOKEN_KEY);
-    const savedUser = localStorage.getItem(USER_KEY);
-
-    if (savedToken && savedUser) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUser));
+  const saveUser = useCallback((newUser: User) => {
+    try {
+      localStorage.setItem(USER_KEY, JSON.stringify(newUser));
+    } catch {
+      // localStorage may not be available
     }
-    setIsLoading(false);
-  }, []);
-
-  const saveAuth = useCallback((newToken: string, newUser: User) => {
-    localStorage.setItem(TOKEN_KEY, newToken);
-    localStorage.setItem(USER_KEY, JSON.stringify(newUser));
-    setToken(newToken);
     setUser(newUser);
   }, []);
 
   const clearAuth = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-    localStorage.removeItem('lelemon_current_project');
-    setToken(null);
+    try {
+      localStorage.removeItem(USER_KEY);
+      localStorage.removeItem('lelemon_current_project');
+    } catch {
+      // localStorage may not be available
+    }
     setUser(null);
   }, []);
+
+  // On mount: check if we have a valid session by calling /auth/me
+  useEffect(() => {
+    // First try cached user for instant UI
+    try {
+      const savedUser = localStorage.getItem(USER_KEY);
+      if (savedUser) {
+        setUser(JSON.parse(savedUser));
+      }
+    } catch {
+      // ignore parse errors
+    }
+
+    // Then verify session is still valid via cookie
+    fetch(`${API_URL}/api/v1/auth/me`, { credentials: 'include' })
+      .then(async (res) => {
+        if (res.ok) {
+          const userData = await res.json();
+          saveUser(userData);
+        } else {
+          clearAuth();
+        }
+      })
+      .catch(() => {
+        // Offline or server down — keep cached user
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, [saveUser, clearAuth]);
 
   const login = useCallback(async (email: string, password: string) => {
     const response = await fetch(`${API_URL}/api/v1/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', // receive httpOnly cookie
       body: JSON.stringify({ email, password }),
     });
 
@@ -76,16 +95,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const data = await response.json();
-    saveAuth(data.token, data.user);
+    saveUser(data.user);
     router.push('/dashboard');
-  }, [router, saveAuth]);
+  }, [router, saveUser]);
 
-  const loginWithToken = useCallback(async (newToken: string) => {
-    // Fetch user info using the token
+  const loginWithToken = useCallback(async (token: string) => {
+    // Used after OAuth exchange — token is already in cookie, but we also got it from exchange
     const response = await fetch(`${API_URL}/api/v1/auth/me`, {
-      headers: {
-        'Authorization': `Bearer ${newToken}`,
-      },
+      headers: { 'Authorization': `Bearer ${token}` },
     });
 
     if (!response.ok) {
@@ -93,13 +110,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const userData = await response.json();
-    saveAuth(newToken, userData);
-  }, [saveAuth]);
+    saveUser(userData);
+  }, [saveUser]);
 
   const register = useCallback(async (email: string, password: string, name: string) => {
     const response = await fetch(`${API_URL}/api/v1/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ email, password, name }),
     });
 
@@ -109,45 +127,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const data = await response.json();
-    saveAuth(data.token, data.user);
+    saveUser(data.user);
     router.push('/dashboard');
-  }, [router, saveAuth]);
+  }, [router, saveUser]);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try {
+      await fetch(`${API_URL}/api/v1/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch {
+      // Best effort — clear local state regardless
+    }
     clearAuth();
     router.push('/login');
   }, [router, clearAuth]);
 
   const refreshToken = useCallback(async () => {
-    if (!token) return;
-
     try {
       const response = await fetch(`${API_URL}/api/v1/auth/refresh`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {
         const data = await response.json();
-        saveAuth(data.token, data.user);
+        saveUser(data.user);
       } else {
         clearAuth();
       }
     } catch {
       clearAuth();
     }
-  }, [token, saveAuth, clearAuth]);
+  }, [saveUser, clearAuth]);
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        token,
         isLoading,
-        isAuthenticated: !!token && !!user,
+        isAuthenticated: !!user,
         login,
         loginWithToken,
         register,
@@ -166,12 +186,6 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}
-
-// Helper to get token for API calls
-export function getAuthToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem(TOKEN_KEY);
 }
 
 // Helper to get API URL

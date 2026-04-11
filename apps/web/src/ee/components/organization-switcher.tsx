@@ -54,7 +54,7 @@ export const OrganizationSwitcher = memo(function OrganizationSwitcher({
   collapsed = false,
 }: OrganizationSwitcherProps) {
   const { isEnterprise, hasFeature, isLoading: eeLoading } = useEE();
-  const { user, token } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [currentOrgId, setCurrentOrgId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -62,7 +62,7 @@ export const OrganizationSwitcher = memo(function OrganizationSwitcher({
 
   // Fetch organizations from API
   useEffect(() => {
-    if (!isEnterprise || !hasFeature('organizations') || !token) {
+    if (!isEnterprise || !hasFeature('organizations') || !isAuthenticated) {
       setIsLoading(false);
       return;
     }
@@ -71,9 +71,7 @@ export const OrganizationSwitcher = memo(function OrganizationSwitcher({
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
         const response = await fetch(`${apiUrl}/api/v1/organizations`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          credentials: 'include',
         });
 
         if (response.ok) {
@@ -93,7 +91,7 @@ export const OrganizationSwitcher = memo(function OrganizationSwitcher({
     };
 
     fetchOrganizations();
-  }, [isEnterprise, hasFeature, token]);
+  }, [isEnterprise, hasFeature, isAuthenticated]);
 
   // Get current organization
   const currentOrganization = useMemo(() => {

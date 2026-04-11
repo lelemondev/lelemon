@@ -5,10 +5,10 @@
 // API URL: use env var if set, otherwise relative (proxied by Next.js in dev)
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
-// Helper to get auth token
+// Auth token is now in httpOnly cookie — no need for localStorage.
+// This function is kept for backward compatibility with any code that passes authToken explicitly.
 function getAuthToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('lelemon_token');
+  return null;
 }
 
 // Normalized interfaces (camelCase for frontend)
@@ -435,6 +435,7 @@ async function request<T>(
   const response = await fetch(`${API_URL}${path}`, {
     method,
     headers,
+    credentials: 'include', // send httpOnly session cookie
     body: body ? JSON.stringify(body) : undefined,
   });
 
