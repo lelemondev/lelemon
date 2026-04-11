@@ -28,26 +28,43 @@ func NewAuthHandler(service *auth.Service, frontendURL string) *AuthHandler {
 	}
 }
 
-// setAuthCookie sets the JWT as an httpOnly cookie on the response
+// cookieDomain extracts the root domain for cross-subdomain cookies.
+// e.g. "https://lelemon.dev" → ".lelemon.dev" so cookie works on api.lelemon.dev + lelemon.dev
+func cookieDomain(frontendURL string) string {
+	u, err := url.Parse(frontendURL)
+	if err != nil || u.Hostname() == "localhost" || u.Hostname() == "" {
+		return "" // no domain restriction for localhost
+	}
+	return "." + u.Hostname()
+}
+
+// setAuthCookie sets the JWT as an httpOnly cookie on the response.
+// Uses SameSite=None+Secure for cross-origin (api.lelemon.dev → lelemon.dev).
 func (h *AuthHandler) setAuthCookie(w http.ResponseWriter, r *http.Request, token string) {
 	secure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
+	sameSite := http.SameSiteLaxMode
+	if secure {
+		sameSite = http.SameSiteNoneMode // required for cross-origin cookies
+	}
 	http.SetCookie(w, &http.Cookie{
 		Name:     "lelemon_session",
 		Value:    token,
 		Path:     "/",
+		Domain:   cookieDomain(h.frontendURL),
 		MaxAge:   86400, // 24 hours
 		HttpOnly: true,
 		Secure:   secure,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: sameSite,
 	})
 }
 
 // clearAuthCookie removes the session cookie
-func clearAuthCookie(w http.ResponseWriter) {
+func (h *AuthHandler) clearAuthCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "lelemon_session",
 		Value:    "",
 		Path:     "/",
+		Domain:   cookieDomain(h.frontendURL),
 		MaxAge:   -1,
 		HttpOnly: true,
 	})
@@ -190,17 +207,8 @@ func (h *AuthHandler) GoogleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set token in httpOnly cookie and redirect (avoids token in URL/browser history)
-	secure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
-	http.SetCookie(w, &http.Cookie{
-		Name:     "oauth_token",
-		Value:    result.Token,
-		Path:     "/api/v1/auth",
-		MaxAge:   60, // 1 minute — just enough for the frontend to pick it up
-		HttpOnly: true,
-		Secure:   secure,
-		SameSite: http.SameSiteLaxMode,
-	})
+	// Set session cookie directly and redirect — no intermediate token exchange needed
+	h.setAuthCookie(w, r, result.Token)
 	http.Redirect(w, r, h.frontendURL+"/auth/callback", http.StatusTemporaryRedirect)
 }
 
@@ -252,7 +260,7 @@ func (h *AuthHandler) ExchangeOAuthToken(w http.ResponseWriter, r *http.Request)
 
 // Logout handles POST /api/v1/auth/logout
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	clearAuthCookie(w)
+	h.clearAuthCookie(w)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }

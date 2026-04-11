@@ -19,20 +19,21 @@ function AuthCallbackContent() {
       return;
     }
 
-    // Exchange the httpOnly cookie for a token via API call
+    // Session cookie was set by the OAuth callback redirect.
+    // Verify session and load user data.
     const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
-    fetch(`${API_URL}/api/v1/auth/oauth/exchange`, {
-      method: 'POST',
-      credentials: 'include', // sends the httpOnly cookie
+    fetch(`${API_URL}/api/v1/auth/me`, {
+      credentials: 'include',
     })
       .then(async (res) => {
         if (!res.ok) {
-          throw new Error('Failed to exchange OAuth token');
+          throw new Error('Authentication failed');
         }
-        const data = await res.json();
-        return loginWithToken(data.token);
-      })
-      .then(() => {
+        const userData = await res.json();
+        // Save user to local state (token is in httpOnly cookie)
+        try {
+          localStorage.setItem('lelemon_user', JSON.stringify(userData));
+        } catch { /* ignore */ }
         router.push('/dashboard');
       })
       .catch((err) => {
