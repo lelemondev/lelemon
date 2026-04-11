@@ -80,12 +80,21 @@ export class AuthHelper {
    * Set auth token directly (for faster tests).
    * Must navigate to a page first to access localStorage.
    */
-  async setToken(context: BrowserContext, token: string, user?: { id: string; email: string; name: string }) {
+  async setToken(
+    context: BrowserContext,
+    token: string,
+    user?: { id: string; email: string; name: string },
+    project?: { id: string; name: string; apiKey?: string }
+  ) {
+    if (!token || typeof token !== 'string') {
+      throw new Error(`setToken: token must be a non-empty string, got: ${typeof token}`);
+    }
+
     // Navigate to login page first to get access to the origin's localStorage
     await this.page.goto('/login');
 
-    // Set token and user in localStorage (matching auth-context.tsx keys)
-    await this.page.evaluate(({ token, user }) => {
+    // Set token, user, and project in localStorage (matching auth-context.tsx and project-context.tsx keys)
+    await this.page.evaluate(({ token, user, project }) => {
       localStorage.setItem('lelemon_token', token);
       if (user) {
         localStorage.setItem('lelemon_user', JSON.stringify({
@@ -95,7 +104,10 @@ export class AuthHelper {
           createdAt: new Date().toISOString(),
         }));
       }
-    }, { token, user });
+      if (project) {
+        localStorage.setItem('lelemon_current_project', project.id);
+      }
+    }, { token, user, project });
 
     // Also set as cookie for middleware/SSR
     await context.addCookies([

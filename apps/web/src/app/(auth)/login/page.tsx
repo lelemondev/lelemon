@@ -1,29 +1,58 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { LemonIcon } from '@/components/lemon-icon';
 import { BetaBanner } from '@/components/beta-banner';
+import { getAuthErrorMessage, getOAuthErrorMessage, isValidEmail } from '@/lib/auth-errors';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
-export default function LoginPage() {
+function LoginForm() {
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
 
+  // Check for OAuth errors in URL params
+  useEffect(() => {
+    const errorParam = searchParams.get('error');
+    if (errorParam) {
+      setError(getOAuthErrorMessage(errorParam));
+      // Clean URL without reloading
+      window.history.replaceState({}, '', '/login');
+    }
+  }, [searchParams]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // Client-side validation
+    if (!email.trim() || !password) {
+      setError('Please enter your email and password.');
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+
     setLoading(true);
 
     try {
       await login(email, password);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      if (err instanceof TypeError && err.message.includes('fetch')) {
+        setError('Unable to connect to the server. Please check your internet connection.');
+      } else {
+        setError(getAuthErrorMessage(err instanceof Error ? err.message : 'Login failed'));
+      }
       setLoading(false);
     }
   };
@@ -136,5 +165,17 @@ export default function LoginPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#FAFDF7] flex items-center justify-center">
+        <LemonIcon className="w-12 h-12 animate-pulse" />
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

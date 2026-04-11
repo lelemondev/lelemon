@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { LemonIcon } from '@/components/lemon-icon';
 import { BetaBanner } from '@/components/beta-banner';
+import { getAuthErrorMessage, checkPasswordStrength, isValidEmail } from '@/lib/auth-errors';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -17,30 +18,41 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
 
+  // Calculate password strength
+  const passwordStrength = useMemo(() => checkPasswordStrength(password), [password]);
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
+    // Client-side validation
+    if (!name.trim()) {
+      setError('Please enter your name.');
       return;
     }
 
-    // Validate password strength
-    if (password.length < 12) {
-      setError('Password must be at least 12 characters');
+    if (!email.trim()) {
+      setError('Please enter your email address.');
       return;
     }
-    if (!/[A-Z]/.test(password)) {
-      setError('Password must contain at least one uppercase letter');
+
+    if (!isValidEmail(email)) {
+      setError('Please enter a valid email address.');
       return;
     }
-    if (!/[a-z]/.test(password)) {
-      setError('Password must contain at least one lowercase letter');
+
+    if (!password) {
+      setError('Please enter a password.');
       return;
     }
-    if (!/[0-9]/.test(password)) {
-      setError('Password must contain at least one number');
+
+    if (passwordStrength.score < 4) {
+      setError(`Password is too weak. ${passwordStrength.feedback.join('. ')}.`);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match. Please make sure both passwords are identical.');
       return;
     }
 
@@ -49,7 +61,11 @@ export default function SignupPage() {
     try {
       await register(email, password, name);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
+      if (err instanceof TypeError && err.message.includes('fetch')) {
+        setError('Unable to connect to the server. Please check your internet connection.');
+      } else {
+        setError(getAuthErrorMessage(err instanceof Error ? err.message : 'Registration failed'));
+      }
       setLoading(false);
     }
   };
@@ -154,6 +170,32 @@ export default function SignupPage() {
                   className="w-full px-4 py-3 rounded-xl border border-[#18181B]/10 bg-[#F4F4F5] focus:bg-white focus:border-[#FACC15] focus:ring-2 focus:ring-[#FACC15]/20 outline-none transition-all text-[#18181B] placeholder:text-[#A1A1AA]"
                   placeholder="Min 12 chars, upper, lower, number"
                 />
+                {/* Password strength indicator */}
+                {password && (
+                  <div className="mt-2">
+                    <div className="flex gap-1 mb-1">
+                      {[1, 2, 3, 4].map((level) => (
+                        <div
+                          key={level}
+                          className="h-1 flex-1 rounded-full transition-all"
+                          style={{
+                            backgroundColor: level <= passwordStrength.score ? passwordStrength.color : '#e5e5e5'
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs capitalize" style={{ color: passwordStrength.color }}>
+                        {passwordStrength.label}
+                      </span>
+                      {passwordStrength.feedback.length > 0 && (
+                        <span className="text-xs text-[#71717A]">
+                          {passwordStrength.feedback[0]}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
