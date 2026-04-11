@@ -1,123 +1,102 @@
 # Contributing to Lelemon
 
-Thanks for your interest in contributing to Lelemon! This document provides guidelines for contributing to the project.
+Thanks for your interest in contributing! This guide will help you get started.
 
-## Getting Started
+## Prerequisites
 
-### Prerequisites
+- **Go 1.24+** (backend)
+- **Node.js 20+** with **pnpm** (dashboard)
+- **Docker & Docker Compose** (optional, for databases)
 
-- Node.js 20+
-- Go 1.21+ (for backend)
-- Docker & Docker Compose (optional, for databases)
-
-### Setup
+## Setup
 
 ```bash
-# Clone the repo
 git clone https://github.com/lelemondev/lelemon.git
 cd lelemon
 
-# Install dependencies
-yarn install
+# Backend
+cd apps/server
+go run ./cmd/server
 
-# Start development
-yarn dev
+# Dashboard (separate terminal)
+cd apps/web
+pnpm install
+pnpm dev
 ```
 
-### Project Structure
-
-```
-lelemon/
-├── apps/
-│   ├── web/        # Next.js dashboard (frontend)
-│   ├── server/     # Go backend (API + ingestion)
-│   └── playground/ # SDK testing app
-└── docs/           # Documentation
-```
+The API runs on http://localhost:8080 and the dashboard on http://localhost:3000.
 
 ## Development Workflow
 
 ### 1. Create a Branch
 
 ```bash
-git checkout -b feature/your-feature-name
-# or
-git checkout -b fix/issue-description
+git checkout -b feat/your-feature    # new feature
+git checkout -b fix/issue-description # bug fix
 ```
 
 ### 2. Make Changes
 
-- Follow existing code style
+- Follow existing code patterns
 - Add tests for new functionality
 - Update documentation if needed
 
-### 3. Test Your Changes
+### 3. Test
 
 ```bash
-# Frontend (apps/web)
-cd apps/web
-yarn build
-yarn lint
-
-# Backend (apps/server)
+# Backend
 cd apps/server
 go test ./...
-go build ./cmd/server
+go vet ./...
+
+# Dashboard
+cd apps/web
+pnpm build       # build check
+pnpm lint        # lint check
 ```
 
 ### 4. Commit
 
-Write clear commit messages:
+Use [conventional commits](https://www.conventionalcommits.org/):
 
 ```
 feat: add session filtering to traces page
 fix: correct token count calculation for Claude
 docs: update self-hosting instructions
+feat(analytics): add model breakdown endpoint
+fix(auth): handle OAuth callback errors
 ```
 
-### 5. Submit a Pull Request
+### 5. Open a Pull Request
 
 - Fill out the PR template
 - Link related issues
-- Wait for review
+- Ensure CI passes
 
 ## Code Style
 
-### TypeScript (Frontend)
-
-- Use TypeScript strict mode
-- Prefer `const` over `let`
-- Use named exports
-- Follow existing patterns in the codebase
-
 ### Go (Backend)
 
-- Follow standard Go conventions
-- Use `gofmt` and `golint`
-- Keep functions small and focused
-- Handle errors explicitly
+- Standard Go conventions (`gofmt`, `go vet`)
+- Clean Architecture: `domain` -> `application` -> `infrastructure` -> `interfaces`
+- Always parameterize SQL queries (never string interpolation)
+- Wrap errors with context: `fmt.Errorf("failed to get traces: %w", err)`
+- Filter by `projectID` in every query (multi-tenant isolation)
+
+### TypeScript (Dashboard)
+
+- TypeScript strict mode
+- Use `@/` path aliases for imports
+- Use shadcn/ui components (`Card`, `Button`, `Table`, etc.)
+- Tailwind CSS with semantic classes (prefer `text-muted-foreground` over hex colors)
+- Client components only when needed (`'use client'` for hooks/events)
 
 ## Reporting Issues
 
-When reporting bugs, please include:
-
-- Steps to reproduce
-- Expected vs actual behavior
-- Environment (OS, Node/Go version, browser)
-- Relevant logs or screenshots
-
-## Feature Requests
-
-Open an issue with:
-
-- Clear description of the feature
-- Use case / motivation
-- Possible implementation approach (optional)
+- **Bugs**: Use the [bug report template](https://github.com/lelemondev/lelemon/issues/new?template=bug_report.yml)
+- **Features**: Use the [feature request template](https://github.com/lelemondev/lelemon/issues/new?template=feature_request.yml)
+- **Security**: See [SECURITY.md](SECURITY.md) (do not open public issues)
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the AGPL-3.0 license.
-
-## Questions?
-
-Open an issue or start a discussion. We're happy to help!
+By contributing, you agree that your contributions will be licensed under the [AGPL-3.0](LICENSE) license.
