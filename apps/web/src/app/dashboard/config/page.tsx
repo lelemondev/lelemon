@@ -73,10 +73,13 @@ function ConfigPageContent() {
   // Handle welcome flow for new users
   useEffect(() => {
     const isWelcome = searchParams.get('welcome') === 'true';
-    const key = searchParams.get('key');
 
-    if (isWelcome && key) {
-      setWelcomeKey(key);
+    if (isWelcome) {
+      const key = sessionStorage.getItem('lelemon_welcome_key');
+      if (key) {
+        setWelcomeKey(key);
+        sessionStorage.removeItem('lelemon_welcome_key');
+      }
       refreshProjects();
       router.replace('/dashboard/config', { scroll: false });
     }

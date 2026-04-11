@@ -12,7 +12,6 @@ function AuthCallbackContent() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const token = searchParams.get('token');
     const errorParam = searchParams.get('error');
 
     if (errorParam) {
@@ -20,13 +19,19 @@ function AuthCallbackContent() {
       return;
     }
 
-    if (!token) {
-      setError('No authentication token received');
-      return;
-    }
-
-    // Store token and redirect to dashboard
-    loginWithToken(token)
+    // Exchange the httpOnly cookie for a token via API call
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+    fetch(`${API_URL}/api/v1/auth/oauth/exchange`, {
+      method: 'POST',
+      credentials: 'include', // sends the httpOnly cookie
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error('Failed to exchange OAuth token');
+        }
+        const data = await res.json();
+        return loginWithToken(data.token);
+      })
       .then(() => {
         router.push('/dashboard');
       })

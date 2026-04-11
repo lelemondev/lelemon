@@ -163,8 +163,18 @@ func (h *AuthHandler) GoogleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Redirect to frontend with token
-	http.Redirect(w, r, h.frontendURL+"/auth/callback?token="+result.Token, http.StatusTemporaryRedirect)
+	// Set token in httpOnly cookie and redirect (avoids token in URL/browser history)
+	secure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
+	http.SetCookie(w, &http.Cookie{
+		Name:     "oauth_token",
+		Value:    result.Token,
+		Path:     "/api/v1/auth",
+		MaxAge:   60, // 1 minute — just enough for the frontend to pick it up
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+	})
+	http.Redirect(w, r, h.frontendURL+"/auth/callback", http.StatusTemporaryRedirect)
 }
 
 // Me handles GET /api/v1/auth/me
@@ -187,6 +197,30 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(result)
+}
+
+// ExchangeOAuthToken handles POST /api/v1/auth/oauth/exchange
+// The frontend calls this after OAuth redirect to retrieve the token from the httpOnly cookie.
+func (h *AuthHandler) ExchangeOAuthToken(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("oauth_token")
+	if err != nil || cookie.Value == "" {
+		http.Error(w, `{"error":"No OAuth token found. Please try logging in again."}`, http.StatusUnauthorized)
+		return
+	}
+
+	// Clear the cookie immediately
+	http.SetCookie(w, &http.Cookie{
+		Name:     "oauth_token",
+		Value:    "",
+		Path:     "/api/v1/auth",
+		MaxAge:   -1,
+		HttpOnly: true,
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"token": cookie.Value,
+	})
 }
 
 func generateState() string {
