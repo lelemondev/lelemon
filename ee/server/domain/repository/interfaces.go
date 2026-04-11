@@ -42,12 +42,19 @@ type UsageStore interface {
 	GetByMonth(ctx context.Context, orgID, month string) (*entity.Usage, error)
 }
 
+// AnalyticsStore provides cost and usage analytics
+type AnalyticsStore interface {
+	GetCostBreakdownByTags(ctx context.Context, projectID string, filter entity.CostBreakdownFilter) (*entity.CostBreakdownResult, error)
+	GetErrorMetrics(ctx context.Context, projectID string, filter entity.ErrorFilter) (*entity.ErrorMetrics, error)
+}
+
 // EnterpriseStore combines all enterprise interfaces
 type EnterpriseStore interface {
 	OrganizationStore
 	TeamStore
 	SubscriptionStore
 	UsageStore
+	AnalyticsStore
 
 	// MigrateEnterprise runs migrations for enterprise tables
 	MigrateEnterprise(ctx context.Context) error
@@ -76,6 +83,11 @@ type BillingRepository interface {
 // RBACRepository is used by the RBAC service
 type RBACRepository interface {
 	TeamStore
+}
+
+// AnalyticsRepository is used by the analytics service
+type AnalyticsRepository interface {
+	AnalyticsStore
 }
 
 // Transactional provides transaction support

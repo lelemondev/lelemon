@@ -606,3 +606,363 @@ func (s *Store) GetByMonth(ctx context.Context, orgID, month string) (*entity.Us
 
 	return &u, nil
 }
+
+// ============================================
+// ANALYTICS OPERATIONS
+// ============================================
+
+// GetCostBreakdownByTags returns cost analytics grouped by tag for a project
+func (s *Store) GetCostBreakdownByTags(ctx context.Context, projectID string, filter entity.CostBreakdownFilter) (*entity.CostBreakdownResult, error) {
+	// Build query for traces with date filters
+	query := `
+		SELECT tags, total_cost_usd, total_tokens
+		FROM traces
+		WHERE project_id = ?
+	`
+	args := []interface{}{projectID}
+
+	if filter.From != nil {
+		query += " AND created_at >= ?"
+		args = append(args, filter.From)
+	}
+	if filter.To != nil {
+		query += " AND created_at <= ?"
+		args = append(args, filter.To)
+	}
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query traces: %w", err)
+	}
+	defer rows.Close()
+
+	// Aggregate costs by tag
+	tagCosts := make(map[string]*entity.CostBreakdown)
+	var totalCost float64
+	var totalTokens int
+	var totalTraces int
+
+	for rows.Next() {
+		var tagsJSON string
+		var costUSD float64
+		var tokens int
+
+		if err := rows.Scan(&tagsJSON, &costUSD, &tokens); err != nil {
+			return nil, fmt.Errorf("failed to scan row: %w", err)
+		}
+
+		totalCost += costUSD
+		totalTokens += tokens
+		totalTraces++
+
+		// Parse tags JSON
+		var tags []string
+		if tagsJSON != "" {
+			if err := json.Unmarshal([]byte(tagsJSON), &tags); err != nil {
+				continue // Skip malformed tags
+			}
+		}
+
+		// Aggregate by each tag
+		for _, tag := range tags {
+			// Apply tag prefix filter if specified
+			if filter.TagPrefix != "" && !strings.HasPrefix(tag, filter.TagPrefix) {
+				continue
+			}
+
+			if _, ok := tagCosts[tag]; !ok {
+				tagCosts[tag] = &entity.CostBreakdown{Tag: tag}
+			}
+			tagCosts[tag].TotalCost += costUSD
+			tagCosts[tag].TotalTokens += tokens
+			tagCosts[tag].TraceCount++
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating rows: %w", err)
+	}
+
+	// Convert map to slice and calculate percentages
+	breakdowns := make([]entity.CostBreakdown, 0, len(tagCosts))
+	for _, bd := range tagCosts {
+		if totalCost > 0 {
+			bd.Percentage = (bd.TotalCost / totalCost) * 100
+		}
+		breakdowns = append(breakdowns, *bd)
+	}
+
+	// Sort by cost descending
+	sortCostBreakdowns(breakdowns)
+
+	// Apply limit
+	limit := filter.Limit
+	if limit <= 0 {
+		limit = 10
+	}
+	if len(breakdowns) > limit {
+		breakdowns = breakdowns[:limit]
+	}
+
+	return &entity.CostBreakdownResult{
+		Breakdowns:  breakdowns,
+		TotalCost:   totalCost,
+		TotalTokens: totalTokens,
+		TotalTraces: totalTraces,
+		From:        filter.From,
+		To:          filter.To,
+	}, nil
+}
+
+// sortCostBreakdowns sorts breakdowns by TotalCost descending
+func sortCostBreakdowns(breakdowns []entity.CostBreakdown) {
+	for i := 0; i < len(breakdowns)-1; i++ {
+		for j := i + 1; j < len(breakdowns); j++ {
+			if breakdowns[j].TotalCost > breakdowns[i].TotalCost {
+				breakdowns[i], breakdowns[j] = breakdowns[j], breakdowns[i]
+			}
+		}
+	}
+}
+
+// GetErrorMetrics returns error rate analytics for a project
+func (s *Store) GetErrorMetrics(ctx context.Context, projectID string, filter entity.ErrorFilter) (*entity.ErrorMetrics, error) {
+	// Build base query for traces
+	baseWhere := "WHERE project_id = ?"
+	args := []interface{}{projectID}
+
+	if filter.From != nil {
+		baseWhere += " AND created_at >= ?"
+		args = append(args, filter.From)
+	}
+	if filter.To != nil {
+		baseWhere += " AND created_at <= ?"
+		args = append(args, filter.To)
+	}
+
+	// 1. Get total and error trace counts
+	var totalTraces, errorTraces int
+	err := s.db.QueryRowContext(ctx, `
+		SELECT
+			COUNT(*) as total,
+			SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) as errors
+		FROM traces `+baseWhere, args...).Scan(&totalTraces, &errorTraces)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count traces: %w", err)
+	}
+
+	// Calculate overall error rate
+	var errorRate float64
+	if totalTraces > 0 {
+		errorRate = float64(errorTraces) / float64(totalTraces) * 100
+	}
+
+	// 2. Get error rate by tag
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT tags, status
+		FROM traces `+baseWhere, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query traces for tags: %w", err)
+	}
+	defer rows.Close()
+
+	// Aggregate by tag
+	type tagStats struct {
+		total  int
+		errors int
+	}
+	tagMap := make(map[string]*tagStats)
+
+	for rows.Next() {
+		var tagsJSON string
+		var status string
+		if err := rows.Scan(&tagsJSON, &status); err != nil {
+			return nil, fmt.Errorf("failed to scan row: %w", err)
+		}
+
+		var tags []string
+		if tagsJSON != "" {
+			if err := json.Unmarshal([]byte(tagsJSON), &tags); err != nil {
+				continue
+			}
+		}
+
+		isError := status == "error"
+
+		for _, tag := range tags {
+			if filter.TagPrefix != "" && !strings.HasPrefix(tag, filter.TagPrefix) {
+				continue
+			}
+			if _, ok := tagMap[tag]; !ok {
+				tagMap[tag] = &tagStats{}
+			}
+			tagMap[tag].total++
+			if isError {
+				tagMap[tag].errors++
+			}
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating rows: %w", err)
+	}
+
+	// Convert to slice and calculate rates
+	byTag := make([]entity.TagErrorRate, 0, len(tagMap))
+	for tag, stats := range tagMap {
+		rate := 0.0
+		if stats.total > 0 {
+			rate = float64(stats.errors) / float64(stats.total) * 100
+		}
+		byTag = append(byTag, entity.TagErrorRate{
+			Tag:         tag,
+			TotalTraces: stats.total,
+			ErrorTraces: stats.errors,
+			ErrorRate:   rate,
+		})
+	}
+
+	// Sort by error rate descending
+	sortTagErrorRates(byTag)
+
+	// 3. Get top error messages from spans
+	topLimit := filter.TopLimit
+	if topLimit <= 0 {
+		topLimit = 10
+	}
+
+	// Query spans with error messages, joined with traces for tags
+	topErrors, err := s.getTopErrors(ctx, projectID, filter, topLimit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get top errors: %w", err)
+	}
+
+	return &entity.ErrorMetrics{
+		TotalTraces: totalTraces,
+		ErrorTraces: errorTraces,
+		ErrorRate:   errorRate,
+		ByTag:       byTag,
+		TopErrors:   topErrors,
+		From:        filter.From,
+		To:          filter.To,
+	}, nil
+}
+
+// getTopErrors retrieves the most common error messages
+func (s *Store) getTopErrors(ctx context.Context, projectID string, filter entity.ErrorFilter, limit int) ([]entity.ErrorSummary, error) {
+	query := `
+		SELECT s.error_message, COUNT(*) as count, MAX(s.started_at) as last_occurred, t.tags
+		FROM spans s
+		INNER JOIN traces t ON s.trace_id = t.id
+		WHERE t.project_id = ? AND s.status = 'error' AND s.error_message IS NOT NULL AND s.error_message != ''
+	`
+	args := []interface{}{projectID}
+
+	if filter.From != nil {
+		query += " AND s.started_at >= ?"
+		args = append(args, filter.From)
+	}
+	if filter.To != nil {
+		query += " AND s.started_at <= ?"
+		args = append(args, filter.To)
+	}
+
+	query += " GROUP BY s.error_message ORDER BY count DESC LIMIT ?"
+	args = append(args, limit)
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	// Aggregate errors with their tags
+	errorMap := make(map[string]*entity.ErrorSummary)
+	var orderedMessages []string
+
+	for rows.Next() {
+		var message string
+		var count int
+		var lastOccurredStr string
+		var tagsJSON sql.NullString
+
+		if err := rows.Scan(&message, &count, &lastOccurredStr, &tagsJSON); err != nil {
+			return nil, err
+		}
+
+		// Parse time from string (SQLite stores as string)
+		lastOccurred, _ := time.Parse("2006-01-02 15:04:05", lastOccurredStr)
+		if lastOccurred.IsZero() {
+			// Try RFC3339 format
+			lastOccurred, _ = time.Parse(time.RFC3339, lastOccurredStr)
+		}
+
+		if existing, ok := errorMap[message]; ok {
+			existing.Count += count
+			if lastOccurred.After(existing.LastOccurred) {
+				existing.LastOccurred = lastOccurred
+			}
+			// Add tags
+			if tagsJSON.Valid && tagsJSON.String != "" {
+				var tags []string
+				if err := json.Unmarshal([]byte(tagsJSON.String), &tags); err == nil {
+					for _, tag := range tags {
+						found := false
+						for _, t := range existing.AffectedTags {
+							if t == tag {
+								found = true
+								break
+							}
+						}
+						if !found && len(existing.AffectedTags) < 5 {
+							existing.AffectedTags = append(existing.AffectedTags, tag)
+						}
+					}
+				}
+			}
+		} else {
+			summary := &entity.ErrorSummary{
+				Message:      message,
+				Count:        count,
+				LastOccurred: lastOccurred,
+				AffectedTags: []string{},
+			}
+			if tagsJSON.Valid && tagsJSON.String != "" {
+				var tags []string
+				if err := json.Unmarshal([]byte(tagsJSON.String), &tags); err == nil {
+					if len(tags) > 5 {
+						tags = tags[:5]
+					}
+					summary.AffectedTags = tags
+				}
+			}
+			errorMap[message] = summary
+			orderedMessages = append(orderedMessages, message)
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Build result in order
+	result := make([]entity.ErrorSummary, 0, len(orderedMessages))
+	for _, msg := range orderedMessages {
+		if summary, ok := errorMap[msg]; ok {
+			result = append(result, *summary)
+		}
+	}
+
+	return result, nil
+}
+
+// sortTagErrorRates sorts by error rate descending
+func sortTagErrorRates(rates []entity.TagErrorRate) {
+	for i := 0; i < len(rates)-1; i++ {
+		for j := i + 1; j < len(rates); j++ {
+			if rates[j].ErrorRate > rates[i].ErrorRate {
+				rates[i], rates[j] = rates[j], rates[i]
+			}
+		}
+	}
+}

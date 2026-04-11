@@ -162,6 +162,7 @@ func main() {
 		rbacSvc,
 		billingSvc,
 		lsClient,
+		enterpriseStore,
 	)
 
 	// Create router with enterprise features enabled

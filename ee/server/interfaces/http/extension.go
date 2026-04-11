@@ -10,6 +10,7 @@ import (
 	"github.com/lelemon/ee/server/application/organization"
 	"github.com/lelemon/ee/server/application/rbac"
 	"github.com/lelemon/ee/server/domain/entity"
+	"github.com/lelemon/ee/server/domain/repository"
 	"github.com/lelemon/ee/server/infrastructure/lemonsqueezy"
 	"github.com/lelemon/ee/server/interfaces/http/handler"
 	"github.com/lelemon/ee/server/interfaces/http/middleware"
@@ -18,10 +19,11 @@ import (
 // EnterpriseExtension implements coreHttp.RouterExtension
 // to add enterprise routes to the core router.
 type EnterpriseExtension struct {
-	orgSvc     *organization.Service
-	rbacSvc    *rbac.Service
-	billingSvc *billing.Service
-	lsClient   *lemonsqueezy.Client
+	orgSvc         *organization.Service
+	rbacSvc        *rbac.Service
+	billingSvc     *billing.Service
+	lsClient       *lemonsqueezy.Client
+	analyticsStore repository.AnalyticsStore
 }
 
 // NewEnterpriseExtension creates a new enterprise extension.
@@ -30,12 +32,14 @@ func NewEnterpriseExtension(
 	rbacSvc *rbac.Service,
 	billingSvc *billing.Service,
 	lsClient *lemonsqueezy.Client,
+	analyticsStore repository.AnalyticsStore,
 ) *EnterpriseExtension {
 	return &EnterpriseExtension{
-		orgSvc:     orgSvc,
-		rbacSvc:    rbacSvc,
-		billingSvc: billingSvc,
-		lsClient:   lsClient,
+		orgSvc:         orgSvc,
+		rbacSvc:        rbacSvc,
+		billingSvc:     billingSvc,
+		lsClient:       lsClient,
+		analyticsStore: analyticsStore,
 	}
 }
 
@@ -44,6 +48,7 @@ func (e *EnterpriseExtension) MountRoutes(r chi.Router, deps *coreHttp.RouterDep
 	// Create handlers
 	orgHandler := handler.NewOrganizationHandler(e.orgSvc, deps.GetUserID)
 	billingHandler := handler.NewBillingHandler(e.billingSvc, e.lsClient, deps.GetUserEmail)
+	analyticsHandler := handler.NewAnalyticsHandler(e.analyticsStore)
 
 	// Enterprise API routes
 	r.Route("/api/v1", func(r chi.Router) {
@@ -88,6 +93,12 @@ func (e *EnterpriseExtension) MountRoutes(r chi.Router, deps *coreHttp.RouterDep
 					Delete("/billing/subscription", billingHandler.CancelSubscription)
 				r.With(middleware.RequirePermission(e.rbacSvc, entity.PermBillingRead, deps.GetUserID)).
 					Get("/billing/usage", billingHandler.GetUsage)
+			})
+
+			// Dashboard - Enterprise analytics routes (project-scoped)
+			r.Route("/dashboard/projects/{projectId}/analytics", func(r chi.Router) {
+				r.Get("/cost-breakdown", analyticsHandler.GetCostBreakdown)
+				r.Get("/errors", analyticsHandler.GetErrorMetrics)
 			})
 		})
 	})
