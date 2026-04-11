@@ -51,6 +51,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	r.Use(middleware.Logging)
 	r.Use(chimiddleware.Recoverer)
 	r.Use(middleware.SecurityHeaders)
+	r.Use(middleware.MaxBodySize(5 << 20)) // 5MB max request body
 	r.Use(corsMiddleware(cfg.AllowedOrigins))
 
 	// Health checks (no auth required)
