@@ -1,6 +1,10 @@
 # CLAUDE.md
 
-> Configuration file for Claude Code AI assistant. Last updated: 2026-01.
+> Configuration file for Claude Code and AI agents. Last updated: 2026-04.
+>
+> **For AI agents:** This file + `.claude/rules/` auto-configures your environment.
+> Read the rules in `.claude/rules/` before making changes — they enforce security,
+> multi-tenant isolation, and code quality patterns specific to this project.
 
 ## Project Description
 

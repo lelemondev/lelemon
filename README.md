@@ -1,8 +1,11 @@
 # Lelemon
 
+[![CI](https://github.com/lelemondev/lelemon/actions/workflows/ci.yml/badge.svg)](https://github.com/lelemondev/lelemon/actions/workflows/ci.yml)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://opensource.org/licenses/AGPL-3.0)
+
 **Open-source LLM Observability Platform**
 
-Track, debug, and optimize your AI agents with minimal setup. Self-hostable alternative to Langfuse/Arize.
+Track, debug, and optimize your AI agents with minimal setup. Self-hostable alternative to Langfuse, Helicone, and Arize.
 
 ---
 
@@ -10,18 +13,19 @@ Track, debug, and optimize your AI agents with minimal setup. Self-hostable alte
 
 - **Hierarchical Tracing** - Agent workflows, LLM calls, tool usage, retrieval operations
 - **Cost Tracking** - Automatic cost calculation for OpenAI, Anthropic, Gemini, Bedrock
-- **High Performance** - Go backend with SQLite/PostgreSQL/ClickHouse support
-- **Developer-First** - Clean SDK, dark mode dashboard, zero bloat
+- **Analytics** - Model breakdown, latency percentiles (p50/p95/p99), usage heatmaps, tag-based segmentation
+- **Multi-Provider** - OpenAI, Anthropic, Google Gemini, AWS Bedrock, OpenRouter
+- **High Performance** - Go backend with SQLite, PostgreSQL, or ClickHouse
 - **Self-Hosted** - Run on your infrastructure, own your data
+- **SDKs** - TypeScript and Python with zero-config auto-instrumentation
 
 ## Architecture
 
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Your App  │────▶│  Go Server  │────▶│  Dashboard  │
-│ (@lelemondev│     │   (API)     │     │  (Next.js)  │
-│    /sdk)    │     └──────┬──────┘     └─────────────┘
-└─────────────┘            │
+│   Your App  │────>│  Go Server  │────>│  Dashboard  │
+│  (SDK)      │     │   (API)     │     │  (Next.js)  │
+└─────────────┘     └──────┬──────┘     └─────────────┘
                     ┌──────┴──────┐
                     │  Database   │
                     │ SQLite/PG/  │
@@ -31,41 +35,7 @@ Track, debug, and optimize your AI agents with minimal setup. Self-hostable alte
 
 ## Quick Start
 
-### 1. Install the SDK
-
-```bash
-npm install @lelemondev/sdk
-```
-
-### 2. Instrument Your Code
-
-```typescript
-import { init, observe } from '@lelemondev/sdk';
-import Anthropic from '@anthropic-ai/sdk';
-
-init({
-  apiKey: process.env.LELEMON_API_KEY,
-  endpoint: 'http://localhost:8080', // your server
-});
-
-// Wrap your LLM client - all calls are traced automatically
-const client = observe(new Anthropic());
-
-const response = await client.messages.create({
-  model: 'claude-sonnet-4-20250514',
-  messages: [{ role: 'user', content: 'Hello!' }],
-});
-```
-
-### 3. View Traces
-
-Open the dashboard to see your traces, costs, and analytics.
-
----
-
-## Self-Hosting
-
-### Option 1: Docker Compose (Recommended)
+### 1. Start the Server
 
 ```bash
 git clone https://github.com/lelemondev/lelemon.git
@@ -73,11 +43,72 @@ cd lelemon
 docker-compose up -d
 ```
 
-That's it! Open http://localhost:3000 to access the dashboard.
+Open http://localhost:3000, create an account, and grab your API key.
 
-**Alternative databases:**
+### 2. Install an SDK
+
+**TypeScript:**
+```bash
+npm install @lelemondev/sdk
+```
+
+**Python:**
+```bash
+pip install lelemondev
+```
+
+### 3. Instrument Your Code
+
+**TypeScript:**
+```typescript
+import { init, observe, trace } from '@lelemondev/sdk/openai';
+import OpenAI from 'openai';
+
+init({ apiKey: process.env.LELEMON_API_KEY });
+const openai = observe(new OpenAI(), {
+  userId: 'user-123',
+  sessionId: 'conversation-abc',
+});
+
+await trace('my-agent', async () => {
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4',
+    messages: [{ role: 'user', content: 'Hello!' }],
+  });
+  return response.choices[0].message.content;
+});
+```
+
+**Python:**
+```python
+from openai import AsyncOpenAI
+from lelemondev import init, observe, trace
+
+init(api_key="your-api-key")
+client = observe(AsyncOpenAI(), user_id="user-123", session_id="conv-abc")
+
+async with trace("my-agent") as t:
+    response = await client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": "Hello!"}]
+    )
+    t.set_result(response.choices[0].message.content)
+```
+
+### 4. View Traces
+
+Open the dashboard to see your traces with full cost, latency, and token analytics.
+
+---
+
+## Self-Hosting
+
+### Docker Compose (Recommended)
 
 ```bash
+# SQLite (default, simplest)
+docker-compose up -d
+
 # PostgreSQL (production, >100k traces/day)
 docker-compose -f docker-compose.postgres.yml up -d
 
@@ -85,65 +116,55 @@ docker-compose -f docker-compose.postgres.yml up -d
 docker-compose -f docker-compose.clickhouse.yml up -d
 ```
 
-### Option 2: Manual Setup
+### Manual Setup
 
 ```bash
 # Backend
 cd apps/server
 go build -o lelemon ./cmd/server
-./lelemon
+DATABASE_URL=sqlite:///data/lelemon.db JWT_SECRET=your-secret ./lelemon
 
-# Dashboard (separate terminal)
+# Dashboard
 cd apps/web
 pnpm install && pnpm build && pnpm start
 ```
 
 ### Environment Variables
 
-Copy `.env.example` to `.env` and customize:
-
-```bash
-cp .env.example .env
-```
-
-Key variables:
-
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `JWT_SECRET` | - | Auth secret (required in production) |
-| `LOG_LEVEL` | `info` | debug, info, warn, error |
-| `POSTGRES_PASSWORD` | `lelemon` | PostgreSQL password |
-| `CLICKHOUSE_PASSWORD` | - | ClickHouse password |
+| `DATABASE_URL` | `sqlite:///data/lelemon.db` | Database connection string |
+| `JWT_SECRET` | - | Auth secret (**required** in production) |
+| `PORT` | `8080` | API server port |
+| `FRONTEND_URL` | `http://localhost:3000` | Dashboard URL (for CORS) |
+| `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
 
 ---
 
-## SDK
+## SDKs
 
-The TypeScript SDK is maintained in a separate repository:
-
-**[@lelemondev/sdk](https://github.com/lelemondev/sdk)** - Zero-dependency, tree-shakeable SDK
+| SDK | Package | Docs |
+|-----|---------|------|
+| TypeScript | [`@lelemondev/sdk`](https://www.npmjs.com/package/@lelemondev/sdk) | [GitHub](https://github.com/lelemondev/lelemondev-sdk) |
+| Python | [`lelemondev`](https://pypi.org/project/lelemondev/) | [GitHub](https://github.com/lelemondev/lelemondev-sdk-python) |
 
 ### Supported Providers
 
-| Provider | Auto-detected |
-|----------|---------------|
-| OpenAI | Yes |
-| Anthropic | Yes |
-| Google Gemini | Yes |
-| AWS Bedrock | Yes |
-| OpenRouter | Yes |
+| Provider | TypeScript | Python |
+|----------|-----------|--------|
+| OpenAI | Yes | Yes |
+| Anthropic | Yes | Yes |
+| Google Gemini | Yes | Yes |
+| AWS Bedrock | Yes | Yes |
+| OpenRouter | Yes | Yes |
 
-### Framework Integrations
+### Framework Integrations (TypeScript)
 
 ```typescript
-// Next.js
-import { withLelemon } from '@lelemondev/sdk/next';
-
-// Express
-import { lelemonMiddleware } from '@lelemondev/sdk/express';
-
-// AWS Lambda
-import { withLelemon } from '@lelemondev/sdk/lambda';
+import { withObserve } from '@lelemondev/sdk/next';     // Next.js
+import { createMiddleware } from '@lelemondev/sdk/express'; // Express
+import { withObserve } from '@lelemondev/sdk/lambda';    // AWS Lambda
+import { createMiddleware } from '@lelemondev/sdk/hono';   // Hono
 ```
 
 ---
@@ -152,28 +173,29 @@ import { withLelemon } from '@lelemondev/sdk/lambda';
 
 ```
 lelemon/
-├── docker-compose.yml            # SQLite (default)
-├── docker-compose.postgres.yml   # PostgreSQL
-├── docker-compose.clickhouse.yml # ClickHouse
-├── .env.example
-└── apps/
-    ├── server/     # Go backend
-    └── web/        # Next.js dashboard
+├── apps/
+│   ├── server/     # Go backend (API + ingestion)
+│   ├── web/        # Next.js dashboard
+│   └── playground/ # SDK testing app
+├── ee/             # Enterprise edition (RBAC, billing, orgs)
+├── docker-compose*.yml
+└── .env.example
 ```
-
----
 
 ## Development
 
 ```bash
-# Install frontend dependencies
-pnpm install
+# Prerequisites: Go 1.24+, Node.js 20+, pnpm
 
-# Run dashboard in dev mode
-pnpm dev
-
-# Run server
+# Backend
 cd apps/server && go run ./cmd/server
+
+# Dashboard
+cd apps/web && pnpm install && pnpm dev
+
+# Run tests
+cd apps/server && go test ./...
+cd apps/web && pnpm build
 ```
 
 ---
@@ -182,14 +204,12 @@ cd apps/server && go run ./cmd/server
 
 Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
----
+## Security
+
+Found a vulnerability? Please report it responsibly. See [SECURITY.md](SECURITY.md).
 
 ## License
 
-[AGPL-3.0](LICENSE) - You can self-host freely. If you modify and offer as a service, you must open-source your changes.
+[AGPL-3.0](LICENSE) - Self-host freely. If you modify and offer as a service, you must open-source your changes.
 
----
-
-## Links
-
-- **SDK**: [@lelemondev/sdk](https://github.com/lelemondev/sdk)
+The `ee/` directory contains enterprise features under a separate proprietary license.
