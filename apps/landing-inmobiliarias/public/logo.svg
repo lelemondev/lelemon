@@ -1,0 +1,29 @@
+<svg width="200" height="64" viewBox="0 0 200 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="lemon-gradient-main" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FACC15"/>
+      <stop offset="100%" stop-color="#CA8A04"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Double lemon icon -->
+  <g transform="translate(0, 2)">
+    <!-- Back lemon (shadow) -->
+    <g opacity="0.4" transform="translate(0, 4)">
+      <ellipse cx="24" cy="26" rx="18" ry="20" fill="#CA8A04"/>
+      <ellipse cx="21" cy="23" rx="12" ry="14" fill="#FEF9C3" opacity="0.3"/>
+      <path d="M24 6C24 6 21 3 24 1.5C27 3 24 6 24 6Z" fill="#15803D"/>
+    </g>
+    <!-- Front lemon (main) -->
+    <g transform="translate(12, 0)">
+      <ellipse cx="24" cy="30" rx="18" ry="20" fill="#EAB308"/>
+      <ellipse cx="24" cy="30" rx="18" ry="20" fill="url(#lemon-gradient-main)"/>
+      <ellipse cx="21" cy="27" rx="12" ry="14" fill="#FEF9C3" opacity="0.45"/>
+      <path d="M24 10C24 10 21 7 24 5C27 7 24 10 24 10Z" fill="#15803D"/>
+      <path d="M22.5 10C21 8.5 18 9 18 9" stroke="#15803D" stroke-width="1.5" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <!-- Text "Lelemon" -->
+  <text x="60" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="700" fill="#18181B" letter-spacing="-0.5">Lelemon</text>
+</svg>
