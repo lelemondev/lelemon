@@ -82,7 +82,11 @@ export async function runAnthropicAgent(message: string, options?: AgentOptions)
   const toolsUsed: string[] = [];
 
   try {
-    const result = await trace({ name: 'anthropic-playground-agent', input: message }, async () => {
+    const result = await trace({
+      name: 'anthropic-playground-agent',
+      input: message,
+      tags: ['provider:anthropic', 'type:agent', 'env:playground'],
+    }, async () => {
       traceId = getTraceContext()?.traceId;
 
       const messages: MessageParam[] = [

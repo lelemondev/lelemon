@@ -130,7 +130,14 @@ export async function runBedrockAgent(message: string, options?: AgentOptions): 
   const toolsUsed: string[] = [];
 
   try {
-    const result = await trace({ name: 'bedrock-playground-agent', input: message }, async () => {
+    const traceTags = ['provider:bedrock', 'type:agent', 'env:playground'];
+    console.log('[Bedrock] Starting trace with tags:', traceTags);
+
+    const result = await trace({
+      name: 'bedrock-playground-agent',
+      input: message,
+      tags: traceTags,
+    }, async () => {
       // Get trace ID from context
       traceId = getTraceContext()?.traceId;
 

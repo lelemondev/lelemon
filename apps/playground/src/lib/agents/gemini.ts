@@ -111,7 +111,11 @@ Always use tools when they would help provide accurate information.`,
   const toolsUsed: string[] = [];
 
   try {
-    const result = await trace({ name: 'gemini-playground-agent', input: message }, async () => {
+    const result = await trace({
+      name: 'gemini-playground-agent',
+      input: message,
+      tags: ['provider:gemini', 'type:agent', 'env:playground'],
+    }, async () => {
       traceId = getTraceContext()?.traceId;
 
       // Start a chat session with function declarations
