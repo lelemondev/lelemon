@@ -174,7 +174,7 @@ export default function AnalyticsPage() {
 
   if (projectLoading || isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6 overflow-auto h-full">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
           <p className="text-muted-foreground">Loading analytics...</p>
@@ -191,7 +191,7 @@ export default function AnalyticsPage() {
 
   if (error) {
     return (
-      <div className="space-y-6">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6 overflow-auto h-full">
         <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
         <p className="text-red-500">{error}</p>
       </div>
@@ -199,7 +199,7 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 overflow-auto h-full">
       {/* Header + Date Range Picker */}
       <div className="flex items-start justify-between">
         <div>
