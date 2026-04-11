@@ -13,15 +13,15 @@ import { CostBreakdownChart } from '@/ee/components/cost-breakdown-chart';
 import { ErrorAnalytics } from '@/ee/components/error-analytics';
 
 const tracesChartConfig = {
-  traces: { label: 'Traces', color: 'hsl(var(--chart-1))' },
+  traces: { label: 'Traces', color: 'var(--chart-1)' },
 } satisfies ChartConfig;
 
 const tokensChartConfig = {
-  tokens: { label: 'Tokens', color: 'hsl(var(--chart-2))' },
+  tokens: { label: 'Tokens', color: 'var(--chart-2)' },
 } satisfies ChartConfig;
 
 const costChartConfig = {
-  costUsd: { label: 'Cost (USD)', color: 'hsl(var(--chart-3))' },
+  costUsd: { label: 'Cost (USD)', color: 'var(--chart-3)' },
 } satisfies ChartConfig;
 
 function formatDate(time: string): string {
