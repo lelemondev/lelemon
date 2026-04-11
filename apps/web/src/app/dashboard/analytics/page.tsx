@@ -187,19 +187,19 @@ export default function AnalyticsPage() {
             <CardHeader>
               <CardTitle>Daily Traces</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-2">
               {chartData.length > 0 ? (
-                <ChartContainer config={tracesChartConfig} className="h-64 w-full">
-                  <BarChart data={chartData} accessibilityLayer>
+                <ChartContainer config={tracesChartConfig} className="h-72 w-full">
+                  <BarChart data={chartData} accessibilityLayer margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
                     <CartesianGrid vertical={false} />
                     <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} />
-                    <YAxis tickLine={false} axisLine={false} tickMargin={8} allowDecimals={false} />
+                    <YAxis tickLine={false} axisLine={false} tickMargin={8} width={48} allowDecimals={false} />
                     <ChartTooltip content={<ChartTooltipContent />} />
                     <Bar dataKey="traces" fill="var(--color-traces)" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ChartContainer>
               ) : (
-                <div className="h-64 flex items-center justify-center text-muted-foreground">
+                <div className="h-72 flex items-center justify-center text-muted-foreground">
                   No usage data available for the selected period.
                 </div>
               )}
@@ -246,13 +246,13 @@ export default function AnalyticsPage() {
             <CardHeader>
               <CardTitle>Token Usage Over Time</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-2">
               {chartData.length > 0 ? (
-                <ChartContainer config={tokensChartConfig} className="h-64 w-full">
-                  <AreaChart data={chartData} accessibilityLayer>
+                <ChartContainer config={tokensChartConfig} className="h-72 w-full">
+                  <AreaChart data={chartData} accessibilityLayer margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
                     <CartesianGrid vertical={false} />
                     <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} />
-                    <YAxis tickLine={false} axisLine={false} tickMargin={8} tickFormatter={formatTokens} />
+                    <YAxis tickLine={false} axisLine={false} tickMargin={8} width={56} tickFormatter={formatTokens} />
                     <ChartTooltip
                       content={
                         <ChartTooltipContent
@@ -276,7 +276,7 @@ export default function AnalyticsPage() {
                   </AreaChart>
                 </ChartContainer>
               ) : (
-                <div className="h-64 flex items-center justify-center text-muted-foreground">
+                <div className="h-72 flex items-center justify-center text-muted-foreground">
                   No usage data available for the selected period.
                 </div>
               )}
@@ -330,22 +330,23 @@ export default function AnalyticsPage() {
                   <CardHeader>
                     <CardTitle>Daily Cost</CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="pt-2">
                     {chartData.length > 0 ? (
-                      <ChartContainer config={costChartConfig} className="h-64 w-full">
-                        <AreaChart data={chartData} accessibilityLayer>
+                      <ChartContainer config={costChartConfig} className="h-72 w-full">
+                        <AreaChart data={chartData} accessibilityLayer margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
                           <CartesianGrid vertical={false} />
                           <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} />
                           <YAxis
                             tickLine={false}
                             axisLine={false}
                             tickMargin={8}
-                            tickFormatter={(value: number) => `$${value.toFixed(2)}`}
+                            width={56}
+                            tickFormatter={(value: number) => `$${value.toFixed(0)}`}
                           />
                           <ChartTooltip
                             content={
                               <ChartTooltipContent
-                                formatter={(value) => `$${(value as number).toFixed(4)}`}
+                                formatter={(value) => `$${(value as number).toFixed(2)}`}
                               />
                             }
                           />
@@ -365,7 +366,7 @@ export default function AnalyticsPage() {
                         </AreaChart>
                       </ChartContainer>
                     ) : (
-                      <div className="h-64 flex items-center justify-center text-muted-foreground">
+                      <div className="h-72 flex items-center justify-center text-muted-foreground">
                         No cost data available for the selected period.
                       </div>
                     )}
