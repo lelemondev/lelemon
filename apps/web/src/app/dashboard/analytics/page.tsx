@@ -363,16 +363,16 @@ export default function AnalyticsPage() {
               </div></CardContent></Card>
           </div>
 
-          {/* Traces Chart */}
+          {/* Token Usage Chart */}
           <Card>
-            <CardHeader><CardTitle>{isHourly ? 'Hourly Traces' : 'Daily Traces'}</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{isHourly ? 'Hourly Token Usage' : 'Daily Token Usage'}</CardTitle></CardHeader>
             <CardContent className="pt-2">
               {chartData.length > 0 ? (
-                <ChartContainer config={tracesChartConfig} className="h-72 w-full">
-                  <BarChart data={chartData} accessibilityLayer margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+                <ChartContainer config={tokensChartConfig} className="h-72 w-full">
+                  <BarChart data={chartData} accessibilityLayer margin={{ top: 20, right: 12, bottom: 0, left: 0 }}>
                     <CartesianGrid vertical={false} />
                     <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} />
-                    <YAxis tickLine={false} axisLine={false} tickMargin={8} width={48} allowDecimals={false} />
+                    <YAxis tickLine={false} axisLine={false} tickMargin={8} width={56} tickFormatter={formatTokens} />
                     <ChartTooltip
                       content={({ active, payload }) => {
                         if (!active || !payload?.length) return null;
@@ -400,7 +400,7 @@ export default function AnalyticsPage() {
                         );
                       }}
                     />
-                    <Bar dataKey="traces" fill="var(--color-traces)" radius={[4, 4, 0, 0]}>
+                    <Bar dataKey="tokens" fill="var(--color-tokens)" radius={[4, 4, 0, 0]}>
                       <LabelList
                         dataKey="tokens"
                         position="top"
