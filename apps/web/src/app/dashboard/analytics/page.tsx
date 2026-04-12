@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Bar, BarChart, Area, AreaChart, Line, LineChart, Cell, Pie, PieChart,
-  XAxis, YAxis, CartesianGrid,
+  XAxis, YAxis, CartesianGrid, LabelList,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
@@ -315,7 +315,9 @@ export default function AnalyticsPage() {
                         );
                       }}
                     />
-                    <Bar dataKey="traces" fill="var(--color-traces)" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="traces" fill="var(--color-traces)" radius={[4, 4, 0, 0]}>
+                      <LabelList dataKey="traces" position="top" className="fill-muted-foreground" fontSize={11} />
+                    </Bar>
                   </BarChart>
                 </ChartContainer>
               ) : (
