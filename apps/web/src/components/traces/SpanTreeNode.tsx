@@ -20,6 +20,9 @@ export function SpanTreeNode({
   const hasChildren = children.length > 0;
   const indent = depth * 20;
 
+  // Custom style from SDK metadata._style
+  const customStyle = span.metadata?._style as { color?: string; icon?: string; label?: string } | undefined;
+
   // Determine display info based on span type
   const isToolUse = span.isToolUse;
   const isLlm = span.type === 'llm';
@@ -86,7 +89,10 @@ export function SpanTreeNode({
             ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-500'
             : 'border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
         )}
-        style={{ paddingLeft: `${8 + indent}px` }}
+        style={{
+          paddingLeft: `${8 + indent}px`,
+          ...(isSelected && customStyle?.color ? { borderLeftColor: customStyle.color } : {}),
+        }}
         onClick={onSelect}
       >
         <div className="flex items-center gap-2">
@@ -115,17 +121,35 @@ export function SpanTreeNode({
             </svg>
           </button>
 
-          {/* Type Icon */}
-          <SpanTypeIcon type={span.type} size="sm" />
+          {/* Custom icon or Type Icon */}
+          {customStyle?.icon ? (
+            <span className="text-sm flex-shrink-0" title={span.type}>{customStyle.icon}</span>
+          ) : (
+            <SpanTypeIcon type={span.type} size="sm" />
+          )}
 
           {/* Main content */}
           <div className="flex-1 min-w-0">
             {/* Row 1: Name + Metrics */}
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
-                <span className={cn('font-medium text-sm truncate', getNameColorClass())}>
+                <span
+                  className={cn('font-medium text-sm truncate', !customStyle?.color && getNameColorClass())}
+                  style={customStyle?.color ? { color: customStyle.color } : undefined}
+                >
                   {displayName}
                 </span>
+                {customStyle?.label && (
+                  <span
+                    className="text-[10px] px-1.5 py-0.5 rounded-full font-medium uppercase tracking-wide"
+                    style={{
+                      backgroundColor: customStyle.color ? `${customStyle.color}20` : 'var(--muted)',
+                      color: customStyle.color || 'var(--muted-foreground)',
+                    }}
+                  >
+                    {customStyle.label}
+                  </span>
+                )}
               </div>
 
               {/* Right side metrics */}
