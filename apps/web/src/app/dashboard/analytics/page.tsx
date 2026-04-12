@@ -401,7 +401,13 @@ export default function AnalyticsPage() {
                       }}
                     />
                     <Bar dataKey="traces" fill="var(--color-traces)" radius={[4, 4, 0, 0]}>
-                      <LabelList dataKey="traces" position="top" className="fill-muted-foreground" fontSize={11} />
+                      <LabelList
+                        dataKey="tokens"
+                        position="top"
+                        className="fill-muted-foreground"
+                        fontSize={10}
+                        formatter={(v) => formatTokens(v as number)}
+                      />
                     </Bar>
                   </BarChart>
                 </ChartContainer>
