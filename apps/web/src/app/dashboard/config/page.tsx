@@ -58,15 +58,23 @@ function ConfigPageContent() {
   const [savingName, setSavingName] = useState(false);
   const [nameChanged, setNameChanged] = useState(false);
 
+  // State for model aliases
+  const [aliases, setAliases] = useState<Array<{ model: string; alias: string }>>([]);
+  const [savingAliases, setSavingAliases] = useState(false);
+  const [newAliasModel, setNewAliasModel] = useState('');
+  const [newAliasName, setNewAliasName] = useState('');
+
   // State for delete all traces
   const [showDeleteTracesModal, setShowDeleteTracesModal] = useState(false);
   const [deletingTraces, setDeletingTraces] = useState(false);
   const [deleteTracesConfirmText, setDeleteTracesConfirmText] = useState('');
 
-  // Initialize project name
+  // Initialize project name and aliases
   useEffect(() => {
     if (currentProject) {
       setProjectName(currentProject.name);
+      const saved = (currentProject.settings?.modelAliases ?? {}) as Record<string, string>;
+      setAliases(Object.entries(saved).map(([model, alias]) => ({ model, alias })));
     }
   }, [currentProject]);
 
@@ -135,6 +143,33 @@ function ConfigPageContent() {
       console.error('Failed to update project name:', error);
     } finally {
       setSavingName(false);
+    }
+  };
+
+  const handleAddAlias = () => {
+    if (!newAliasModel.trim() || !newAliasName.trim()) return;
+    setAliases(prev => [...prev, { model: newAliasModel.trim(), alias: newAliasName.trim() }]);
+    setNewAliasModel('');
+    setNewAliasName('');
+  };
+
+  const handleRemoveAlias = (index: number) => {
+    setAliases(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSaveAliases = async () => {
+    if (!currentProject) return;
+    setSavingAliases(true);
+    try {
+      const modelAliases = Object.fromEntries(aliases.map(a => [a.model, a.alias]));
+      await dashboardAPI.updateProject(currentProject.id, {
+        settings: { ...currentProject.settings, modelAliases },
+      });
+      await refreshProjects();
+    } catch (err) {
+      console.error('Failed to save aliases:', err);
+    } finally {
+      setSavingAliases(false);
     }
   };
 
@@ -403,6 +438,100 @@ function ConfigPageContent() {
                 >
                   {rotating ? 'Rotating...' : 'Rotate'}
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Display Config — Model Aliases */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <span>✨</span> Display Config
+              </CardTitle>
+              <CardDescription>
+                Make your dashboard prettier! Shorten long model names and customize how things look.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <h4 className="text-sm font-medium mb-3">Model Aliases</h4>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Give friendly names to long model IDs. These show up everywhere — traces, analytics, charts.
+                </p>
+
+                {/* Existing aliases */}
+                {aliases.length > 0 && (
+                  <div className="space-y-2 mb-3">
+                    {aliases.map((a, i) => (
+                      <div key={i} className="flex items-center gap-2 text-sm">
+                        <span className="font-mono text-xs text-muted-foreground truncate max-w-[250px]" title={a.model}>
+                          {a.model}
+                        </span>
+                        <span className="text-muted-foreground">→</span>
+                        <span className="font-medium">{a.alias}</span>
+                        <button
+                          onClick={() => handleRemoveAlias(i)}
+                          className="ml-auto text-red-400 hover:text-red-500 text-xs cursor-pointer"
+                        >
+                          remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add new alias */}
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Model ID (e.g. us.anthropic.claude-sonnet-4-6)"
+                    value={newAliasModel}
+                    onChange={(e) => setNewAliasModel(e.target.value)}
+                    className="font-mono text-xs flex-1"
+                  />
+                  <Input
+                    placeholder="Display name (e.g. Claude Sonnet)"
+                    value={newAliasName}
+                    onChange={(e) => setNewAliasName(e.target.value)}
+                    className="text-sm w-48"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddAlias}
+                    disabled={!newAliasModel.trim() || !newAliasName.trim()}
+                    className="cursor-pointer"
+                  >
+                    Add
+                  </Button>
+                </div>
+
+                {/* Save button */}
+                {aliases.length > 0 && (
+                  <Button
+                    onClick={handleSaveAliases}
+                    disabled={savingAliases}
+                    className="mt-3 bg-amber-500 hover:bg-amber-600 text-zinc-900 cursor-pointer"
+                  >
+                    {savingAliases ? 'Saving...' : 'Save Aliases'}
+                  </Button>
+                )}
+              </div>
+
+              <div className="pt-2 border-t">
+                <h4 className="text-sm font-medium mb-2">Custom Styling (via SDK)</h4>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Add colors, icons, and labels to your traces from the SDK:
+                </p>
+                <div className="bg-zinc-950 text-zinc-100 p-3 rounded-lg font-mono text-xs overflow-x-auto">
+{`trace({
+  name: 'sales-agent',
+  style: {
+    color: '#22c55e',  // custom color
+    icon: '🛒',        // emoji icon
+    label: 'Sales',    // badge label
+  },
+}, async () => { ... });`}
+                </div>
               </div>
             </CardContent>
           </Card>
