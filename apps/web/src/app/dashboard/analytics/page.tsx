@@ -103,7 +103,8 @@ const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export default function AnalyticsPage() {
   const { currentProject, isLoading: projectLoading } = useProject();
   const [datePreset, setDatePreset] = useState<DatePreset>('7d');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // first load only
+  const [isRefreshing, setIsRefreshing] = useState(false); // subsequent loads
   const [error, setError] = useState<string | null>(null);
 
   // Data
@@ -116,9 +117,16 @@ export default function AnalyticsPage() {
   const [latencyDist, setLatencyDist] = useState<LatencyBucket[]>([]);
   const [latencyTS, setLatencyTS] = useState<LatencyPoint[]>([]);
 
+  const hasData = stats !== null;
+
   const fetchAll = useCallback(async () => {
     if (!currentProject?.id) return;
-    setIsLoading(true);
+    // Only show skeleton on first load; subsequent loads show subtle indicator
+    if (hasData) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
     setError(null);
 
     const range = getDateRange(datePreset);
@@ -158,8 +166,9 @@ export default function AnalyticsPage() {
       setError('Failed to load analytics data');
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
-  }, [currentProject?.id, datePreset]);
+  }, [currentProject?.id, datePreset, hasData]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -224,17 +233,23 @@ export default function AnalyticsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
           <p className="text-muted-foreground">Deep dive into your LLM usage and costs.</p>
         </div>
-        <div className="flex gap-1">
-          {(['24h', '7d', '30d'] as DatePreset[]).map((preset) => (
-            <Button
-              key={preset}
-              variant={datePreset === preset ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setDatePreset(preset)}
-            >
-              {preset}
-            </Button>
-          ))}
+        <div className="flex items-center gap-2">
+          {isRefreshing && (
+            <div className="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+          )}
+          <div className="flex gap-1">
+            {(['24h', '7d', '30d'] as DatePreset[]).map((preset) => (
+              <Button
+                key={preset}
+                variant={datePreset === preset ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setDatePreset(preset)}
+                disabled={isRefreshing}
+              >
+                {preset}
+              </Button>
+            ))}
+          </div>
         </div>
       </div>
 
