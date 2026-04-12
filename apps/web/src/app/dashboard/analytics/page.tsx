@@ -67,8 +67,19 @@ function getDateRange(preset: DatePreset): { from: string; to: string } {
   return { from: from.toISOString(), to: to.toISOString() };
 }
 
-function formatDate(time: string): string {
+function formatDateDay(time: string): string {
   return new Date(time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function formatDateHour(time: string): string {
+  const d = new Date(time);
+  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+function formatDateFull(time: string): string {
+  const d = new Date(time);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
+    ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 function formatTokens(value: number): string {
@@ -157,7 +168,9 @@ export default function AnalyticsPage() {
   const totalTraces = stats?.totalTraces ?? 0;
   const avgDurationMs = stats?.avgDurationMs ?? 0;
 
-  const chartData = usage.map((day) => ({ ...day, date: formatDate(day.time) }));
+  const isHourly = datePreset === '24h';
+  const formatDate = isHourly ? formatDateHour : formatDateDay;
+  const chartData = usage.map((day) => ({ ...day, date: formatDate(day.time), dateFull: formatDateFull(day.time) }));
   const latencyChartData = latencyTS.map((p) => ({
     ...p,
     date: formatDate(p.time),
@@ -250,9 +263,9 @@ export default function AnalyticsPage() {
               </div></CardContent></Card>
           </div>
 
-          {/* Daily Traces */}
+          {/* Traces Chart */}
           <Card>
-            <CardHeader><CardTitle>Daily Traces</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{isHourly ? 'Hourly Traces' : 'Daily Traces'}</CardTitle></CardHeader>
             <CardContent className="pt-2">
               {chartData.length > 0 ? (
                 <ChartContainer config={tracesChartConfig} className="h-72 w-full">
@@ -260,7 +273,33 @@ export default function AnalyticsPage() {
                     <CartesianGrid vertical={false} />
                     <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} />
                     <YAxis tickLine={false} axisLine={false} tickMargin={8} width={48} allowDecimals={false} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <ChartTooltip
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        const d = payload[0].payload;
+                        return (
+                          <div className="rounded-lg border bg-background px-3 py-2 text-xs shadow-xl space-y-1">
+                            <div className="font-medium">{d.dateFull}</div>
+                            <div className="flex justify-between gap-4">
+                              <span className="text-muted-foreground">Traces</span>
+                              <span className="font-mono font-medium">{d.traces.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between gap-4">
+                              <span className="text-muted-foreground">Spans</span>
+                              <span className="font-mono font-medium">{d.spans.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between gap-4">
+                              <span className="text-muted-foreground">Tokens</span>
+                              <span className="font-mono font-medium">{formatTokens(d.tokens)}</span>
+                            </div>
+                            <div className="flex justify-between gap-4">
+                              <span className="text-muted-foreground">Cost</span>
+                              <span className="font-mono font-medium text-amber-500">${d.costUsd.toFixed(2)}</span>
+                            </div>
+                          </div>
+                        );
+                      }}
+                    />
                     <Bar dataKey="traces" fill="var(--color-traces)" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ChartContainer>
