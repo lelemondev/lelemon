@@ -920,7 +920,34 @@ func (s *Store) ListSessions(ctx context.Context, projectID string, filter entit
 // ANALYTICS OPERATIONS
 // ============================================
 
-func (s *Store) GetStats(ctx context.Context, projectID string, period entity.Period) (*entity.Stats, error) {
+func buildSQLiteFilters(f entity.AnalyticsFilter) (string, []interface{}) {
+	var clauses []string
+	var args []interface{}
+	if f.Tag != "" {
+		clauses = append(clauses, "t.tags LIKE '%' || ? || '%'")
+		args = append(args, f.Tag)
+	}
+	if f.SessionID != "" {
+		clauses = append(clauses, "t.session_id = ?")
+		args = append(args, f.SessionID)
+	}
+	if f.UserID != "" {
+		clauses = append(clauses, "t.user_id = ?")
+		args = append(args, f.UserID)
+	}
+	if f.Name != "" {
+		clauses = append(clauses, "t.name = ?")
+		args = append(args, f.Name)
+	}
+	sql := ""
+	if len(clauses) > 0 {
+		sql = " AND " + strings.Join(clauses, " AND ")
+	}
+	return sql, args
+}
+
+func (s *Store) GetStats(ctx context.Context, projectID string, q entity.AnalyticsQuery) (*entity.Stats, error) {
+	filterSQL, filterArgs := buildSQLiteFilters(q.Filter)
 	query := `
 		SELECT
 			COUNT(DISTINCT t.id) as total_traces,
@@ -932,13 +959,15 @@ func (s *Store) GetStats(ctx context.Context, projectID string, period entity.Pe
 		FROM traces t
 		LEFT JOIN spans s ON s.trace_id = t.id
 		WHERE t.project_id = ? AND t.created_at >= ? AND t.created_at <= ?
-	`
+	` + filterSQL
 
 	var stats entity.Stats
 	var errorCount int
 
+	args := []interface{}{projectID, q.From.Format(time.RFC3339), q.To.Format(time.RFC3339)}
+	args = append(args, filterArgs...)
 	var avgDuration float64
-	err := s.db.QueryRowContext(ctx, query, projectID, period.From.Format(time.RFC3339), period.To.Format(time.RFC3339)).Scan(
+	err := s.db.QueryRowContext(ctx, query, args...).Scan(
 		&stats.TotalTraces, &stats.TotalSpans, &stats.TotalTokens,
 		&stats.TotalCostUSD, &avgDuration, &errorCount)
 	if err != nil {
@@ -1001,7 +1030,8 @@ func (s *Store) GetUsageTimeSeries(ctx context.Context, projectID string, opts e
 	return dataPoints, nil
 }
 
-func (s *Store) GetModelStats(ctx context.Context, projectID string, period entity.Period) ([]entity.ModelStats, error) {
+func (s *Store) GetModelStats(ctx context.Context, projectID string, q entity.AnalyticsQuery) ([]entity.ModelStats, error) {
+	filterSQL, filterArgs := buildSQLiteFilters(q.Filter)
 	query := `
 		SELECT
 			COALESCE(s.model, 'unknown') as model,
@@ -1016,10 +1046,13 @@ func (s *Store) GetModelStats(ctx context.Context, projectID string, period enti
 		JOIN traces t ON s.trace_id = t.id
 		WHERE t.project_id = ? AND t.created_at >= ? AND t.created_at <= ?
 			AND s.model IS NOT NULL AND s.model != ''
+	` + filterSQL + `
 		GROUP BY s.model, s.provider
 		ORDER BY total_cost DESC
 	`
-	rows, err := s.db.QueryContext(ctx, query, projectID, period.From.Format(time.RFC3339), period.To.Format(time.RFC3339))
+	args := []interface{}{projectID, q.From.Format(time.RFC3339), q.To.Format(time.RFC3339)}
+	args = append(args, filterArgs...)
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("GetModelStats: %w", err)
 	}
@@ -1039,8 +1072,9 @@ func (s *Store) GetModelStats(ctx context.Context, projectID string, period enti
 	return results, nil
 }
 
-func (s *Store) GetTagStats(ctx context.Context, projectID string, period entity.Period, prefix string) ([]entity.TagStats, error) {
+func (s *Store) GetTagStats(ctx context.Context, projectID string, q entity.AnalyticsQuery, prefix string) ([]entity.TagStats, error) {
 	// SQLite doesn't have unnest; use JSON each
+	filterSQL, filterArgs := buildSQLiteFilters(q.Filter)
 	query := `
 		SELECT
 			trim(je.value, '"') as tag,
@@ -1053,10 +1087,13 @@ func (s *Store) GetTagStats(ctx context.Context, projectID string, period entity
 		json_each(t.tags) as je
 		WHERE t.project_id = ? AND t.created_at >= ? AND t.created_at <= ?
 			AND (? = '' OR trim(je.value, '"') LIKE ? || '%')
+	` + filterSQL + `
 		GROUP BY tag
 		ORDER BY total_cost DESC
 	`
-	rows, err := s.db.QueryContext(ctx, query, projectID, period.From.Format(time.RFC3339), period.To.Format(time.RFC3339), prefix, prefix)
+	args := []interface{}{projectID, q.From.Format(time.RFC3339), q.To.Format(time.RFC3339), prefix, prefix}
+	args = append(args, filterArgs...)
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("GetTagStats: %w", err)
 	}
@@ -1075,7 +1112,8 @@ func (s *Store) GetTagStats(ctx context.Context, projectID string, period entity
 	return results, nil
 }
 
-func (s *Store) GetTopUsers(ctx context.Context, projectID string, period entity.Period, limit int) ([]entity.UserStats, error) {
+func (s *Store) GetTopUsers(ctx context.Context, projectID string, q entity.AnalyticsQuery, limit int) ([]entity.UserStats, error) {
+	filterSQL, filterArgs := buildSQLiteFilters(q.Filter)
 	query := `
 		SELECT
 			t.user_id,
@@ -1088,11 +1126,15 @@ func (s *Store) GetTopUsers(ctx context.Context, projectID string, period entity
 		JOIN spans s ON s.trace_id = t.id
 		WHERE t.project_id = ? AND t.created_at >= ? AND t.created_at <= ?
 			AND t.user_id IS NOT NULL AND t.user_id != ''
+	` + filterSQL + `
 		GROUP BY t.user_id
 		ORDER BY total_cost DESC
 		LIMIT ?
 	`
-	rows, err := s.db.QueryContext(ctx, query, projectID, period.From.Format(time.RFC3339), period.To.Format(time.RFC3339), limit)
+	args := []interface{}{projectID, q.From.Format(time.RFC3339), q.To.Format(time.RFC3339)}
+	args = append(args, filterArgs...)
+	args = append(args, limit)
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("GetTopUsers: %w", err)
 	}
@@ -1113,7 +1155,8 @@ func (s *Store) GetTopUsers(ctx context.Context, projectID string, period entity
 	return results, nil
 }
 
-func (s *Store) GetHourlyHeatmap(ctx context.Context, projectID string, period entity.Period) ([]entity.HourlyHeatmap, error) {
+func (s *Store) GetHourlyHeatmap(ctx context.Context, projectID string, q entity.AnalyticsQuery) ([]entity.HourlyHeatmap, error) {
+	filterSQL, filterArgs := buildSQLiteFilters(q.Filter)
 	query := `
 		SELECT
 			CAST(strftime('%H', t.created_at) AS INTEGER) as hour,
@@ -1124,10 +1167,13 @@ func (s *Store) GetHourlyHeatmap(ctx context.Context, projectID string, period e
 		FROM traces t
 		JOIN spans s ON s.trace_id = t.id
 		WHERE t.project_id = ? AND t.created_at >= ? AND t.created_at <= ?
+	` + filterSQL + `
 		GROUP BY strftime('%H', t.created_at), strftime('%w', t.created_at)
 		ORDER BY day, hour
 	`
-	rows, err := s.db.QueryContext(ctx, query, projectID, period.From.Format(time.RFC3339), period.To.Format(time.RFC3339))
+	args := []interface{}{projectID, q.From.Format(time.RFC3339), q.To.Format(time.RFC3339)}
+	args = append(args, filterArgs...)
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("GetHourlyHeatmap: %w", err)
 	}
@@ -1144,7 +1190,8 @@ func (s *Store) GetHourlyHeatmap(ctx context.Context, projectID string, period e
 	return results, nil
 }
 
-func (s *Store) GetLatencyDistribution(ctx context.Context, projectID string, period entity.Period) ([]entity.LatencyBucket, error) {
+func (s *Store) GetLatencyDistribution(ctx context.Context, projectID string, q entity.AnalyticsQuery) ([]entity.LatencyBucket, error) {
+	filterSQL, filterArgs := buildSQLiteFilters(q.Filter)
 	query := `
 		SELECT
 			CASE
@@ -1179,10 +1226,13 @@ func (s *Store) GetLatencyDistribution(ctx context.Context, projectID string, pe
 		JOIN traces t ON s.trace_id = t.id
 		WHERE t.project_id = ? AND t.created_at >= ? AND t.created_at <= ?
 			AND s.duration_ms IS NOT NULL AND s.duration_ms > 0
+	` + filterSQL + `
 		GROUP BY bucket, min_ms, max_ms
 		ORDER BY min_ms
 	`
-	rows, err := s.db.QueryContext(ctx, query, projectID, period.From.Format(time.RFC3339), period.To.Format(time.RFC3339))
+	args := []interface{}{projectID, q.From.Format(time.RFC3339), q.To.Format(time.RFC3339)}
+	args = append(args, filterArgs...)
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("GetLatencyDistribution: %w", err)
 	}

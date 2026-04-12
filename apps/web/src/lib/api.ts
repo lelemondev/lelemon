@@ -285,6 +285,10 @@ export interface AnalyticsParams {
   prefix?: string;
   limit?: number;
   granularity?: string;
+  tag?: string;
+  sessionId?: string;
+  userId?: string;
+  name?: string;
 }
 
 class APIError extends Error {
@@ -387,6 +391,10 @@ function buildAnalyticsUrl(base: string, params?: AnalyticsParams): string {
   if (params.prefix) sp.set('prefix', params.prefix);
   if (params.limit) sp.set('limit', String(params.limit));
   if (params.granularity) sp.set('granularity', params.granularity);
+  if (params.tag) sp.set('tag', params.tag);
+  if (params.sessionId) sp.set('sessionId', params.sessionId);
+  if (params.userId) sp.set('userId', params.userId);
+  if (params.name) sp.set('name', params.name);
   const qs = sp.toString();
   return qs ? `${base}?${qs}` : base;
 }

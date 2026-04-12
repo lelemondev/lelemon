@@ -27,6 +27,13 @@ type Period struct {
 type TimeSeriesOpts struct {
 	Period
 	Granularity string // "hour" | "day" | "week"
+	Filter      AnalyticsFilter
+}
+
+// AnalyticsQuery combines a period with dimensional filters
+type AnalyticsQuery struct {
+	Period
+	Filter AnalyticsFilter
 }
 
 // ModelStats represents analytics grouped by model
@@ -86,6 +93,19 @@ type LatencyPoint struct {
 	P50  int
 	P95  int
 	P99  int
+}
+
+// AnalyticsFilter holds optional dimensional filters for analytics queries
+type AnalyticsFilter struct {
+	Tag       string // exact tag match
+	SessionID string // filter by session
+	UserID    string // filter by user
+	Name      string // filter by trace name
+}
+
+// HasFilters returns true if any dimensional filter is set
+func (f AnalyticsFilter) HasFilters() bool {
+	return f.Tag != "" || f.SessionID != "" || f.UserID != "" || f.Name != ""
 }
 
 // ValidGranularity checks if a granularity string is allowed

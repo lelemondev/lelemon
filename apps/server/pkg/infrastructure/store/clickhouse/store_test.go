@@ -463,7 +463,7 @@ func TestClickHouseAnalytics(t *testing.T) {
 			To:   time.Now().Add(24 * time.Hour),
 		}
 
-		stats, err := store.GetStats(ctx, project.ID, period)
+		stats, err := store.GetStats(ctx, project.ID, entity.AnalyticsQuery{Period: period})
 		if err != nil {
 			t.Fatalf("GetStats failed: %v", err)
 		}

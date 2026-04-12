@@ -49,6 +49,10 @@ func parsePeriodParams(w http.ResponseWriter, r *http.Request) (*analytics.Perio
 	}
 
 	req.Prefix = r.URL.Query().Get("prefix")
+	req.Tag = r.URL.Query().Get("tag")
+	req.SessionID = r.URL.Query().Get("sessionId")
+	req.UserID = r.URL.Query().Get("userId")
+	req.Name = r.URL.Query().Get("name")
 
 	if v := r.URL.Query().Get("limit"); v != "" {
 		n, err := strconv.Atoi(v)

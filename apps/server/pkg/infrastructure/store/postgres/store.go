@@ -874,7 +874,39 @@ func (s *Store) ListSessions(ctx context.Context, projectID string, filter entit
 // ANALYTICS OPERATIONS
 // ============================================
 
-func (s *Store) GetStats(ctx context.Context, projectID string, period entity.Period) (*entity.Stats, error) {
+// buildAnalyticsFilters appends WHERE clauses for dimensional filters.
+// Returns the additional SQL and updated args slice.
+func buildAnalyticsFilters(f entity.AnalyticsFilter, argOffset int) (string, []interface{}) {
+	var clauses []string
+	var args []interface{}
+	if f.Tag != "" {
+		argOffset++
+		clauses = append(clauses, fmt.Sprintf("t.tags::text LIKE '%%' || $%d || '%%'", argOffset))
+		args = append(args, f.Tag)
+	}
+	if f.SessionID != "" {
+		argOffset++
+		clauses = append(clauses, fmt.Sprintf("t.session_id = $%d", argOffset))
+		args = append(args, f.SessionID)
+	}
+	if f.UserID != "" {
+		argOffset++
+		clauses = append(clauses, fmt.Sprintf("t.user_id = $%d", argOffset))
+		args = append(args, f.UserID)
+	}
+	if f.Name != "" {
+		argOffset++
+		clauses = append(clauses, fmt.Sprintf("t.name = $%d", argOffset))
+		args = append(args, f.Name)
+	}
+	sql := ""
+	if len(clauses) > 0 {
+		sql = " AND " + strings.Join(clauses, " AND ")
+	}
+	return sql, args
+}
+
+func (s *Store) GetStats(ctx context.Context, projectID string, q entity.AnalyticsQuery) (*entity.Stats, error) {
 	query := `
 		SELECT
 			COUNT(DISTINCT t.id) as total_traces,
@@ -888,11 +920,16 @@ func (s *Store) GetStats(ctx context.Context, projectID string, period entity.Pe
 		WHERE t.project_id = $1 AND t.created_at >= $2 AND t.created_at <= $3
 	`
 
+	args := []interface{}{projectID, q.From, q.To}
+	filterSQL, filterArgs := buildAnalyticsFilters(q.Filter, 3)
+	query += filterSQL
+	args = append(args, filterArgs...)
+
 	var stats entity.Stats
 	var errorCount int
 	var avgDuration float64
 
-	err := s.pool.QueryRow(ctx, query, projectID, period.From, period.To).Scan(
+	err := s.pool.QueryRow(ctx, query, args...).Scan(
 		&stats.TotalTraces, &stats.TotalSpans, &stats.TotalTokens,
 		&stats.TotalCostUSD, &avgDuration, &errorCount)
 	if err != nil {
@@ -950,7 +987,7 @@ func (s *Store) GetUsageTimeSeries(ctx context.Context, projectID string, opts e
 	return dataPoints, nil
 }
 
-func (s *Store) GetModelStats(ctx context.Context, projectID string, period entity.Period) ([]entity.ModelStats, error) {
+func (s *Store) GetModelStats(ctx context.Context, projectID string, q entity.AnalyticsQuery) ([]entity.ModelStats, error) {
 	query := `
 		SELECT
 			COALESCE(s.model, 'unknown') as model,
@@ -968,11 +1005,19 @@ func (s *Store) GetModelStats(ctx context.Context, projectID string, period enti
 		JOIN traces t ON s.trace_id = t.id
 		WHERE t.project_id = $1 AND t.created_at >= $2 AND t.created_at <= $3
 			AND s.model IS NOT NULL AND s.model != ''
+	`
+
+	args := []interface{}{projectID, q.From, q.To}
+	filterSQL, filterArgs := buildAnalyticsFilters(q.Filter, 3)
+	query += filterSQL
+	args = append(args, filterArgs...)
+
+	query += `
 		GROUP BY s.model, s.provider
 		ORDER BY total_cost DESC
 	`
 
-	rows, err := s.pool.Query(ctx, query, projectID, period.From, period.To)
+	rows, err := s.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("GetModelStats query error: %w", err)
 	}
@@ -995,7 +1040,7 @@ func (s *Store) GetModelStats(ctx context.Context, projectID string, period enti
 	return results, nil
 }
 
-func (s *Store) GetTagStats(ctx context.Context, projectID string, period entity.Period, prefix string) ([]entity.TagStats, error) {
+func (s *Store) GetTagStats(ctx context.Context, projectID string, q entity.AnalyticsQuery, prefix string) ([]entity.TagStats, error) {
 	query := `
 		SELECT
 			tag,
@@ -1009,11 +1054,19 @@ func (s *Store) GetTagStats(ctx context.Context, projectID string, period entity
 		LATERAL (SELECT trim(both ' "' from raw_tag) as tag) cleaned
 		WHERE t.project_id = $1 AND t.created_at >= $2 AND t.created_at <= $3
 			AND ($4 = '' OR trim(both ' "' from raw_tag) LIKE $4 || '%')
+	`
+
+	args := []interface{}{projectID, q.From, q.To, prefix}
+	filterSQL, filterArgs := buildAnalyticsFilters(q.Filter, 4)
+	query += filterSQL
+	args = append(args, filterArgs...)
+
+	query += `
 		GROUP BY tag
 		ORDER BY total_cost DESC
 	`
 
-	rows, err := s.pool.Query(ctx, query, projectID, period.From, period.To, prefix)
+	rows, err := s.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("GetTagStats query error: %w", err)
 	}
@@ -1032,7 +1085,7 @@ func (s *Store) GetTagStats(ctx context.Context, projectID string, period entity
 	return results, nil
 }
 
-func (s *Store) GetTopUsers(ctx context.Context, projectID string, period entity.Period, limit int) ([]entity.UserStats, error) {
+func (s *Store) GetTopUsers(ctx context.Context, projectID string, q entity.AnalyticsQuery, limit int) ([]entity.UserStats, error) {
 	if limit <= 0 {
 		limit = 10
 	}
@@ -1049,12 +1102,21 @@ func (s *Store) GetTopUsers(ctx context.Context, projectID string, period entity
 		JOIN spans s ON s.trace_id = t.id
 		WHERE t.project_id = $1 AND t.created_at >= $2 AND t.created_at <= $3
 			AND t.user_id IS NOT NULL AND t.user_id != ''
-		GROUP BY t.user_id
-		ORDER BY total_cost DESC
-		LIMIT $4
 	`
 
-	rows, err := s.pool.Query(ctx, query, projectID, period.From, period.To, limit)
+	args := []interface{}{projectID, q.From, q.To}
+	filterSQL, filterArgs := buildAnalyticsFilters(q.Filter, 3)
+	query += filterSQL
+	args = append(args, filterArgs...)
+
+	query += fmt.Sprintf(`
+		GROUP BY t.user_id
+		ORDER BY total_cost DESC
+		LIMIT $%d
+	`, len(args)+1)
+	args = append(args, limit)
+
+	rows, err := s.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("GetTopUsers query error: %w", err)
 	}
@@ -1073,7 +1135,7 @@ func (s *Store) GetTopUsers(ctx context.Context, projectID string, period entity
 	return results, nil
 }
 
-func (s *Store) GetHourlyHeatmap(ctx context.Context, projectID string, period entity.Period) ([]entity.HourlyHeatmap, error) {
+func (s *Store) GetHourlyHeatmap(ctx context.Context, projectID string, q entity.AnalyticsQuery) ([]entity.HourlyHeatmap, error) {
 	query := `
 		SELECT
 			EXTRACT(HOUR FROM t.created_at)::int as hour,
@@ -1084,11 +1146,19 @@ func (s *Store) GetHourlyHeatmap(ctx context.Context, projectID string, period e
 		FROM traces t
 		JOIN spans s ON s.trace_id = t.id
 		WHERE t.project_id = $1 AND t.created_at >= $2 AND t.created_at <= $3
+	`
+
+	args := []interface{}{projectID, q.From, q.To}
+	filterSQL, filterArgs := buildAnalyticsFilters(q.Filter, 3)
+	query += filterSQL
+	args = append(args, filterArgs...)
+
+	query += `
 		GROUP BY EXTRACT(HOUR FROM t.created_at), EXTRACT(DOW FROM t.created_at)
 		ORDER BY day, hour
 	`
 
-	rows, err := s.pool.Query(ctx, query, projectID, period.From, period.To)
+	rows, err := s.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("GetHourlyHeatmap query error: %w", err)
 	}
@@ -1105,7 +1175,7 @@ func (s *Store) GetHourlyHeatmap(ctx context.Context, projectID string, period e
 	return results, nil
 }
 
-func (s *Store) GetLatencyDistribution(ctx context.Context, projectID string, period entity.Period) ([]entity.LatencyBucket, error) {
+func (s *Store) GetLatencyDistribution(ctx context.Context, projectID string, q entity.AnalyticsQuery) ([]entity.LatencyBucket, error) {
 	query := `
 		SELECT
 			bucket,
@@ -1146,11 +1216,19 @@ func (s *Store) GetLatencyDistribution(ctx context.Context, projectID string, pe
 		) buckets
 		WHERE t.project_id = $1 AND t.created_at >= $2 AND t.created_at <= $3
 			AND s.duration_ms IS NOT NULL AND s.duration_ms > 0
+	`
+
+	args := []interface{}{projectID, q.From, q.To}
+	filterSQL, filterArgs := buildAnalyticsFilters(q.Filter, 3)
+	query += filterSQL
+	args = append(args, filterArgs...)
+
+	query += `
 		GROUP BY bucket, min_ms, max_ms
 		ORDER BY min_ms
 	`
 
-	rows, err := s.pool.Query(ctx, query, projectID, period.From, period.To)
+	rows, err := s.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("GetLatencyDistribution query error: %w", err)
 	}

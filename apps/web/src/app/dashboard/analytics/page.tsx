@@ -107,6 +107,23 @@ export default function AnalyticsPage() {
   const [isRefreshing, setIsRefreshing] = useState(false); // subsequent loads
   const [error, setError] = useState<string | null>(null);
 
+  // Filters (applied = sent to API, draft = in input fields)
+  const [filterTag, setFilterTag] = useState('');
+  const [filterSession, setFilterSession] = useState('');
+  const [filterUser, setFilterUser] = useState('');
+  const [filterName, setFilterName] = useState('');
+  const [appliedFilters, setAppliedFilters] = useState({ tag: '', sessionId: '', userId: '', name: '' });
+  const hasActiveFilters = !!(appliedFilters.tag || appliedFilters.sessionId || appliedFilters.userId || appliedFilters.name);
+
+  const applyFilters = useCallback(() => {
+    setAppliedFilters({ tag: filterTag, sessionId: filterSession, userId: filterUser, name: filterName });
+  }, [filterTag, filterSession, filterUser, filterName]);
+
+  const clearFilters = useCallback(() => {
+    setFilterTag(''); setFilterSession(''); setFilterUser(''); setFilterName('');
+    setAppliedFilters({ tag: '', sessionId: '', userId: '', name: '' });
+  }, []);
+
   // Data
   const [stats, setStats] = useState<Stats | null>(null);
   const [usage, setUsage] = useState<UsageDataPoint[]>([]);
@@ -130,7 +147,14 @@ export default function AnalyticsPage() {
     setError(null);
 
     const range = getDateRange(datePreset);
-    const params: AnalyticsParams = { from: range.from, to: range.to };
+    const params: AnalyticsParams = {
+      from: range.from,
+      to: range.to,
+      ...(appliedFilters.tag ? { tag: appliedFilters.tag } : {}),
+      ...(appliedFilters.sessionId ? { sessionId: appliedFilters.sessionId } : {}),
+      ...(appliedFilters.userId ? { userId: appliedFilters.userId } : {}),
+      ...(appliedFilters.name ? { name: appliedFilters.name } : {}),
+    };
     const granularity = datePreset === '24h' ? 'hour' : 'day';
 
     try {
@@ -168,7 +192,7 @@ export default function AnalyticsPage() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [currentProject?.id, datePreset, hasData]);
+  }, [currentProject?.id, datePreset, hasData, appliedFilters]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -262,6 +286,56 @@ export default function AnalyticsPage() {
             </Button>
           </div>
         </div>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          placeholder="Tag (e.g. org:90)"
+          value={filterTag}
+          onChange={(e) => setFilterTag(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
+          className="w-44 h-8 text-xs"
+        />
+        <Input
+          placeholder="Session ID"
+          value={filterSession}
+          onChange={(e) => setFilterSession(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
+          className="w-36 h-8 text-xs"
+        />
+        <Input
+          placeholder="User ID"
+          value={filterUser}
+          onChange={(e) => setFilterUser(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
+          className="w-36 h-8 text-xs"
+        />
+        <Input
+          placeholder="Trace name"
+          value={filterName}
+          onChange={(e) => setFilterName(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
+          className="w-36 h-8 text-xs"
+        />
+        <Button
+          size="sm"
+          onClick={applyFilters}
+          disabled={isRefreshing}
+          className="h-8 text-xs bg-amber-500 hover:bg-amber-600 text-zinc-900 cursor-pointer"
+        >
+          Apply
+        </Button>
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearFilters}
+            className="h-8 text-xs text-muted-foreground cursor-pointer"
+          >
+            Clear
+          </Button>
+        )}
       </div>
 
       <Tabs defaultValue="overview">

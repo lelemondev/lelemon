@@ -21,4 +21,10 @@ type PeriodRequest struct {
 	To     *time.Time
 	Prefix string // for tag filtering
 	Limit  int    // for top-N queries
+
+	// Dimensional filters
+	Tag       string // filter by exact tag (e.g. "org:90")
+	SessionID string // filter by session
+	UserID    string // filter by user
+	Name      string // filter by trace name
 }

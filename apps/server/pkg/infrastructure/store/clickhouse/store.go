@@ -890,8 +890,35 @@ func (s *Store) ListSessions(ctx context.Context, projectID string, filter entit
 // ANALYTICS OPERATIONS (Optimized for ClickHouse)
 // ============================================
 
-func (s *Store) GetStats(ctx context.Context, projectID string, period entity.Period) (*entity.Stats, error) {
+func buildClickHouseFilters(f entity.AnalyticsFilter) (string, []interface{}) {
+	var clauses []string
+	var args []interface{}
+	if f.Tag != "" {
+		clauses = append(clauses, "has(t.tags, ?)")
+		args = append(args, f.Tag)
+	}
+	if f.SessionID != "" {
+		clauses = append(clauses, "t.session_id = ?")
+		args = append(args, f.SessionID)
+	}
+	if f.UserID != "" {
+		clauses = append(clauses, "t.user_id = ?")
+		args = append(args, f.UserID)
+	}
+	if f.Name != "" {
+		clauses = append(clauses, "t.name = ?")
+		args = append(args, f.Name)
+	}
+	sql := ""
+	if len(clauses) > 0 {
+		sql = " AND " + strings.Join(clauses, " AND ")
+	}
+	return sql, args
+}
+
+func (s *Store) GetStats(ctx context.Context, projectID string, q entity.AnalyticsQuery) (*entity.Stats, error) {
 	// ClickHouse is optimized for these aggregate queries
+	filterSQL, filterArgs := buildClickHouseFilters(q.Filter)
 	query := `
 		SELECT
 			count(DISTINCT t.id) as total_traces,
@@ -903,13 +930,16 @@ func (s *Store) GetStats(ctx context.Context, projectID string, period entity.Pe
 		FROM traces FINAL AS t
 		LEFT JOIN spans AS s ON s.trace_id = t.id
 		WHERE t.project_id = ? AND t.created_at >= ? AND t.created_at <= ?
-	`
+	` + filterSQL
+
+	args := []interface{}{uuid.MustParse(projectID), q.From, q.To}
+	args = append(args, filterArgs...)
 
 	var stats entity.Stats
 	var errorCount uint64
 	var avgDuration float64
 
-	err := s.conn.QueryRow(ctx, query, uuid.MustParse(projectID), period.From, period.To).Scan(
+	err := s.conn.QueryRow(ctx, query, args...).Scan(
 		&stats.TotalTraces, &stats.TotalSpans, &stats.TotalTokens,
 		&stats.TotalCostUSD, &avgDuration, &errorCount)
 	if err != nil {
@@ -970,7 +1000,8 @@ func (s *Store) GetUsageTimeSeries(ctx context.Context, projectID string, opts e
 	return dataPoints, nil
 }
 
-func (s *Store) GetModelStats(ctx context.Context, projectID string, period entity.Period) ([]entity.ModelStats, error) {
+func (s *Store) GetModelStats(ctx context.Context, projectID string, q entity.AnalyticsQuery) ([]entity.ModelStats, error) {
+	filterSQL, filterArgs := buildClickHouseFilters(q.Filter)
 	query := `
 		SELECT
 			s.model, s.provider, COUNT(*) as requests,
@@ -980,9 +1011,12 @@ func (s *Store) GetModelStats(ctx context.Context, projectID string, period enti
 			quantile(0.50)(s.duration_ms) as p50, quantile(0.95)(s.duration_ms) as p95, quantile(0.99)(s.duration_ms) as p99
 		FROM spans s JOIN traces t ON s.trace_id = t.id
 		WHERE t.project_id = ? AND t.created_at >= ? AND t.created_at <= ? AND s.model != ''
+	` + filterSQL + `
 		GROUP BY s.model, s.provider ORDER BY total_cost DESC
 	`
-	rows, err := s.conn.Query(ctx, query, uuid.MustParse(projectID), period.From, period.To)
+	args := []interface{}{uuid.MustParse(projectID), q.From, q.To}
+	args = append(args, filterArgs...)
+	rows, err := s.conn.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("GetModelStats: %w", err)
 	}
@@ -1004,7 +1038,8 @@ func (s *Store) GetModelStats(ctx context.Context, projectID string, period enti
 	return results, nil
 }
 
-func (s *Store) GetTagStats(ctx context.Context, projectID string, period entity.Period, prefix string) ([]entity.TagStats, error) {
+func (s *Store) GetTagStats(ctx context.Context, projectID string, q entity.AnalyticsQuery, prefix string) ([]entity.TagStats, error) {
+	filterSQL, filterArgs := buildClickHouseFilters(q.Filter)
 	query := `
 		SELECT tag, COUNT(DISTINCT t.id) as traces,
 			SUM(s.input_tokens + s.output_tokens) as total_tokens,
@@ -1013,9 +1048,12 @@ func (s *Store) GetTagStats(ctx context.Context, projectID string, period entity
 		ARRAY JOIN t.tags as tag
 		WHERE t.project_id = ? AND t.created_at >= ? AND t.created_at <= ?
 			AND (? = '' OR tag LIKE concat(?, '%'))
+	` + filterSQL + `
 		GROUP BY tag ORDER BY total_cost DESC
 	`
-	rows, err := s.conn.Query(ctx, query, uuid.MustParse(projectID), period.From, period.To, prefix, prefix)
+	args := []interface{}{uuid.MustParse(projectID), q.From, q.To, prefix, prefix}
+	args = append(args, filterArgs...)
+	rows, err := s.conn.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("GetTagStats: %w", err)
 	}
@@ -1033,7 +1071,8 @@ func (s *Store) GetTagStats(ctx context.Context, projectID string, period entity
 	return results, nil
 }
 
-func (s *Store) GetTopUsers(ctx context.Context, projectID string, period entity.Period, limit int) ([]entity.UserStats, error) {
+func (s *Store) GetTopUsers(ctx context.Context, projectID string, q entity.AnalyticsQuery, limit int) ([]entity.UserStats, error) {
+	filterSQL, filterArgs := buildClickHouseFilters(q.Filter)
 	query := `
 		SELECT t.user_id, COUNT(DISTINCT t.id) as traces,
 			SUM(s.input_tokens + s.output_tokens) as total_tokens,
@@ -1042,9 +1081,13 @@ func (s *Store) GetTopUsers(ctx context.Context, projectID string, period entity
 		FROM traces t JOIN spans s ON s.trace_id = t.id
 		WHERE t.project_id = ? AND t.created_at >= ? AND t.created_at <= ?
 			AND t.user_id != ''
+	` + filterSQL + `
 		GROUP BY t.user_id ORDER BY total_cost DESC LIMIT ?
 	`
-	rows, err := s.conn.Query(ctx, query, uuid.MustParse(projectID), period.From, period.To, limit)
+	args := []interface{}{uuid.MustParse(projectID), q.From, q.To}
+	args = append(args, filterArgs...)
+	args = append(args, limit)
+	rows, err := s.conn.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("GetTopUsers: %w", err)
 	}
@@ -1062,16 +1105,20 @@ func (s *Store) GetTopUsers(ctx context.Context, projectID string, period entity
 	return results, nil
 }
 
-func (s *Store) GetHourlyHeatmap(ctx context.Context, projectID string, period entity.Period) ([]entity.HourlyHeatmap, error) {
+func (s *Store) GetHourlyHeatmap(ctx context.Context, projectID string, q entity.AnalyticsQuery) ([]entity.HourlyHeatmap, error) {
+	filterSQL, filterArgs := buildClickHouseFilters(q.Filter)
 	query := `
 		SELECT toHour(t.created_at) as hour, toDayOfWeek(t.created_at, 1) % 7 as day,
 			COUNT(DISTINCT t.id) as traces,
 			SUM(s.input_tokens + s.output_tokens) as tokens, SUM(s.cost_usd) as cost
 		FROM traces t JOIN spans s ON s.trace_id = t.id
 		WHERE t.project_id = ? AND t.created_at >= ? AND t.created_at <= ?
+	` + filterSQL + `
 		GROUP BY hour, day ORDER BY day, hour
 	`
-	rows, err := s.conn.Query(ctx, query, uuid.MustParse(projectID), period.From, period.To)
+	args := []interface{}{uuid.MustParse(projectID), q.From, q.To}
+	args = append(args, filterArgs...)
+	rows, err := s.conn.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("GetHourlyHeatmap: %w", err)
 	}
@@ -1087,7 +1134,8 @@ func (s *Store) GetHourlyHeatmap(ctx context.Context, projectID string, period e
 	return results, nil
 }
 
-func (s *Store) GetLatencyDistribution(ctx context.Context, projectID string, period entity.Period) ([]entity.LatencyBucket, error) {
+func (s *Store) GetLatencyDistribution(ctx context.Context, projectID string, q entity.AnalyticsQuery) ([]entity.LatencyBucket, error) {
+	filterSQL, filterArgs := buildClickHouseFilters(q.Filter)
 	query := `
 		SELECT
 			multiIf(s.duration_ms < 100, '0-100ms', s.duration_ms < 500, '100-500ms',
@@ -1103,9 +1151,12 @@ func (s *Store) GetLatencyDistribution(ctx context.Context, projectID string, pe
 		FROM spans s JOIN traces t ON s.trace_id = t.id
 		WHERE t.project_id = ? AND t.created_at >= ? AND t.created_at <= ?
 			AND s.duration_ms > 0
+	` + filterSQL + `
 		GROUP BY bucket, min_ms, max_ms ORDER BY min_ms
 	`
-	rows, err := s.conn.Query(ctx, query, uuid.MustParse(projectID), period.From, period.To)
+	args := []interface{}{uuid.MustParse(projectID), q.From, q.To}
+	args = append(args, filterArgs...)
+	rows, err := s.conn.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("GetLatencyDistribution: %w", err)
 	}
