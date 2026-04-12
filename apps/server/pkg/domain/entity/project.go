@@ -14,8 +14,10 @@ type Project struct {
 }
 
 type ProjectSettings struct {
-	RetentionDays *int    `json:"retentionDays,omitempty"`
-	WebhookURL    *string `json:"webhookUrl,omitempty"`
+	RetentionDays *int              `json:"retentionDays,omitempty"`
+	WebhookURL    *string           `json:"webhookUrl,omitempty"`
+	ModelAliases  map[string]string `json:"modelAliases,omitempty"`  // e.g. {"us.anthropic.claude-sonnet-4-6": "Claude Sonnet"}
+	SpanColors    map[string]string `json:"spanColors,omitempty"`    // e.g. {"sales": "#22c55e", "support": "#3b82f6"}
 }
 
 type ProjectUpdate struct {

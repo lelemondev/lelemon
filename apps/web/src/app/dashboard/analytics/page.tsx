@@ -19,6 +19,7 @@ import {
   dashboardAPI, Stats, UsageDataPoint, ModelStats, TagStats, UserStats,
   HourlyHeatmap, LatencyBucket, LatencyPoint, AnalyticsParams,
 } from '@/lib/api';
+import { resolveModelName } from '@/components/traces/display-context';
 import { EnterpriseGate } from '@/ee/components/feature-gate';
 import { CostBreakdownChart } from '@/ee/components/cost-breakdown-chart';
 import { ErrorAnalytics } from '@/ee/components/error-analytics';
@@ -162,9 +163,13 @@ export default function AnalyticsPage() {
     date: formatDate(p.time),
   }));
 
+  // Model aliases from project settings
+  const modelAliases = ((currentProject?.settings as Record<string, unknown>)?.modelAliases ?? {}) as Record<string, string>;
+  const displayModel = (model: string) => resolveModelName(model, modelAliases);
+
   // Model pie chart data
   const modelPieData = models.map((m, i) => ({
-    name: m.model.replace(/^us\.anthropic\./, '').replace(/^models\//, ''),
+    name: displayModel(m.model),
     value: m.totalCostUsd,
     fill: CHART_COLORS[i % CHART_COLORS.length],
   }));
@@ -274,7 +279,7 @@ export default function AnalyticsPage() {
                   <div className="font-mono text-sm space-y-2">
                     {models.slice(0, 5).map((m) => (
                       <div key={m.model} className="flex items-center justify-between">
-                        <span className="truncate max-w-[200px]">{m.model.replace(/^us\.anthropic\./, '').replace(/^models\//, '')}</span>
+                        <span className="truncate max-w-[200px]">{displayModel(m.model)}</span>
                         <span className="font-bold">{formatCost(m.totalCostUsd)}</span>
                       </div>
                     ))}
@@ -357,7 +362,7 @@ export default function AnalyticsPage() {
                     {models.map((m) => (
                       <div key={m.model} className="space-y-1">
                         <div className="flex justify-between">
-                          <span className="truncate max-w-[180px] text-muted-foreground">{m.model.replace(/^us\.anthropic\./, '').replace(/^models\//, '')}</span>
+                          <span className="truncate max-w-[180px] text-muted-foreground">{displayModel(m.model)}</span>
                           <span>{formatDuration(m.p50LatencyMs)} / {formatDuration(m.p95LatencyMs)} / {formatDuration(m.p99LatencyMs)}</span>
                         </div>
                         <div className="h-1.5 bg-muted rounded-full overflow-hidden">
@@ -388,7 +393,7 @@ export default function AnalyticsPage() {
                   </div>
                   {models.map((m) => (
                     <div key={m.model} className="grid grid-cols-7 gap-4 py-2 border-b border-dashed last:border-0 min-w-[700px]">
-                      <span className="truncate">{m.model.replace(/^us\.anthropic\./, '').replace(/^models\//, '')}</span>
+                      <span className="truncate">{displayModel(m.model)}</span>
                       <span className="text-right">{m.requests.toLocaleString()}</span>
                       <span className="text-right">{formatTokens(m.totalTokens)}</span>
                       <span className="text-right">{formatCost(m.totalCostUsd)}</span>

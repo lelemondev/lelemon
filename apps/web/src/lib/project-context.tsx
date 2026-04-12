@@ -10,6 +10,7 @@ export interface Project {
   name: string;
   apiKey?: string;
   apiKeyHint?: string;
+  settings: Record<string, unknown>;
   createdAt: string;
 }
 
@@ -29,6 +30,7 @@ function normalizeProject(p: APIProject): Project {
     name: p.name,
     apiKey: p.apiKey,
     apiKeyHint: p.apiKeyHint || (p.apiKey ? p.apiKey.slice(0, 12) + '...' : undefined),
+    settings: p.settings || {},
     createdAt: p.createdAt,
   };
 }

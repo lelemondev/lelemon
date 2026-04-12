@@ -2,6 +2,7 @@
 
 import { SpanTypeIcon } from './SpanTypeIcon';
 import { formatDuration, formatCost } from './utils';
+import { useDisplayConfig, resolveModelName } from './display-context';
 import { cn } from '@/lib/utils';
 import type { SpanTreeNodeProps } from './types';
 
@@ -19,6 +20,7 @@ export function SpanTreeNode({
   const { span, children, depth } = node;
   const hasChildren = children.length > 0;
   const indent = depth * 20;
+  const { modelAliases } = useDisplayConfig();
 
   // Custom style from SDK metadata._style
   const customStyle = span.metadata?._style as { color?: string; icon?: string; label?: string } | undefined;
@@ -189,7 +191,7 @@ export function SpanTreeNode({
             {/* Row 2: Subtitle (model for LLM, tool name for tool use) */}
             {isLlm && span.model && (
               <div className="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5 ml-0">
-                {span.model}
+                {resolveModelName(span.model, modelAliases)}
               </div>
             )}
             {isToolUse && (
