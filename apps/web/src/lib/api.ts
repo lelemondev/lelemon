@@ -366,12 +366,14 @@ function normalizeProject(p: Record<string, unknown>): Project {
 function normalizeRecord(obj: Record<string, unknown>): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(obj)) {
-    // Lowercase first char, then fix common Go abbreviations
+    // Lowercase first char, then convert trailing abbreviations
     const camel = key.charAt(0).toLowerCase() + key.slice(1);
     const normalized = camel
-      .replace(/USD/g, 'Usd')
-      .replace(/(?<![a-z])ID(?![a-z])/g, 'Id')
-      .replace(/URL/g, 'Url');
+      .replace(/USD$/g, 'Usd')       // TotalCostUSD → totalCostUsd
+      .replace(/ID$/g, 'Id')          // UserID → userId
+      .replace(/URL$/g, 'Url')        // RedirectURL → redirectUrl
+      .replace(/USD(?=[A-Z])/g, 'Usd')  // mid-word USD
+      .replace(/ID(?=[A-Z])/g, 'Id');    // mid-word ID
     result[normalized] = value ?? null;
   }
   return result;
