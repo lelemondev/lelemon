@@ -10,7 +10,10 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/lelemon/server/pkg/application/analytics"
+	"github.com/lelemon/server/pkg/application/dataset"
+	"github.com/lelemon/server/pkg/application/eval"
 	"github.com/lelemon/server/pkg/application/project"
+	"github.com/lelemon/server/pkg/application/prompt"
 	"github.com/lelemon/server/pkg/application/trace"
 	"github.com/lelemon/server/pkg/domain/entity"
 	"github.com/lelemon/server/pkg/interfaces/http/middleware"
@@ -21,6 +24,9 @@ type DashboardHandler struct {
 	projectSvc   *project.Service
 	traceSvc     *trace.Service
 	analyticsSvc *analytics.Service
+	datasetSvc   *dataset.Service
+	evalSvc      *eval.Service
+	promptSvc    *prompt.Service
 }
 
 // NewDashboardHandler creates a new dashboard handler
@@ -28,11 +34,17 @@ func NewDashboardHandler(
 	projectSvc *project.Service,
 	traceSvc *trace.Service,
 	analyticsSvc *analytics.Service,
+	datasetSvc *dataset.Service,
+	evalSvc *eval.Service,
+	promptSvc *prompt.Service,
 ) *DashboardHandler {
 	return &DashboardHandler{
 		projectSvc:   projectSvc,
 		traceSvc:     traceSvc,
 		analyticsSvc: analyticsSvc,
+		datasetSvc:   datasetSvc,
+		evalSvc:      evalSvc,
+		promptSvc:    promptSvc,
 	}
 }
 
@@ -273,6 +285,9 @@ func (h *DashboardHandler) GetTraces(w http.ResponseWriter, r *http.Request) {
 	}
 	if tags := r.URL.Query()["tags"]; len(tags) > 0 {
 		filter.Tags = tags
+	}
+	if v := r.URL.Query().Get("promptVersionId"); v != "" {
+		filter.PromptVersionID = &v
 	}
 	if v := r.URL.Query().Get("from"); v != "" {
 		if t, err := time.Parse(time.RFC3339, v); err == nil {

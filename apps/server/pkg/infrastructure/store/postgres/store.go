@@ -143,6 +143,111 @@ func (s *Store) Migrate(ctx context.Context) error {
 
 		// Covering index for ListTraces to avoid table lookups
 		`CREATE INDEX IF NOT EXISTS idx_traces_list ON traces(project_id, created_at DESC) INCLUDE (id, session_id, user_id, status)`,
+
+		// Evals/Prompts feature — datasets (Phase 1 of 20260515-evals-and-prompt-management).
+		// source_trace_id / source_span_id are NOT FK-constrained: traces may live in a
+		// separate analytics store (e.g. ClickHouse) where a cross-DB FK is impossible.
+		`CREATE TABLE IF NOT EXISTS datasets (
+			id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+			project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+			name TEXT NOT NULL,
+			description TEXT,
+			created_at TIMESTAMPTZ DEFAULT NOW(),
+			updated_at TIMESTAMPTZ DEFAULT NOW()
+		)`,
+		`CREATE TABLE IF NOT EXISTS dataset_items (
+			id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+			dataset_id UUID NOT NULL REFERENCES datasets(id) ON DELETE CASCADE,
+			project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+			input JSONB NOT NULL,
+			expected JSONB,
+			metadata JSONB DEFAULT '{}',
+			source_trace_id TEXT,
+			source_span_id TEXT,
+			created_at TIMESTAMPTZ DEFAULT NOW(),
+			updated_at TIMESTAMPTZ DEFAULT NOW()
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_datasets_project_created ON datasets(project_id, created_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_dataset_items_dataset ON dataset_items(dataset_id, created_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_dataset_items_project ON dataset_items(project_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_dataset_items_source_trace ON dataset_items(project_id, source_trace_id) WHERE source_trace_id IS NOT NULL`,
+
+		// Evals (Phase 2A of 20260515-evals-and-prompt-management). dataset_item_id
+		// on results is NOT FK-constrained — audit results outlive their source
+		// items. Same convention as source_trace_id on dataset_items.
+		`CREATE TABLE IF NOT EXISTS evals (
+			id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+			project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+			dataset_id UUID NOT NULL REFERENCES datasets(id) ON DELETE CASCADE,
+			name TEXT NOT NULL,
+			description TEXT,
+			scorers JSONB NOT NULL DEFAULT '[]',
+			created_at TIMESTAMPTZ DEFAULT NOW(),
+			updated_at TIMESTAMPTZ DEFAULT NOW()
+		)`,
+		`CREATE TABLE IF NOT EXISTS eval_runs (
+			id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+			project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+			eval_id UUID NOT NULL REFERENCES evals(id) ON DELETE CASCADE,
+			status TEXT NOT NULL DEFAULT 'pending',
+			prompt_version_id TEXT,
+			metadata JSONB DEFAULT '{}',
+			total_items INTEGER NOT NULL DEFAULT 0,
+			passed_items INTEGER NOT NULL DEFAULT 0,
+			failed_items INTEGER NOT NULL DEFAULT 0,
+			errored_items INTEGER NOT NULL DEFAULT 0,
+			duration_ms INTEGER,
+			cost_usd DOUBLE PRECISION,
+			started_at TIMESTAMPTZ DEFAULT NOW(),
+			completed_at TIMESTAMPTZ,
+			created_at TIMESTAMPTZ DEFAULT NOW(),
+			updated_at TIMESTAMPTZ DEFAULT NOW()
+		)`,
+		`CREATE TABLE IF NOT EXISTS eval_run_results (
+			id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+			project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+			eval_run_id UUID NOT NULL REFERENCES eval_runs(id) ON DELETE CASCADE,
+			dataset_item_id TEXT NOT NULL,
+			actual JSONB,
+			scores JSONB NOT NULL DEFAULT '[]',
+			passed BOOLEAN NOT NULL DEFAULT FALSE,
+			duration_ms INTEGER,
+			cost_usd DOUBLE PRECISION,
+			error TEXT,
+			created_at TIMESTAMPTZ DEFAULT NOW()
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_evals_project_dataset ON evals(project_id, dataset_id, created_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_eval_runs_project_created ON eval_runs(project_id, created_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_eval_runs_eval_created ON eval_runs(eval_id, created_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_eval_runs_status ON eval_runs(project_id, status) WHERE status IN ('pending','running')`,
+		`CREATE INDEX IF NOT EXISTS idx_eval_run_results_run ON eval_run_results(eval_run_id, created_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_eval_run_results_project ON eval_run_results(project_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_eval_runs_prompt_version ON eval_runs(project_id, prompt_version_id) WHERE prompt_version_id IS NOT NULL`,
+
+		// Prompt versioning (Phase 3A). Same conventions as Phase 1/2A. Versions
+		// are append-only; UNIQUE(prompt_id, version) is the canonical rule.
+		`CREATE TABLE IF NOT EXISTS prompts (
+			id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+			project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+			name TEXT NOT NULL,
+			description TEXT,
+			created_at TIMESTAMPTZ DEFAULT NOW(),
+			updated_at TIMESTAMPTZ DEFAULT NOW()
+		)`,
+		`CREATE TABLE IF NOT EXISTS prompt_versions (
+			id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+			prompt_id UUID NOT NULL REFERENCES prompts(id) ON DELETE CASCADE,
+			project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+			version TEXT NOT NULL,
+			content TEXT NOT NULL,
+			changelog TEXT,
+			created_by TEXT,
+			created_at TIMESTAMPTZ DEFAULT NOW(),
+			UNIQUE(prompt_id, version)
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_prompts_project_created ON prompts(project_id, created_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_prompt_versions_prompt ON prompt_versions(prompt_id, created_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_prompt_versions_project ON prompt_versions(project_id)`,
 	}
 
 	for _, m := range migrations {
@@ -625,6 +730,15 @@ func (s *Store) ListTraces(ctx context.Context, projectID string, filter entity.
 	if filter.To != nil {
 		where = append(where, fmt.Sprintf("t.created_at <= $%d", argNum))
 		args = append(args, *filter.To)
+		argNum++
+	}
+	if filter.PromptVersionID != nil && *filter.PromptVersionID != "" {
+		// Postgres JSONB ->> extracts a top-level field as text. Acceptable as
+		// a sequential scan within the project's window; add a
+		// CREATE INDEX ON traces ((metadata->>'prompt_version_id'))
+		// when query volume justifies it.
+		where = append(where, fmt.Sprintf("t.metadata->>'prompt_version_id' = $%d", argNum))
+		args = append(args, *filter.PromptVersionID)
 		argNum++
 	}
 

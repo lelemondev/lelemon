@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useProject } from '@/lib/project-context';
 import { dashboardAPI, Trace } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
@@ -47,12 +47,16 @@ function formatDuration(ms: number): string {
 function TracesPageContent() {
   const { currentProject } = useProject();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [traces, setTraces] = useState<Trace[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
 
   // Get sessionId from URL if present (for filtering by session)
   const sessionIdFromUrl = searchParams.get('sessionId');
+  // promptVersionId comes from the version-detail "X traces" payoff link.
+  // Drives both the API filter and a visible banner that the user can clear.
+  const promptVersionIdFromUrl = searchParams.get('promptVersionId');
 
   // Filters
   const [nameSearch, setNameSearch] = useState('');
@@ -72,6 +76,7 @@ function TracesPageContent() {
       status?: string;
       sessionId?: string;
       tags?: string[];
+      promptVersionId?: string;
       from?: string;
       to?: string;
       limit: number;
@@ -81,11 +86,21 @@ function TracesPageContent() {
     if (statusFilter !== 'all') params.status = statusFilter;
     if (sessionFilter !== 'all') params.sessionId = sessionFilter;
     if (selectedTags.length > 0) params.tags = selectedTags;
+    if (promptVersionIdFromUrl) params.promptVersionId = promptVersionIdFromUrl;
     if (dateFrom) params.from = dateFrom.toISOString();
     if (dateTo) params.to = dateTo.toISOString();
 
     return params;
-  }, [nameSearch, statusFilter, sessionFilter, selectedTags, dateFrom, dateTo]);
+  }, [nameSearch, statusFilter, sessionFilter, selectedTags, promptVersionIdFromUrl, dateFrom, dateTo]);
+
+  // Drop only the promptVersionId param from the URL, leaving everything else.
+  // Uses router.replace so the back button doesn't trap the user in a loop.
+  const clearPromptVersionFilter = useCallback(() => {
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete('promptVersionId');
+    const qs = next.toString();
+    router.replace(`/dashboard/traces${qs ? '?' + qs : ''}`);
+  }, [router, searchParams]);
 
   // Fetch traces when project ID or filters change, with polling
   const projectId = currentProject?.id;
@@ -353,6 +368,25 @@ function TracesPageContent() {
               {filteredTraces.length} traces
             </div>
           </div>
+
+          {promptVersionIdFromUrl && (
+            <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700 bg-amber-50 dark:bg-amber-500/10 flex items-center gap-2 text-xs">
+              <span className="text-amber-700 dark:text-amber-300" aria-hidden>🧷</span>
+              <span className="text-amber-800 dark:text-amber-200">
+                Filtered to traces tagged with prompt version{' '}
+                <code className="font-mono text-[11px] bg-amber-100 dark:bg-amber-500/20 px-1 py-0.5 rounded">
+                  {promptVersionIdFromUrl.slice(0, 8)}…
+                </code>
+              </span>
+              <button
+                type="button"
+                onClick={clearPromptVersionFilter}
+                className="ml-auto text-amber-700 hover:text-amber-900 dark:text-amber-300 dark:hover:text-amber-100 underline underline-offset-2"
+              >
+                Clear
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Table */}

@@ -9,8 +9,11 @@ import (
 
 	"github.com/lelemon/server/pkg/application/analytics"
 	appauth "github.com/lelemon/server/pkg/application/auth"
+	"github.com/lelemon/server/pkg/application/dataset"
+	"github.com/lelemon/server/pkg/application/eval"
 	"github.com/lelemon/server/pkg/application/ingest"
 	"github.com/lelemon/server/pkg/application/project"
+	"github.com/lelemon/server/pkg/application/prompt"
 	"github.com/lelemon/server/pkg/application/trace"
 	"github.com/lelemon/server/pkg/domain/repository"
 	"github.com/lelemon/server/pkg/infrastructure/auth"
@@ -27,6 +30,9 @@ type RouterConfig struct {
 	AnalyticsSvc   *analytics.Service
 	ProjectSvc     *project.Service
 	AuthSvc        *appauth.Service
+	DatasetSvc     *dataset.Service // Phase 1: evals & prompt management
+	EvalSvc        *eval.Service    // Phase 2A: evals & prompt management
+	PromptSvc      *prompt.Service  // Phase 3A: evals & prompt management
 	JWTService     *auth.JWTService
 	FrontendURL    string
 
@@ -130,13 +136,61 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Get("/projects/me", projectHandler.GetCurrent)
 			r.Patch("/projects/me", projectHandler.UpdateCurrent)
 			r.Post("/projects/api-key", projectHandler.RotateAPIKey)
+
+			// Datasets (Phase 1 of evals feature). Same surface as the dashboard
+			// routes below, but project resolves from the API key — not the URL.
+			if cfg.DatasetSvc != nil {
+				datasetHandler := handler.NewDatasetHandler(cfg.DatasetSvc)
+				r.Post("/datasets", datasetHandler.CreateDataset)
+				r.Get("/datasets", datasetHandler.ListDatasets)
+				r.Get("/datasets/{datasetId}", datasetHandler.GetDataset)
+				r.Patch("/datasets/{datasetId}", datasetHandler.UpdateDataset)
+				r.Delete("/datasets/{datasetId}", datasetHandler.DeleteDataset)
+				r.Get("/datasets/{datasetId}/items", datasetHandler.ListDatasetItems)
+				r.Post("/datasets/{datasetId}/items", datasetHandler.CreateDatasetItem)
+				r.Post("/datasets/{datasetId}/items/from-trace", datasetHandler.AddDatasetItemFromTrace)
+				r.Post("/datasets/{datasetId}/items/import", datasetHandler.ImportDatasetItems)
+				r.Get("/datasets/{datasetId}/items/{itemId}", datasetHandler.GetDatasetItem)
+				r.Delete("/datasets/{datasetId}/items/{itemId}", datasetHandler.DeleteDatasetItem)
+			}
+
+			// Evals (Phase 2A of evals feature). The eval-harness loop:
+			// SDK calls StartRun → PostResult per item → Finalize.
+			if cfg.EvalSvc != nil {
+				evalHandler := handler.NewEvalHandler(cfg.EvalSvc)
+				r.Post("/evals", evalHandler.CreateEval)
+				r.Get("/evals", evalHandler.ListEvals)
+				r.Get("/evals/{evalId}", evalHandler.GetEval)
+				r.Delete("/evals/{evalId}", evalHandler.DeleteEval)
+
+				r.Post("/eval-runs", evalHandler.StartRun)
+				r.Get("/eval-runs", evalHandler.ListRuns)
+				r.Get("/eval-runs/{runId}", evalHandler.GetRun)
+				r.Post("/eval-runs/{runId}/results", evalHandler.PostResult)
+				r.Get("/eval-runs/{runId}/results", evalHandler.ListResults)
+				r.Post("/eval-runs/{runId}/finalize", evalHandler.FinalizeRun)
+			}
+
+			// Prompts (Phase 3A). Versions are append-only; API-key callers
+			// have no human identity, so createdBy is nil for them.
+			if cfg.PromptSvc != nil {
+				promptHandler := handler.NewPromptHandler(cfg.PromptSvc)
+				r.Post("/prompts", promptHandler.CreatePrompt)
+				r.Get("/prompts", promptHandler.ListPrompts)
+				r.Get("/prompts/{promptId}", promptHandler.GetPrompt)
+				r.Patch("/prompts/{promptId}", promptHandler.UpdatePrompt)
+				r.Delete("/prompts/{promptId}", promptHandler.DeletePrompt)
+				r.Get("/prompts/{promptId}/versions", promptHandler.ListPromptVersions)
+				r.Post("/prompts/{promptId}/versions", promptHandler.CreatePromptVersion)
+				r.Get("/prompts/{promptId}/versions/{versionId}", promptHandler.GetPromptVersion)
+			}
 		})
 
 		// Dashboard routes (session auth)
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.SessionAuth(cfg.JWTService))
 
-			dashboardHandler := handler.NewDashboardHandler(cfg.ProjectSvc, cfg.TraceSvc, cfg.AnalyticsSvc)
+			dashboardHandler := handler.NewDashboardHandler(cfg.ProjectSvc, cfg.TraceSvc, cfg.AnalyticsSvc, cfg.DatasetSvc, cfg.EvalSvc, cfg.PromptSvc)
 
 			// Projects
 			r.Get("/dashboard/projects", dashboardHandler.ListProjects)
@@ -160,6 +214,51 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Get("/dashboard/projects/{id}/analytics/heatmap", dashboardHandler.GetHeatmap)
 			r.Get("/dashboard/projects/{id}/analytics/latency/distribution", dashboardHandler.GetLatencyDistribution)
 			r.Get("/dashboard/projects/{id}/analytics/latency/timeseries", dashboardHandler.GetLatencyTimeSeries)
+
+			// Datasets (Phase 1 of evals feature). Gated on the service being
+			// wired so an operator deploying without it gets a clean 404, not
+			// a nil-pointer panic.
+			if cfg.DatasetSvc != nil {
+				r.Get("/dashboard/projects/{id}/datasets", dashboardHandler.ListProjectDatasets)
+				r.Post("/dashboard/projects/{id}/datasets", dashboardHandler.CreateProjectDataset)
+				r.Get("/dashboard/projects/{id}/datasets/{datasetId}", dashboardHandler.GetProjectDataset)
+				r.Patch("/dashboard/projects/{id}/datasets/{datasetId}", dashboardHandler.UpdateProjectDataset)
+				r.Delete("/dashboard/projects/{id}/datasets/{datasetId}", dashboardHandler.DeleteProjectDataset)
+
+				r.Get("/dashboard/projects/{id}/datasets/{datasetId}/items", dashboardHandler.ListProjectDatasetItems)
+				r.Post("/dashboard/projects/{id}/datasets/{datasetId}/items", dashboardHandler.CreateProjectDatasetItem)
+				r.Post("/dashboard/projects/{id}/datasets/{datasetId}/items/from-trace", dashboardHandler.AddProjectDatasetItemFromTrace)
+				r.Post("/dashboard/projects/{id}/datasets/{datasetId}/items/import", dashboardHandler.ImportProjectDatasetItems)
+				r.Get("/dashboard/projects/{id}/datasets/{datasetId}/items/{itemId}", dashboardHandler.GetProjectDatasetItem)
+				r.Delete("/dashboard/projects/{id}/datasets/{datasetId}/items/{itemId}", dashboardHandler.DeleteProjectDatasetItem)
+			}
+
+			// Evals (Phase 2A). Dashboard surface for inspecting eval definitions
+			// and SDK-started runs. Run lifecycle endpoints (start/post/finalize)
+			// live on the API-key surface above — they're driven by CI/scripts.
+			if cfg.EvalSvc != nil {
+				r.Get("/dashboard/projects/{id}/evals", dashboardHandler.ListProjectEvals)
+				r.Post("/dashboard/projects/{id}/evals", dashboardHandler.CreateProjectEval)
+				r.Get("/dashboard/projects/{id}/evals/{evalId}", dashboardHandler.GetProjectEval)
+				r.Delete("/dashboard/projects/{id}/evals/{evalId}", dashboardHandler.DeleteProjectEval)
+
+				r.Get("/dashboard/projects/{id}/eval-runs", dashboardHandler.ListProjectEvalRuns)
+				r.Get("/dashboard/projects/{id}/eval-runs/{runId}", dashboardHandler.GetProjectEvalRun)
+				r.Get("/dashboard/projects/{id}/eval-runs/{runId}/results", dashboardHandler.ListProjectEvalRunResults)
+			}
+
+			// Prompts (Phase 3A). Versions threaded with createdBy = JWT user.
+			if cfg.PromptSvc != nil {
+				r.Get("/dashboard/projects/{id}/prompts", dashboardHandler.ListProjectPrompts)
+				r.Post("/dashboard/projects/{id}/prompts", dashboardHandler.CreateProjectPrompt)
+				r.Get("/dashboard/projects/{id}/prompts/{promptId}", dashboardHandler.GetProjectPrompt)
+				r.Patch("/dashboard/projects/{id}/prompts/{promptId}", dashboardHandler.UpdateProjectPrompt)
+				r.Delete("/dashboard/projects/{id}/prompts/{promptId}", dashboardHandler.DeleteProjectPrompt)
+
+				r.Get("/dashboard/projects/{id}/prompts/{promptId}/versions", dashboardHandler.ListProjectPromptVersions)
+				r.Post("/dashboard/projects/{id}/prompts/{promptId}/versions", dashboardHandler.CreateProjectPromptVersion)
+				r.Get("/dashboard/projects/{id}/prompts/{promptId}/versions/{versionId}", dashboardHandler.GetProjectPromptVersion)
+			}
 		})
 	})
 

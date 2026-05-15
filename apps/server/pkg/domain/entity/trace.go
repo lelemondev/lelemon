@@ -50,8 +50,14 @@ type TraceFilter struct {
 	Tags      []string
 	From      *time.Time
 	To        *time.Time
-	Limit     int
-	Offset    int
+	// PromptVersionID filters by metadata.prompt_version_id. The SDK writes
+	// this convention (see specs/20260515-evals-and-prompt-management §3).
+	// Implementation differs per store — SQLite uses JSON_EXTRACT, Postgres
+	// uses ->>, ClickHouse uses JSONExtractString — but the wire contract is
+	// the same.
+	PromptVersionID *string
+	Limit           int
+	Offset          int
 }
 
 type TraceUpdate struct {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { AddToDatasetDialog } from './AddToDatasetDialog';
 import { SpanTypeIcon } from './SpanTypeIcon';
 import { SpanBadge } from './SpanBadge';
 import { MessageRenderer } from './MessageRenderer';
@@ -500,6 +501,7 @@ export function SpanDetail({ span, allSpans, onClose }: SpanDetailProps) {
   const [showRawJson, setShowRawJson] = useState(false);
   const [copied, setCopied] = useState(false);
   const [expandedSection, setExpandedSection] = useState<'input' | 'output' | null>(null);
+  const [addToDatasetOpen, setAddToDatasetOpen] = useState(false);
 
   const effectiveInput = useMemo(() => getEffectiveInput(span), [span]);
 
@@ -664,6 +666,7 @@ export function SpanDetail({ span, allSpans, onClose }: SpanDetailProps) {
 
   // Regular Span Detail View (LLM, Agent, etc.)
   return (
+    <>
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-start justify-between px-6 py-4 border-b border-zinc-200 dark:border-zinc-700">
@@ -693,13 +696,24 @@ export function SpanDetail({ span, allSpans, onClose }: SpanDetailProps) {
           </div>
         </div>
 
-        {onClose && (
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setAddToDatasetOpen(true)}
+            title="Save this span as an eval case in a dataset"
+          >
+            <span className="mr-1" aria-hidden>🍋</span>
+            Add to dataset
           </Button>
-        )}
+          {onClose && (
+            <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close span detail">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Performance Metrics */}
@@ -973,6 +987,13 @@ export function SpanDetail({ span, allSpans, onClose }: SpanDetailProps) {
         </div>
       </div>
     </div>
+
+    <AddToDatasetDialog
+      span={span}
+      open={addToDatasetOpen}
+      onClose={() => setAddToDatasetOpen(false)}
+    />
+    </>
   );
 }
 

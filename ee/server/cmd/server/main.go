@@ -12,8 +12,11 @@ import (
 	// Core imports
 	"github.com/lelemon/server/pkg/application/analytics"
 	appauth "github.com/lelemon/server/pkg/application/auth"
+	"github.com/lelemon/server/pkg/application/dataset"
+	"github.com/lelemon/server/pkg/application/eval"
 	"github.com/lelemon/server/pkg/application/ingest"
 	"github.com/lelemon/server/pkg/application/project"
+	"github.com/lelemon/server/pkg/application/prompt"
 	"github.com/lelemon/server/pkg/application/trace"
 	"github.com/lelemon/server/pkg/domain/repository"
 	"github.com/lelemon/server/pkg/domain/service"
@@ -113,6 +116,13 @@ func main() {
 	analyticsSvc := analytics.NewService(analyticsStore)
 	projectSvc := project.NewService(primaryStore)
 	authSvc := appauth.NewService(primaryStore, jwtService, oauthService)
+	// Datasets: relational data in primaryStore; analyticsStore is the SpanReader
+	// for the "add item from trace" flow. Same wiring as the OSS main.
+	datasetSvc := dataset.NewService(primaryStore, analyticsStore)
+	// Evals: relational; primaryStore satisfies both EvalRepo and DatasetReader.
+	evalSvc := eval.NewService(primaryStore, primaryStore)
+	// Prompts: same primary store.
+	promptSvc := prompt.NewService(primaryStore)
 
 	// ============================================
 	// ENTERPRISE: Initialize stores and services
@@ -174,6 +184,9 @@ func main() {
 		AnalyticsSvc:   analyticsSvc,
 		ProjectSvc:     projectSvc,
 		AuthSvc:        authSvc,
+		DatasetSvc:     datasetSvc,
+		EvalSvc:        evalSvc,
+		PromptSvc:      promptSvc,
 		JWTService:     jwtService,
 		FrontendURL:    cfg.FrontendURL,
 		AllowedOrigins: cfg.AllowedOrigins,

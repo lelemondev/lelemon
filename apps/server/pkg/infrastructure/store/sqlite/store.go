@@ -20,7 +20,10 @@ type Store struct {
 
 // New creates a new SQLite store
 func New(path string) (*Store, error) {
-	db, err := sql.Open("sqlite", path+"?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)")
+	// foreign_keys=on makes the FOREIGN KEY ... ON DELETE CASCADE declarations in
+	// our schemas actually enforce — SQLite ships with FK enforcement disabled,
+	// so without this pragma every cascade in the codebase is a no-op.
+	db, err := sql.Open("sqlite", path+"?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
@@ -124,6 +127,113 @@ func (s *Store) Migrate(ctx context.Context) error {
 		`CREATE INDEX IF NOT EXISTS idx_spans_trace ON spans(trace_id, started_at)`,
 		`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`,
 		`CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id)`,
+
+		// Evals/Prompts feature — datasets (Phase 1 of 20260515-evals-and-prompt-management).
+		// `source_trace_id` / `source_span_id` are NOT FK-constrained: traces can live in a
+		// separate analytics store (e.g. ClickHouse) where a cross-DB FK is impossible.
+		`CREATE TABLE IF NOT EXISTS datasets (
+			id TEXT PRIMARY KEY,
+			project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+			name TEXT NOT NULL,
+			description TEXT,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS dataset_items (
+			id TEXT PRIMARY KEY,
+			dataset_id TEXT NOT NULL REFERENCES datasets(id) ON DELETE CASCADE,
+			project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+			input TEXT NOT NULL,
+			expected TEXT,
+			metadata TEXT DEFAULT '{}',
+			source_trace_id TEXT,
+			source_span_id TEXT,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_datasets_project_created ON datasets(project_id, created_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_dataset_items_dataset ON dataset_items(dataset_id, created_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_dataset_items_project ON dataset_items(project_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_dataset_items_source_trace ON dataset_items(project_id, source_trace_id) WHERE source_trace_id IS NOT NULL`,
+
+		// Evals (Phase 2A of 20260515-evals-and-prompt-management).
+		// dataset_item_id on results is NOT FK-constrained on purpose: deleting
+		// a dataset item should not destroy historical run results that
+		// reference it (audit trail). Same convention as source_trace_id.
+		`CREATE TABLE IF NOT EXISTS evals (
+			id TEXT PRIMARY KEY,
+			project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+			dataset_id TEXT NOT NULL REFERENCES datasets(id) ON DELETE CASCADE,
+			name TEXT NOT NULL,
+			description TEXT,
+			scorers TEXT NOT NULL DEFAULT '[]',
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS eval_runs (
+			id TEXT PRIMARY KEY,
+			project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+			eval_id TEXT NOT NULL REFERENCES evals(id) ON DELETE CASCADE,
+			status TEXT NOT NULL DEFAULT 'pending',
+			prompt_version_id TEXT,
+			metadata TEXT DEFAULT '{}',
+			total_items INTEGER NOT NULL DEFAULT 0,
+			passed_items INTEGER NOT NULL DEFAULT 0,
+			failed_items INTEGER NOT NULL DEFAULT 0,
+			errored_items INTEGER NOT NULL DEFAULT 0,
+			duration_ms INTEGER,
+			cost_usd REAL,
+			started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			completed_at DATETIME,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS eval_run_results (
+			id TEXT PRIMARY KEY,
+			project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+			eval_run_id TEXT NOT NULL REFERENCES eval_runs(id) ON DELETE CASCADE,
+			dataset_item_id TEXT NOT NULL,
+			actual TEXT,
+			scores TEXT NOT NULL DEFAULT '[]',
+			passed INTEGER NOT NULL DEFAULT 0,
+			duration_ms INTEGER,
+			cost_usd REAL,
+			error TEXT,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_evals_project_dataset ON evals(project_id, dataset_id, created_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_eval_runs_project_created ON eval_runs(project_id, created_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_eval_runs_eval_created ON eval_runs(eval_id, created_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_eval_runs_status ON eval_runs(project_id, status) WHERE status IN ('pending','running')`,
+		`CREATE INDEX IF NOT EXISTS idx_eval_run_results_run ON eval_run_results(eval_run_id, created_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_eval_run_results_project ON eval_run_results(project_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_eval_runs_prompt_version ON eval_runs(project_id, prompt_version_id) WHERE prompt_version_id IS NOT NULL`,
+
+		// Prompt versioning (Phase 3A of 20260515-evals-and-prompt-management).
+		// Versions are append-only; UNIQUE(prompt_id, version) is the canonical
+		// "no two versions share a label within one prompt" rule.
+		`CREATE TABLE IF NOT EXISTS prompts (
+			id TEXT PRIMARY KEY,
+			project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+			name TEXT NOT NULL,
+			description TEXT,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS prompt_versions (
+			id TEXT PRIMARY KEY,
+			prompt_id TEXT NOT NULL REFERENCES prompts(id) ON DELETE CASCADE,
+			project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+			version TEXT NOT NULL,
+			content TEXT NOT NULL,
+			changelog TEXT,
+			created_by TEXT,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(prompt_id, version)
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_prompts_project_created ON prompts(project_id, created_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_prompt_versions_prompt ON prompt_versions(prompt_id, created_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_prompt_versions_project ON prompt_versions(project_id)`,
 	}
 
 	for _, m := range migrations {
@@ -643,6 +753,13 @@ func (s *Store) ListTraces(ctx context.Context, projectID string, filter entity.
 	if filter.To != nil {
 		where = append(where, "t.created_at <= ?")
 		args = append(args, *filter.To)
+	}
+	if filter.PromptVersionID != nil && *filter.PromptVersionID != "" {
+		// JSON_EXTRACT requires SQLite's JSON1 module — present in modernc.org/sqlite.
+		// Without a generated-column index this is a full scan within the
+		// project_id partition; acceptable until query volume justifies one.
+		where = append(where, "JSON_EXTRACT(t.metadata, '$.prompt_version_id') = ?")
+		args = append(args, *filter.PromptVersionID)
 	}
 
 	whereClause := strings.Join(where, " AND ")

@@ -639,6 +639,14 @@ func (s *Store) ListTraces(ctx context.Context, projectID string, filter entity.
 		where = append(where, "t.created_at <= ?")
 		args = append(args, *filter.To)
 	}
+	if filter.PromptVersionID != nil && *filter.PromptVersionID != "" {
+		// ClickHouse JSONExtractString reads a top-level field out of the JSON
+		// blob. With no data-skipping index it scans within the date partition;
+		// add ADD INDEX ... TYPE bloom_filter on the same expression when
+		// volume justifies it (see spec §6 "metadata-first, column-later").
+		where = append(where, "JSONExtractString(t.metadata, 'prompt_version_id') = ?")
+		args = append(args, *filter.PromptVersionID)
+	}
 
 	whereClause := strings.Join(where, " AND ")
 

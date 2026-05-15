@@ -10,8 +10,11 @@ import (
 
 	"github.com/lelemon/server/pkg/application/analytics"
 	appauth "github.com/lelemon/server/pkg/application/auth"
+	"github.com/lelemon/server/pkg/application/dataset"
+	"github.com/lelemon/server/pkg/application/eval"
 	"github.com/lelemon/server/pkg/application/ingest"
 	"github.com/lelemon/server/pkg/application/project"
+	"github.com/lelemon/server/pkg/application/prompt"
 	"github.com/lelemon/server/pkg/application/trace"
 	"github.com/lelemon/server/pkg/domain/service"
 	"github.com/lelemon/server/pkg/infrastructure/auth"
@@ -86,6 +89,14 @@ func main() {
 	analyticsSvc := analytics.NewService(analyticsStore)
 	projectSvc := project.NewService(primaryStore)
 	authSvc := appauth.NewService(primaryStore, jwtService, oauthService)
+	// Datasets live in the primary store (relational); the analytics store is
+	// only consulted when seeding an item from a real trace (SpanReader).
+	datasetSvc := dataset.NewService(primaryStore, analyticsStore)
+	// Evals also live in the primary store; the DatasetReader interface is
+	// satisfied by primaryStore (datasets + items live there too).
+	evalSvc := eval.NewService(primaryStore, primaryStore)
+	// Prompts and versions: relational, primary store.
+	promptSvc := prompt.NewService(primaryStore)
 
 	// Create router
 	router := apphttp.NewRouter(apphttp.RouterConfig{
@@ -96,6 +107,9 @@ func main() {
 		AnalyticsSvc:   analyticsSvc,
 		ProjectSvc:     projectSvc,
 		AuthSvc:        authSvc,
+		DatasetSvc:     datasetSvc,
+		EvalSvc:        evalSvc,
+		PromptSvc:      promptSvc,
 		JWTService:     jwtService,
 		FrontendURL:    cfg.FrontendURL,
 		AllowedOrigins: cfg.AllowedOrigins,

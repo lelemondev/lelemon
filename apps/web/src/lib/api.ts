@@ -291,7 +291,212 @@ export interface AnalyticsParams {
   name?: string;
 }
 
-class APIError extends Error {
+// Datasets (Phase 1 of evals & prompt management).
+// The backend serialises these as camelCase already — no normaliser needed.
+export interface Dataset {
+  id: string;
+  projectId: string;
+  name: string;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DatasetItem {
+  id: string;
+  datasetId: string;
+  projectId: string;
+  input: unknown;
+  expected: unknown;
+  metadata: Record<string, unknown>;
+  sourceTraceId: string | null;
+  sourceSpanId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DatasetListResponse {
+  data: Dataset[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface DatasetItemListResponse {
+  data: DatasetItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface CreateDatasetInput {
+  name: string;
+  description?: string;
+}
+
+export interface CreateDatasetItemInput {
+  input: unknown;
+  expected?: unknown;
+  metadata?: Record<string, unknown>;
+}
+
+export interface AddDatasetItemFromTraceInput {
+  traceId: string;
+  spanId: string;
+  expected?: unknown;
+  metadata?: Record<string, unknown>;
+}
+
+// Evals (Phase 2A of evals & prompt management). camelCase end-to-end —
+// matches application/eval/response.go.
+
+export type ScorerType =
+  | 'exact_match'
+  | 'contains'
+  | 'json_path'
+  | 'regex'
+  | 'client_reported'; // verdict supplied by the SDK, not computed server-side
+export type ScorerOp = 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte';
+
+export interface Scorer {
+  id: string;
+  name?: string;
+  type: ScorerType;
+  config?: Record<string, unknown>;
+}
+
+export interface Eval {
+  id: string;
+  projectId: string;
+  datasetId: string;
+  name: string;
+  description: string | null;
+  scorers: Scorer[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type EvalRunStatus = 'pending' | 'running' | 'completed' | 'failed';
+
+export interface EvalRun {
+  id: string;
+  projectId: string;
+  evalId: string;
+  status: EvalRunStatus;
+  promptVersionId: string | null;
+  metadata: Record<string, unknown>;
+  totalItems: number;
+  passedItems: number;
+  failedItems: number;
+  erroredItems: number;
+  passRate: number | null;
+  durationMs: number | null;
+  costUsd: number | null;
+  startedAt: string;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ScorerResult {
+  scorerId: string;
+  passed: boolean;
+  score: number;
+  details?: string;
+  error?: string;
+}
+
+export interface EvalRunResult {
+  id: string;
+  projectId: string;
+  evalRunId: string;
+  datasetItemId: string;
+  actual: unknown;
+  scores: ScorerResult[];
+  passed: boolean;
+  durationMs: number | null;
+  costUsd: number | null;
+  error: string | null;
+  createdAt: string;
+}
+
+export interface EvalListResponse {
+  data: Eval[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface EvalRunListResponse {
+  data: EvalRun[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface EvalRunResultListResponse {
+  data: EvalRunResult[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface CreateEvalInput {
+  datasetId: string;
+  name: string;
+  description?: string;
+  scorers: Scorer[];
+}
+
+// Prompts (Phase 3A). Versions are append-only; the platform stores them as
+// immutable snapshots, the SDK references them by id via trace metadata.
+
+export interface Prompt {
+  id: string;
+  projectId: string;
+  name: string;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PromptVersion {
+  id: string;
+  promptId: string;
+  projectId: string;
+  version: string;
+  content: string;
+  changelog: string | null;
+  createdBy: string | null; // null when created via API key (no human)
+  createdAt: string;
+}
+
+export interface PromptListResponse {
+  data: Prompt[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface PromptVersionListResponse {
+  data: PromptVersion[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface CreatePromptInput {
+  name: string;
+  description?: string;
+}
+
+export interface CreatePromptVersionInput {
+  version: string;
+  content: string;
+  changelog?: string;
+}
+
+export class APIError extends Error {
   status: number;
 
   constructor(message: string, status: number) {
@@ -496,6 +701,7 @@ export const dashboardAPI = {
     userId?: string;
     status?: string;
     tags?: string[];
+    promptVersionId?: string;
     from?: string;
     to?: string;
     limit?: number;
@@ -648,6 +854,271 @@ export const dashboardAPI = {
     const queryStr = searchParams.toString();
     const url = `/api/v1/dashboard/projects/${projectId}/analytics/errors${queryStr ? '?' + queryStr : ''}`;
     return request<ErrorMetrics>('GET', url);
+  },
+
+  // ---------------------------------------------------------------------
+  // Datasets (Phase 1 of evals & prompt management).
+  // All responses are camelCase end-to-end — see application/dataset/response.go.
+  // ---------------------------------------------------------------------
+
+  async listDatasets(
+    projectId: string,
+    params?: { name?: string; limit?: number; offset?: number },
+  ): Promise<DatasetListResponse> {
+    const qs = new URLSearchParams();
+    if (params?.name) qs.set('name', params.name);
+    if (params?.limit !== undefined) qs.set('limit', String(params.limit));
+    if (params?.offset !== undefined) qs.set('offset', String(params.offset));
+    const tail = qs.toString();
+    return request<DatasetListResponse>(
+      'GET',
+      `/api/v1/dashboard/projects/${projectId}/datasets${tail ? '?' + tail : ''}`,
+    );
+  },
+
+  async createDataset(projectId: string, input: CreateDatasetInput): Promise<Dataset> {
+    return request<Dataset>('POST', `/api/v1/dashboard/projects/${projectId}/datasets`, input);
+  },
+
+  async getDataset(projectId: string, datasetId: string): Promise<Dataset> {
+    return request<Dataset>('GET', `/api/v1/dashboard/projects/${projectId}/datasets/${datasetId}`);
+  },
+
+  async updateDataset(
+    projectId: string,
+    datasetId: string,
+    updates: { name?: string; description?: string },
+  ): Promise<void> {
+    await request('PATCH', `/api/v1/dashboard/projects/${projectId}/datasets/${datasetId}`, updates);
+  },
+
+  async deleteDataset(projectId: string, datasetId: string): Promise<void> {
+    await request('DELETE', `/api/v1/dashboard/projects/${projectId}/datasets/${datasetId}`);
+  },
+
+  async listDatasetItems(
+    projectId: string,
+    datasetId: string,
+    params?: { sourceTraceId?: string; limit?: number; offset?: number },
+  ): Promise<DatasetItemListResponse> {
+    const qs = new URLSearchParams();
+    if (params?.sourceTraceId) qs.set('sourceTraceId', params.sourceTraceId);
+    if (params?.limit !== undefined) qs.set('limit', String(params.limit));
+    if (params?.offset !== undefined) qs.set('offset', String(params.offset));
+    const tail = qs.toString();
+    return request<DatasetItemListResponse>(
+      'GET',
+      `/api/v1/dashboard/projects/${projectId}/datasets/${datasetId}/items${tail ? '?' + tail : ''}`,
+    );
+  },
+
+  async createDatasetItem(
+    projectId: string,
+    datasetId: string,
+    input: CreateDatasetItemInput,
+  ): Promise<DatasetItem> {
+    return request<DatasetItem>(
+      'POST',
+      `/api/v1/dashboard/projects/${projectId}/datasets/${datasetId}/items`,
+      input,
+    );
+  },
+
+  async addDatasetItemFromTrace(
+    projectId: string,
+    datasetId: string,
+    input: AddDatasetItemFromTraceInput,
+  ): Promise<DatasetItem> {
+    return request<DatasetItem>(
+      'POST',
+      `/api/v1/dashboard/projects/${projectId}/datasets/${datasetId}/items/from-trace`,
+      input,
+    );
+  },
+
+  async importDatasetItems(
+    projectId: string,
+    datasetId: string,
+    items: CreateDatasetItemInput[],
+  ): Promise<{ created: number }> {
+    return request<{ created: number }>(
+      'POST',
+      `/api/v1/dashboard/projects/${projectId}/datasets/${datasetId}/items/import`,
+      { items },
+    );
+  },
+
+  async deleteDatasetItem(
+    projectId: string,
+    datasetId: string,
+    itemId: string,
+  ): Promise<void> {
+    await request(
+      'DELETE',
+      `/api/v1/dashboard/projects/${projectId}/datasets/${datasetId}/items/${itemId}`,
+    );
+  },
+
+  // ---------------------------------------------------------------------
+  // Evals (Phase 2A). Dashboard surface — runs are SDK-started, the dashboard
+  // is the inspection lens.
+  // ---------------------------------------------------------------------
+
+  async listEvals(
+    projectId: string,
+    params?: { datasetId?: string; limit?: number; offset?: number },
+  ): Promise<EvalListResponse> {
+    const qs = new URLSearchParams();
+    if (params?.datasetId) qs.set('datasetId', params.datasetId);
+    if (params?.limit !== undefined) qs.set('limit', String(params.limit));
+    if (params?.offset !== undefined) qs.set('offset', String(params.offset));
+    const tail = qs.toString();
+    return request<EvalListResponse>(
+      'GET',
+      `/api/v1/dashboard/projects/${projectId}/evals${tail ? '?' + tail : ''}`,
+    );
+  },
+
+  async createEval(projectId: string, input: CreateEvalInput): Promise<Eval> {
+    return request<Eval>('POST', `/api/v1/dashboard/projects/${projectId}/evals`, input);
+  },
+
+  async getEval(projectId: string, evalId: string): Promise<Eval> {
+    return request<Eval>('GET', `/api/v1/dashboard/projects/${projectId}/evals/${evalId}`);
+  },
+
+  async deleteEval(projectId: string, evalId: string): Promise<void> {
+    await request('DELETE', `/api/v1/dashboard/projects/${projectId}/evals/${evalId}`);
+  },
+
+  async listEvalRuns(
+    projectId: string,
+    params?: {
+      evalId?: string;
+      status?: EvalRunStatus;
+      promptVersionId?: string;
+      limit?: number;
+      offset?: number;
+    },
+  ): Promise<EvalRunListResponse> {
+    const qs = new URLSearchParams();
+    if (params?.evalId) qs.set('evalId', params.evalId);
+    if (params?.status) qs.set('status', params.status);
+    if (params?.promptVersionId) qs.set('promptVersionId', params.promptVersionId);
+    if (params?.limit !== undefined) qs.set('limit', String(params.limit));
+    if (params?.offset !== undefined) qs.set('offset', String(params.offset));
+    const tail = qs.toString();
+    return request<EvalRunListResponse>(
+      'GET',
+      `/api/v1/dashboard/projects/${projectId}/eval-runs${tail ? '?' + tail : ''}`,
+    );
+  },
+
+  async getEvalRun(projectId: string, runId: string): Promise<EvalRun> {
+    return request<EvalRun>(
+      'GET',
+      `/api/v1/dashboard/projects/${projectId}/eval-runs/${runId}`,
+    );
+  },
+
+  async listEvalRunResults(
+    projectId: string,
+    runId: string,
+    params?: { passedOnly?: boolean; limit?: number; offset?: number },
+  ): Promise<EvalRunResultListResponse> {
+    const qs = new URLSearchParams();
+    if (params?.passedOnly !== undefined) qs.set('passedOnly', String(params.passedOnly));
+    if (params?.limit !== undefined) qs.set('limit', String(params.limit));
+    if (params?.offset !== undefined) qs.set('offset', String(params.offset));
+    const tail = qs.toString();
+    return request<EvalRunResultListResponse>(
+      'GET',
+      `/api/v1/dashboard/projects/${projectId}/eval-runs/${runId}/results${tail ? '?' + tail : ''}`,
+    );
+  },
+
+  // ---------------------------------------------------------------------
+  // Prompts (Phase 3A). Versions are append-only — no updateVersion method.
+  // ---------------------------------------------------------------------
+
+  async listPrompts(
+    projectId: string,
+    params?: { name?: string; limit?: number; offset?: number },
+  ): Promise<PromptListResponse> {
+    const qs = new URLSearchParams();
+    if (params?.name) qs.set('name', params.name);
+    if (params?.limit !== undefined) qs.set('limit', String(params.limit));
+    if (params?.offset !== undefined) qs.set('offset', String(params.offset));
+    const tail = qs.toString();
+    return request<PromptListResponse>(
+      'GET',
+      `/api/v1/dashboard/projects/${projectId}/prompts${tail ? '?' + tail : ''}`,
+    );
+  },
+
+  async createPrompt(projectId: string, input: CreatePromptInput): Promise<Prompt> {
+    return request<Prompt>('POST', `/api/v1/dashboard/projects/${projectId}/prompts`, input);
+  },
+
+  async getPrompt(projectId: string, promptId: string): Promise<Prompt> {
+    return request<Prompt>(
+      'GET',
+      `/api/v1/dashboard/projects/${projectId}/prompts/${promptId}`,
+    );
+  },
+
+  async updatePrompt(
+    projectId: string,
+    promptId: string,
+    updates: { name?: string; description?: string },
+  ): Promise<void> {
+    await request(
+      'PATCH',
+      `/api/v1/dashboard/projects/${projectId}/prompts/${promptId}`,
+      updates,
+    );
+  },
+
+  async deletePrompt(projectId: string, promptId: string): Promise<void> {
+    await request('DELETE', `/api/v1/dashboard/projects/${projectId}/prompts/${promptId}`);
+  },
+
+  async listPromptVersions(
+    projectId: string,
+    promptId: string,
+    params?: { limit?: number; offset?: number },
+  ): Promise<PromptVersionListResponse> {
+    const qs = new URLSearchParams();
+    if (params?.limit !== undefined) qs.set('limit', String(params.limit));
+    if (params?.offset !== undefined) qs.set('offset', String(params.offset));
+    const tail = qs.toString();
+    return request<PromptVersionListResponse>(
+      'GET',
+      `/api/v1/dashboard/projects/${projectId}/prompts/${promptId}/versions${tail ? '?' + tail : ''}`,
+    );
+  },
+
+  async createPromptVersion(
+    projectId: string,
+    promptId: string,
+    input: CreatePromptVersionInput,
+  ): Promise<PromptVersion> {
+    return request<PromptVersion>(
+      'POST',
+      `/api/v1/dashboard/projects/${projectId}/prompts/${promptId}/versions`,
+      input,
+    );
+  },
+
+  async getPromptVersion(
+    projectId: string,
+    promptId: string,
+    versionId: string,
+  ): Promise<PromptVersion> {
+    return request<PromptVersion>(
+      'GET',
+      `/api/v1/dashboard/projects/${projectId}/prompts/${promptId}/versions/${versionId}`,
+    );
   },
 };
 
