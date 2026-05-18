@@ -1,19 +1,63 @@
 # Spec: Evals & Prompt Management
 
-> Status: **Phases 1 / 2A / 2B / 3A / 3B shipped** · Created: 2026-05-15 · Owner: Camilo
+> Status: **Phases 1 / 2A / 2B / 3A / 3B shipped** · Created: 2026-05-15 · Last update: 2026-05-18 · Owner: Camilo
 > Origin: dogfooding Lelemon on the Venpu WhatsApp agent surfaced the gap — see "Why now".
->
-> **Shipped (this branch)**
-> - **Phase 1** — Datasets from traces (entity + 3 stores + ISP service + API-key & dashboard surfaces + "Add to dataset from span" UI + CSV/JSON import). Side-effect: enabled SQLite `foreign_keys=on` (latent bug fix — every `ON DELETE CASCADE` in the schema was a no-op).
-> - **Phase 2A** — Deterministic eval engine (4 built-in scorers: `exact_match`, `contains`, `json_path` with 6 ops, `regex`). Run lifecycle (start → post → finalize) with server-side scoring, anti-leak across datasets/tenants, idempotent SQL-transactional finalize. Dashboard for inspection, API-key for the SDK harness loop. **E2E test** in `pkg/interfaces/http/handler/eval_harness_e2e_test.go` covers the full CI workflow.
-> - **Phase 2B** — `client_reported` scorer (TDD red→green). The SDK supplies verdicts for scorers the platform won't run server-side (LLM-as-judge with the customer's own provider key, domain-specific assertions). Built-in scorers still server-side — clients cannot override. Missing client scores produce an error, not a silent pass.
-> - **Phase 3A** — Prompts + immutable versions. `UNIQUE(prompt_id, version)` mapped to `ErrConflict` (typed `pgconn.PgError` for PG, string-match for SQLite). `createdBy` threaded from JWT user (dashboard) or nil (API-key). `EvalRunFilter.PromptVersionID` closes the loop on the eval side.
-> - **Phase 3B** — Trace metadata filter (`SQLite JSON_EXTRACT`, `Postgres metadata->>`, `ClickHouse JSONExtractString`) wired across all three stores + handler + frontend (URL `?promptVersionId=` + clear banner). Unified line-diff between versions (LCS, hand-rolled in `lib/diff.ts`, 11 vitest cases). Trace-count payoff card now shows real numbers and links into the filtered traces view.
->
-> **Deferred — with reasons**
-> - **Phase 2C** (server-side LLM provider invocation) — needs key management, vault, async worker queue, retry, cost metering. Repo-wide subsystem, not eval-specific. The `client_reported` scorer shipped in Phase 2B covers the same use case via the customer's CI without that infrastructure.
-> - **Phase 4** (prompt registry / runtime SDK fetch) — adds runtime dependency to customer agents; explicitly opt-in per §5. Out of scope for this iteration.
-> - **Phase 5** (A/B / canary traffic split) — needs SDK-side splitting + roll-up — separable.
+
+## 0. Resume guide (read this first after a restart)
+
+**Where everything lives**
+- Branch: `feat/evals-and-prompt-management` (pushed to `origin`, off `main`).
+- PR draft URL: `https://github.com/lelemondev/lelemon/pull/new/feat/evals-and-prompt-management`
+- Single commit: `0ea365c` · 67 files · +20 075 / -13.
+
+**One-shot sanity check** (run from `lelemon/`):
+```bash
+cd apps/server  && go test ./... && cd ../..
+cd ee/server    && go build ./... && cd ../..
+cd apps/web     && npx vitest run && pnpm build
+```
+Expected: 8 Go packages green (eval handler suite ~14 s), EE compiles, 95 vitest cases pass (5 files), Next build succeeds with the 4 new dataset routes + 4 new prompt routes.
+
+**Code map**
+
+| Domain | Entity | Store | Service | Handlers | Frontend |
+|---|---|---|---|---|---|
+| Datasets | `pkg/domain/entity/dataset.go` | `pkg/infrastructure/store/{sqlite,postgres,clickhouse}/dataset.go` | `pkg/application/dataset/` | `handler/{dataset,dashboard_dataset}.go` | `app/dashboard/datasets/**` + `components/traces/AddToDatasetDialog.tsx` |
+| Evals | `entity/eval.go` | `store/{sqlite,postgres,clickhouse}/eval.go` | `pkg/application/eval/` (incl. `scoring.go`) | `handler/{eval,dashboard_eval}.go` | `app/dashboard/datasets/[id]/evals/**` |
+| Prompts | `entity/prompt.go` | `store/{sqlite,postgres,clickhouse}/prompt.go` | `pkg/application/prompt/` | `handler/{prompt,dashboard_prompt}.go` | `app/dashboard/prompts/**` + `lib/diff.ts` |
+| Cross-cutting | `entity/errors.go` (`ErrUnsupported`) · `entity/eval.go` (`EvalRunFilter.PromptVersionID`) · `entity/trace.go` (`TraceFilter.PromptVersionID`) | three stores extend `ListTraces` and `ListEvalRuns` | wiring in `apps/server/cmd/server/main.go` AND `ee/server/cmd/server/main.go` | `handler/responses.go` (`writeJSON`/`writeJSONError`) | `app/dashboard/layout.tsx` (Datasets + Prompts nav) · `lib/api.ts` |
+
+**Shipped (this branch)**
+- **Phase 1** — Datasets from traces (entity + 3 stores + ISP service + API-key & dashboard surfaces + "Add to dataset from span" UI + CSV/JSON import). Side-effect: enabled SQLite `foreign_keys=on` (latent bug fix — every `ON DELETE CASCADE` in the schema was a no-op).
+- **Phase 2A** — Deterministic eval engine (4 built-in scorers: `exact_match`, `contains`, `json_path` with 6 ops, `regex`). Run lifecycle (start → post → finalize) with server-side scoring, anti-leak across datasets/tenants, idempotent SQL-transactional finalize. Dashboard for inspection, API-key for the SDK harness loop. **E2E test** in `handler/eval_harness_e2e_test.go` covers the full CI workflow.
+- **Phase 2B** — `client_reported` scorer (TDD red→green). The SDK supplies verdicts for scorers the platform won't run server-side (LLM-as-judge with the customer's own provider key, domain-specific assertions). Built-in scorers still server-side — clients cannot override. Missing client scores produce an error result, not a silent pass.
+- **Phase 3A** — Prompts + immutable versions. `UNIQUE(prompt_id, version)` mapped to `ErrConflict` (typed `pgconn.PgError` for PG, string-match for SQLite). `createdBy` threaded from JWT user (dashboard) or nil (API-key). `EvalRunFilter.PromptVersionID` closes the loop on the eval side.
+- **Phase 3B** — Trace metadata filter (SQLite `JSON_EXTRACT`, Postgres `metadata->>`, ClickHouse `JSONExtractString`) wired across all three stores + handler + frontend (URL `?promptVersionId=` + clearable banner). Unified line-diff between versions (LCS, hand-rolled in `lib/diff.ts`, 11 vitest cases). Trace-count payoff card now shows real numbers and links into the filtered traces view.
+
+**Next step when we resume — pick one of these (in recommended order)**
+
+1. **Phase 4 (prompt registry — runtime fetch)** is the cheapest valuable next step. Adds a `GET /api/v1/prompts/{name}/versions/{label}` endpoint and an SDK helper so customers don't have to hard-code UUIDs. No new infra subsystem. Estimated 1 session. Start in `application/prompt/service.go` with a `GetByLabel(projectID, promptName, versionLabel)` method, RED-GREEN as usual.
+
+2. **Phase 2C (server-side LLM-as-judge)** is the biggest unlock but the largest scope. Sketch:
+   - Add a `provider_credentials` table (project-scoped, encrypted at rest) — entity + repo + store (sqlite/postgres real, clickhouse unsupported).
+   - Add an outbound `llmclient` package with provider implementations (OpenAI first, then Anthropic). Pluggable interface, SSRF safeguards moot here since URLs are vendor-fixed.
+   - Reuse `ingest.AsyncService` worker shape for queued judge execution.
+   - New scorer type `llm_judge`; config carries provider, model, judge prompt template; the eval-run worker invokes the model and stores the score + cost.
+   - Estimated 2–3 sessions. Phase 2B's `client_reported` covers the use case meanwhile.
+
+3. **Phase 5 (A/B / canary)** is mostly SDK-side. Backend just gains a per-prompt allocation table; SDK reads it and decides which version to use per request. Estimated 1–2 sessions; defer until 4 + 2C are in.
+
+4. **Phase 3B polish** (small, optional): side-by-side diff mode toggle, syntax-highlight templates, and an expression-based index on `metadata->>'prompt_version_id'` when prod volume warrants. Not blocking anything.
+
+**Known minor items (not blockers, but worth a sweep)**
+- `apps/server/data/lelemon.db-wal` is tracked in `main` — should be `.gitignore`'d. I reverted my dirty WAL out of the commit; the root issue is pre-existing.
+- Several Go `★ minmax`/`★ interface{}→any` linter suggestions in OTHER files in the stores (pre-existing). My new code uses `max()` and `any` consistently.
+- Pre-existing `react-hooks/set-state-in-effect` errors in `lib/auth-context.tsx` and a handful of EE components. My new code avoids the pattern via derived state.
+
+**Deferred — with reasons (unchanged)**
+- **Phase 2C** (server-side LLM provider invocation) — see next-step #2 for the concrete plan. Needs key management vault + outbound HTTP + worker queue + cost metering.
+- **Phase 4** (prompt registry / runtime SDK fetch) — see next-step #1.
+- **Phase 5** (A/B / canary traffic split) — see next-step #3.
 
 ---
 
