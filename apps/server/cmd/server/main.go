@@ -81,6 +81,20 @@ func main() {
 	// - Services that handle traces/spans/analytics use analyticsStore
 	// - Services that handle users/projects use primaryStore
 	pricing := service.NewPricingCalculator()
+
+	// Auto-sync model pricing from LiteLLM in the background. Non-blocking and
+	// offline-safe: the built-in table stays in effect until/unless a refresh
+	// succeeds. Disable with PRICING_AUTOSYNC=false; override the source with
+	// PRICING_SOURCE_URL.
+	if os.Getenv("PRICING_AUTOSYNC") != "false" {
+		pricingURL := os.Getenv("PRICING_SOURCE_URL")
+		if pricingURL == "" {
+			pricingURL = service.DefaultLiteLLMPricingURL
+		}
+		service.StartPricingRefresh(ctx, pricingURL, service.DefaultPricingRefreshInterval)
+		log.Info("pricing auto-sync enabled", "source", pricingURL)
+	}
+
 	ingestSvc := ingest.NewAsyncService(analyticsStore, pricing, 1000, 4)
 	traceSvc := trace.NewService(analyticsStore, pricing)
 	analyticsSvc := analytics.NewService(analyticsStore)
