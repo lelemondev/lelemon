@@ -9,6 +9,32 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
+// Public MCP server endpoint. Override with NEXT_PUBLIC_MCP_URL.
+const MCP_URL = process.env.NEXT_PUBLIC_MCP_URL || 'https://lelemon-mcp-production.up.railway.app/mcp';
+
+type McpClient = 'claude-code' | 'claude-desktop' | 'cursor';
+
+const MCP_CLIENTS: { id: McpClient; label: string }[] = [
+  { id: 'claude-code', label: 'Claude Code' },
+  { id: 'claude-desktop', label: 'Claude Desktop' },
+  { id: 'cursor', label: 'Cursor' },
+];
+
+function mcpSnippet(client: McpClient): string {
+  if (client === 'claude-code') {
+    return `claude mcp add --transport http lelemon ${MCP_URL} \\\n  --header "Authorization: Bearer le_your_key"`;
+  }
+  // Claude Desktop & Cursor both use an mcpServers JSON block.
+  return `{
+  "mcpServers": {
+    "lelemon": {
+      "url": "${MCP_URL}",
+      "headers": { "authorization": "Bearer le_your_key" }
+    }
+  }
+}`;
+}
+
 function CodeBlock({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
 
@@ -50,6 +76,7 @@ function ConfigPageContent() {
   const [rotating, setRotating] = useState(false);
   const [newApiKey, setNewApiKey] = useState<string | null>(null);
   const [apiKeyCopied, setApiKeyCopied] = useState(false);
+  const [mcpClient, setMcpClient] = useState<McpClient>('claude-code');
   const [welcomeKey, setWelcomeKey] = useState<string | null>(null);
   const [welcomeKeyCopied, setWelcomeKeyCopied] = useState(false);
 
@@ -636,6 +663,52 @@ await flush();`} />
                   View Full Documentation
                 </a>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Connect via MCP */}
+          <Card className="overflow-hidden h-fit mt-6">
+            <CardHeader className="bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 dark:from-violet-500/5 dark:to-fuchsia-500/5 border-b border-zinc-200 dark:border-zinc-800">
+              <CardTitle className="flex items-center gap-2">
+                <span aria-hidden>🔌</span>
+                Connect via MCP
+              </CardTitle>
+              <CardDescription>
+                Query your traces, costs &amp; analytics straight from your AI agent.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-5 space-y-3">
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                Add Lelemon as an MCP server, then ask your agent about your project. Replace{' '}
+                <code className="px-1 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-violet-600 dark:text-violet-400 text-xs">le_your_key</code>{' '}
+                with your project API key (above).
+              </p>
+
+              <div className="flex flex-wrap gap-2">
+                {MCP_CLIENTS.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setMcpClient(c.id)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                      mcpClient === c.id
+                        ? 'bg-violet-500 text-white'
+                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                    }`}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+
+              <CodeBlock code={mcpSnippet(mcpClient)} />
+
+              <p className="text-xs text-zinc-400 dark:text-zinc-500">
+                {mcpClient === 'claude-code'
+                  ? 'Run this in your terminal, then restart Claude Code.'
+                  : mcpClient === 'claude-desktop'
+                    ? 'Paste into claude_desktop_config.json, then restart Claude Desktop.'
+                    : 'Paste into ~/.cursor/mcp.json (or .cursor/mcp.json in your project), then reload Cursor.'}
+              </p>
             </CardContent>
           </Card>
         </div>
