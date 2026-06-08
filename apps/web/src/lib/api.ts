@@ -72,12 +72,24 @@ export interface ToolUse {
   durationMs: number | null;
 }
 
+// Per-token-type cost decomposition for an LLM span (computed by the backend).
+export interface SpanCostBreakdown {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
+  reasoning: number;
+  total: number;
+  cacheSavings: number; // saved vs paying full input price on cached reads
+}
+
 export interface ProcessedSpan extends Span {
   subType?: 'planning' | 'response';
   toolUses?: ToolUse[];
   userInput?: string;
   isToolUse?: boolean;
   toolUseData?: ToolUse;
+  costBreakdown?: SpanCostBreakdown;
 }
 
 export interface SpanNode {

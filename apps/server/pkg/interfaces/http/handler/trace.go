@@ -76,6 +76,37 @@ func (h *TraceHandler) Get(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(result)
 }
 
+// GetDetail handles GET /api/v1/traces/{id}/detail
+// Returns the pre-processed span tree (camelCase) including per-span cost
+// breakdowns — same shape the dashboard uses. Additive to Get (which returns
+// the raw trace), so existing API-key consumers are unaffected.
+func (h *TraceHandler) GetDetail(w http.ResponseWriter, r *http.Request) {
+	project := middleware.GetProject(r.Context())
+	if project == nil {
+		http.Error(w, `{"error":"Unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+
+	traceID := chi.URLParam(r, "id")
+	if traceID == "" {
+		http.Error(w, `{"error":"Trace ID required"}`, http.StatusBadRequest)
+		return
+	}
+
+	result, err := h.service.GetDetail(r.Context(), project.ID, traceID)
+	if err != nil {
+		if err == entity.ErrNotFound {
+			http.Error(w, `{"error":"Trace not found"}`, http.StatusNotFound)
+		} else {
+			http.Error(w, `{"error":"Internal server error"}`, http.StatusInternalServerError)
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
 // List handles GET /api/v1/traces
 func (h *TraceHandler) List(w http.ResponseWriter, r *http.Request) {
 	project := middleware.GetProject(r.Context())

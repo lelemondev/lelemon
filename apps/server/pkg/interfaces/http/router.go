@@ -108,6 +108,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Post("/traces", traceHandler.Create)
 			r.Get("/traces", traceHandler.List)
 			r.Get("/traces/{id}", traceHandler.Get)
+			r.Get("/traces/{id}/detail", traceHandler.GetDetail)
 			r.Patch("/traces/{id}", traceHandler.Update)
 			r.Post("/traces/{id}/spans", traceHandler.AddSpan)
 

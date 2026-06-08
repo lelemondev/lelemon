@@ -5,10 +5,17 @@ import (
 	"strings"
 )
 
-// ModelPricing contains pricing per 1K tokens
+// ModelPricing contains pricing per 1K tokens.
+//
+// CacheRead, CacheWrite and Reasoning are optional: when a table entry leaves
+// them at 0, findPricing derives them from Input/Output using provider-specific
+// multipliers (see deriveRates). Set them explicitly to override the derivation.
 type ModelPricing struct {
-	Input  float64 // per 1K tokens
-	Output float64 // per 1K tokens
+	Input      float64 // per 1K tokens
+	Output     float64 // per 1K tokens
+	CacheRead  float64 // per 1K cached-read (cache hit) tokens
+	CacheWrite float64 // per 1K cache-creation (cache write) tokens
+	Reasoning  float64 // per 1K reasoning/thinking tokens
 }
 
 // pricing is the internal pricing table (prices per 1K tokens)
@@ -182,13 +189,63 @@ var pricing = map[string]ModelPricing{
 // defaultPricing is used for unknown models ($0 = transparent indicator)
 var defaultPricing = ModelPricing{Input: 0, Output: 0}
 
+// Cache/reasoning multipliers (relative to Input, except Reasoning which is
+// relative to Output) used to derive rates that the table leaves at 0.
+//
+// Sources (Jan 2026):
+//   - Anthropic: cache write 1.25x input, cache read 0.1x input; reasoning billed as output.
+//   - OpenAI: cached input ~0.5x input, no separate cache-write surcharge; reasoning billed as output.
+//   - Gemini: implicit cache read ~0.25x input, no separate cache-write surcharge; reasoning billed as output.
+const (
+	anthropicCacheWriteMult = 1.25
+	anthropicCacheReadMult  = 0.10
+	openaiCacheReadMult     = 0.50
+	geminiCacheReadMult     = 0.25
+)
+
+// deriveRates fills in CacheRead/CacheWrite/Reasoning when a table entry left
+// them at 0, using provider-specific multipliers inferred from the model name.
+// Explicitly-set rates are preserved. Unknown providers keep 0 (transparent).
+func deriveRates(model string, mp ModelPricing) ModelPricing {
+	m := strings.ToLower(model)
+
+	var cacheWrite, cacheRead float64
+	switch {
+	case strings.Contains(m, "claude"): // incl. anthropic.* and us.anthropic.* on Bedrock
+		cacheWrite = mp.Input * anthropicCacheWriteMult
+		cacheRead = mp.Input * anthropicCacheReadMult
+	case strings.Contains(m, "gemini"):
+		cacheWrite = mp.Input // no separate write surcharge
+		cacheRead = mp.Input * geminiCacheReadMult
+	case strings.HasPrefix(m, "gpt"), strings.HasPrefix(m, "o1"),
+		strings.HasPrefix(m, "o3"), strings.HasPrefix(m, "o4"),
+		strings.HasPrefix(m, "chatgpt"):
+		cacheWrite = mp.Input // no separate write surcharge
+		cacheRead = mp.Input * openaiCacheReadMult
+	default:
+		// Unknown provider: leave derived rates at 0.
+	}
+
+	if mp.CacheWrite == 0 {
+		mp.CacheWrite = cacheWrite
+	}
+	if mp.CacheRead == 0 {
+		mp.CacheRead = cacheRead
+	}
+	if mp.Reasoning == 0 {
+		mp.Reasoning = mp.Output // reasoning tokens bill as output by default
+	}
+	return mp
+}
+
 // findPricing looks up pricing by exact match first, then by prefix match
 // This handles versioned model names like "anthropic.claude-opus-4-5-20251101-v1:0"
-// matching the base "anthropic.claude-opus-4-5"
+// matching the base "anthropic.claude-opus-4-5". The returned pricing has its
+// cache/reasoning rates resolved via deriveRates.
 func findPricing(model string) (ModelPricing, bool) {
 	// Try exact match first
 	if mp, ok := pricing[model]; ok {
-		return mp, true
+		return deriveRates(model, mp), true
 	}
 
 	// Try prefix match (longest match wins)
@@ -202,7 +259,7 @@ func findPricing(model string) (ModelPricing, bool) {
 	}
 
 	if bestMatch != "" {
-		return bestPricing, true
+		return deriveRates(model, bestPricing), true
 	}
 
 	return defaultPricing, false
@@ -216,15 +273,93 @@ func NewPricingCalculator() *PricingCalculator {
 	return &PricingCalculator{}
 }
 
-// CalculateCost calculates the cost for a model call in USD
-func (p *PricingCalculator) CalculateCost(model string, inputTokens, outputTokens int) float64 {
+// TokenUsage holds the token counts for a single model call, split by billing
+// category. The categories are assumed DISJOINT (non-overlapping): when a
+// provider reports cached tokens as a subset of input, or reasoning tokens as a
+// subset of output, the caller must subtract them first so each token is counted
+// exactly once. That per-provider normalization lives in the ingest layer.
+type TokenUsage struct {
+	Input      int
+	Output     int
+	CacheRead  int
+	CacheWrite int
+	Reasoning  int
+}
+
+// CostBreakdown is the per-category cost decomposition of a model call, in USD.
+type CostBreakdown struct {
+	Input      float64 `json:"input"`
+	Output     float64 `json:"output"`
+	CacheRead  float64 `json:"cacheRead"`
+	CacheWrite float64 `json:"cacheWrite"`
+	Reasoning  float64 `json:"reasoning"`
+	Total      float64 `json:"total"`
+}
+
+// round6 rounds a USD amount to 6 decimal places.
+func round6(v float64) float64 {
+	return math.Round(v*1000000) / 1000000
+}
+
+// CalculateCostBreakdown prices each (disjoint) token bucket at its own rate and
+// returns the per-category decomposition plus the total. The total is rounded
+// from the un-rounded components so it matches the legacy input+output result.
+func (p *PricingCalculator) CalculateCostBreakdown(model string, usage TokenUsage) CostBreakdown {
 	mp, _ := findPricing(model)
 
-	inputCost := (float64(inputTokens) / 1000) * mp.Input
-	outputCost := (float64(outputTokens) / 1000) * mp.Output
+	inputCost := (float64(usage.Input) / 1000) * mp.Input
+	outputCost := (float64(usage.Output) / 1000) * mp.Output
+	cacheReadCost := (float64(usage.CacheRead) / 1000) * mp.CacheRead
+	cacheWriteCost := (float64(usage.CacheWrite) / 1000) * mp.CacheWrite
+	reasoningCost := (float64(usage.Reasoning) / 1000) * mp.Reasoning
 
-	// Round to 6 decimal places
-	return math.Round((inputCost+outputCost)*1000000) / 1000000
+	return CostBreakdown{
+		Input:      round6(inputCost),
+		Output:     round6(outputCost),
+		CacheRead:  round6(cacheReadCost),
+		CacheWrite: round6(cacheWriteCost),
+		Reasoning:  round6(reasoningCost),
+		Total:      round6(inputCost + outputCost + cacheReadCost + cacheWriteCost + reasoningCost),
+	}
+}
+
+// CalculateCost calculates the total cost for a model call in USD. It is a
+// backward-compatible wrapper over CalculateCostBreakdown (input + output only).
+func (p *PricingCalculator) CalculateCost(model string, inputTokens, outputTokens int) float64 {
+	return p.CalculateCostBreakdown(model, TokenUsage{Input: inputTokens, Output: outputTokens}).Total
+}
+
+// NormalizeTokenUsage converts provider-reported token counts into the disjoint
+// buckets that CalculateCostBreakdown expects. Providers differ in whether their
+// cache/reasoning counts overlap with input/output (see parser.go):
+//
+//   - Anthropic/Bedrock: input_tokens already EXCLUDES cache tokens, and there is
+//     no separate reasoning count (thinking is billed within output). Disjoint.
+//   - OpenAI/OpenRouter: completion_tokens INCLUDES reasoning_tokens, and
+//     prompt_tokens INCLUDES cached tokens. Subtract both so nothing is double-counted.
+//   - Gemini: promptTokenCount INCLUDES cachedContentTokenCount (subtract);
+//     candidatesTokenCount is disjoint from thoughtsTokenCount.
+//   - Unknown: assume the common (OpenAI-style) overlap and subtract subsets.
+func NormalizeTokenUsage(provider string, input, output, cacheRead, cacheWrite, reasoning int) TokenUsage {
+	u := TokenUsage{
+		Input:      input,
+		Output:     output,
+		CacheRead:  cacheRead,
+		CacheWrite: cacheWrite,
+		Reasoning:  reasoning,
+	}
+
+	switch strings.ToLower(provider) {
+	case "anthropic", "bedrock":
+		// Already disjoint; nothing to subtract.
+	case "gemini":
+		u.Input = max(0, input-cacheRead)
+	default: // openai, openrouter, unknown
+		u.Input = max(0, input-cacheRead)
+		u.Output = max(0, output-reasoning)
+	}
+
+	return u
 }
 
 // GetModelPricing returns the pricing for a model
