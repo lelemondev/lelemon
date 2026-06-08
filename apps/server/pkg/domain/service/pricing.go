@@ -265,6 +265,8 @@ func findPricing(model string) (ModelPricing, bool) {
 		return deriveRates(model, bestPricing), true
 	}
 
+	// No pricing found — track it for observability (logs once + on threshold).
+	recordUnknownModel(model)
 	return defaultPricing, false
 }
 
