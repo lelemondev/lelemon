@@ -99,9 +99,10 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Post("/ingest", ingestHandler.Handle)
 		})
 
-		// API Key authenticated routes (rate limited)
+		// API Key authenticated routes (rate limited). Also reachable by the MCP
+		// authorization server acting for a project via the service path (see ProjectAuth).
 		r.Group(func(r chi.Router) {
-			r.Use(middleware.APIKeyAuth(cfg.PrimaryStore))
+			r.Use(middleware.ProjectAuth(cfg.PrimaryStore, os.Getenv("MCP_STORE_SECRET")))
 			r.Use(middleware.RateLimit(rateLimiter))
 
 			// Traces
