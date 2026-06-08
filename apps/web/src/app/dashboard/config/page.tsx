@@ -22,14 +22,14 @@ const MCP_CLIENTS: { id: McpClient; label: string }[] = [
 
 function mcpSnippet(client: McpClient): string {
   if (client === 'claude-code') {
-    return `claude mcp add --transport http lelemon ${MCP_URL} \\\n  --header "Authorization: Bearer le_your_key"`;
+    // OAuth: no API key. The client discovers auth from the server and opens a browser to authorize.
+    return `claude mcp add --transport http lelemon ${MCP_URL}`;
   }
-  // Claude Desktop & Cursor both use an mcpServers JSON block.
+  // Claude Desktop & Cursor both use an mcpServers JSON block — just the URL.
   return `{
   "mcpServers": {
     "lelemon": {
-      "url": "${MCP_URL}",
-      "headers": { "authorization": "Bearer le_your_key" }
+      "url": "${MCP_URL}"
     }
   }
 }`;
@@ -679,9 +679,8 @@ await flush();`} />
             </CardHeader>
             <CardContent className="p-5 space-y-3">
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                Add Lelemon as an MCP server, then ask your agent about your project. Replace{' '}
-                <code className="px-1 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-violet-600 dark:text-violet-400 text-xs">le_your_key</code>{' '}
-                with your project API key (above).
+                Add Lelemon as an MCP server, then authorize in your browser — no API key to copy.
+                You pick which project to share when you connect.
               </p>
 
               <div className="flex flex-wrap gap-2">
@@ -704,10 +703,10 @@ await flush();`} />
 
               <p className="text-xs text-zinc-400 dark:text-zinc-500">
                 {mcpClient === 'claude-code'
-                  ? 'Run this in your terminal, then restart Claude Code.'
+                  ? 'Run this, then `/mcp` in Claude Code → Authenticate. Sign in and pick a project.'
                   : mcpClient === 'claude-desktop'
-                    ? 'Paste into claude_desktop_config.json, then restart Claude Desktop.'
-                    : 'Paste into ~/.cursor/mcp.json (or .cursor/mcp.json in your project), then reload Cursor.'}
+                    ? 'Paste into claude_desktop_config.json, restart, then authorize in the browser when prompted.'
+                    : 'Paste into ~/.cursor/mcp.json, reload Cursor, then authorize in the browser when prompted.'}
               </p>
             </CardContent>
           </Card>

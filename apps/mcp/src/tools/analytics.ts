@@ -36,7 +36,7 @@ export const createAnalyticsTool = () =>
       'Filter every metric by from/to (RFC3339). granularity applies to usage & latency_timeseries; ' +
       'limit applies to models, tags & top_users.',
     middlewares: [
-      requireAuth({ message: 'lelemon_analytics requires your project API key.' }),
+      requireAuth({ message: 'lelemon_analytics requires an authorized connection.' }),
       rateLimit({ max: 120, windowMs: 60_000 }),
       withTimeout({ ms: 10_000 }),
     ],

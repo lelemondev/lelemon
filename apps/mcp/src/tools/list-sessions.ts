@@ -26,7 +26,7 @@ export const createListSessionsTool = () =>
       'metrics: trace count, tokens, cost, duration, and whether any trace errored or is still active. ' +
       'Filter by user or time range.',
     middlewares: [
-      requireAuth({ message: 'lelemon_list_sessions requires your project API key.' }),
+      requireAuth({ message: 'lelemon_list_sessions requires an authorized connection.' }),
       rateLimit({ max: 120, windowMs: 60_000 }),
       withTimeout({ ms: 8_000 }),
     ],
