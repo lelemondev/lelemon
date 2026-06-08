@@ -21,6 +21,14 @@ import (
 	apphttp "github.com/lelemon/server/pkg/interfaces/http"
 )
 
+// envOr returns the value of environment variable key, or fallback if unset/empty.
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
+
 func main() {
 	// Load configuration
 	cfg := config.Load()
@@ -82,17 +90,23 @@ func main() {
 	// - Services that handle users/projects use primaryStore
 	pricing := service.NewPricingCalculator()
 
-	// Auto-sync model pricing from LiteLLM in the background. Non-blocking and
-	// offline-safe: the built-in table stays in effect until/unless a refresh
-	// succeeds. Disable with PRICING_AUTOSYNC=false; override the source with
-	// PRICING_SOURCE_URL.
+	// Auto-sync model pricing from external sources in the background.
+	// Non-blocking and offline-safe: the built-in table stays in effect
+	// until/unless a refresh succeeds. Precedence: LiteLLM > OpenRouter > local.
+	//   PRICING_AUTOSYNC=false       disable all external sources
+	//   PRICING_SOURCE_URL=...       override the LiteLLM (primary) URL
+	//   PRICING_OPENROUTER=false     disable the OpenRouter (secondary) source
+	//   PRICING_OPENROUTER_URL=...   override the OpenRouter URL
 	if os.Getenv("PRICING_AUTOSYNC") != "false" {
-		pricingURL := os.Getenv("PRICING_SOURCE_URL")
-		if pricingURL == "" {
-			pricingURL = service.DefaultLiteLLMPricingURL
+		sources := service.PricingSources{
+			LiteLLMURL: envOr("PRICING_SOURCE_URL", service.DefaultLiteLLMPricingURL),
+			Interval:   service.DefaultPricingRefreshInterval,
 		}
-		service.StartPricingRefresh(ctx, pricingURL, service.DefaultPricingRefreshInterval)
-		log.Info("pricing auto-sync enabled", "source", pricingURL)
+		if os.Getenv("PRICING_OPENROUTER") != "false" {
+			sources.OpenRouterURL = envOr("PRICING_OPENROUTER_URL", service.DefaultOpenRouterPricingURL)
+		}
+		service.StartPricingRefresh(ctx, sources)
+		log.Info("pricing auto-sync enabled", "litellm", sources.LiteLLMURL, "openrouter", sources.OpenRouterURL)
 	}
 
 	ingestSvc := ingest.NewAsyncService(analyticsStore, pricing, 1000, 4)

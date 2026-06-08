@@ -53,41 +53,87 @@ func applyExternalPricing(external map[string]ModelPricing) {
 	pricingSnapshot.mu.Unlock()
 }
 
+// PricingSources configures the external pricing refresh. An empty URL disables
+// that source. Precedence is LiteLLM (primary) > OpenRouter (secondary) > the
+// built-in local map (fallback).
+type PricingSources struct {
+	LiteLLMURL    string
+	OpenRouterURL string
+	Interval      time.Duration
+}
+
+// fetchSourceTimeout bounds each individual source fetch.
+const fetchSourceTimeout = 30 * time.Second
+
 // StartPricingRefresh launches a background loop that refreshes the pricing table
-// from `url` at boot and every `interval`. It never blocks startup and always
-// keeps the previous (or local) table on failure, so the server is offline-safe.
-// The loop exits when ctx is cancelled. Call once at server startup.
-func StartPricingRefresh(ctx context.Context, url string, interval time.Duration) {
-	if interval <= 0 {
-		interval = DefaultPricingRefreshInterval
+// from the configured sources at boot and every Interval. It never blocks startup
+// and always keeps the previous (or local) table on failure, so the server is
+// offline-safe. The loop exits when ctx is cancelled. Call once at server startup.
+func StartPricingRefresh(ctx context.Context, sources PricingSources) {
+	if sources.Interval <= 0 {
+		sources.Interval = DefaultPricingRefreshInterval
 	}
 	go func() {
-		refreshPricingOnce(ctx, url) // best-effort at boot
-		ticker := time.NewTicker(interval)
+		refreshPricingOnce(ctx, sources) // best-effort at boot
+		ticker := time.NewTicker(sources.Interval)
 		defer ticker.Stop()
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				refreshPricingOnce(ctx, url)
+				refreshPricingOnce(ctx, sources)
 			}
 		}
 	}()
 }
 
-// refreshPricingOnce fetches the external table once and applies it on success.
-// Failures are logged and swallowed (the existing table stays in effect).
-func refreshPricingOnce(ctx context.Context, url string) {
-	fetchCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+// fetchSource runs one source fetch under a timeout.
+func fetchSource(
+	ctx context.Context,
+	fn func(context.Context, string) (map[string]ModelPricing, error),
+	url string,
+) (map[string]ModelPricing, error) {
+	fetchCtx, cancel := context.WithTimeout(ctx, fetchSourceTimeout)
 	defer cancel()
+	return fn(fetchCtx, url)
+}
 
-	external, err := FetchLiteLLMPricing(fetchCtx, url)
-	if err != nil {
-		slog.Warn("pricing refresh failed; keeping current table", "error", err)
+// refreshPricingOnce fetches the configured sources, merges them (LiteLLM wins
+// over OpenRouter), and applies the result. Per-source failures are logged and
+// swallowed; if every source fails, the current table is left untouched.
+func refreshPricingOnce(ctx context.Context, sources PricingSources) {
+	combined := make(map[string]ModelPricing)
+
+	// Secondary first (lower precedence)...
+	if sources.OpenRouterURL != "" {
+		if m, err := fetchSource(ctx, FetchOpenRouterPricing, sources.OpenRouterURL); err != nil {
+			slog.Warn("openrouter pricing refresh failed", "error", err)
+		} else {
+			for k, v := range m {
+				combined[k] = v
+			}
+			slog.Info("pricing source refreshed", "source", "openrouter", "models", len(m))
+		}
+	}
+
+	// ...then primary overlaid on top (LiteLLM wins).
+	if sources.LiteLLMURL != "" {
+		if m, err := fetchSource(ctx, FetchLiteLLMPricing, sources.LiteLLMURL); err != nil {
+			slog.Warn("litellm pricing refresh failed", "error", err)
+		} else {
+			for k, v := range m {
+				combined[k] = v
+			}
+			slog.Info("pricing source refreshed", "source", "litellm", "models", len(m))
+		}
+	}
+
+	if len(combined) == 0 {
+		slog.Warn("pricing refresh produced no data; keeping current table")
 		return
 	}
 
-	applyExternalPricing(external)
-	slog.Info("pricing table refreshed", "source", "litellm", "models", len(external))
+	applyExternalPricing(combined)
+	slog.Info("pricing table refreshed", "models", len(combined))
 }
