@@ -12,7 +12,8 @@
   },
   "scripts": {
     "dev": "mcify dev",
-    "build": "tsc -p tsconfig.json",
+    "build": "mcify build --bundle-deps",
+    "start": "node dist/server.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
