@@ -3,12 +3,21 @@ import process from 'node:process';
 /** Default production API base URL. Override with LELEMON_ENDPOINT. */
 const DEFAULT_BASE_URL = 'https://api.lelemon.dev';
 
-export interface LelemonClientOptions {
-  /** Project API key (le_xxx). Sent as `Authorization: Bearer <apiKey>`. */
-  apiKey: string;
+/**
+ * How the client authenticates to the Lelemon API:
+ *  - `apiKey` — a project API key (le_xxx), sent as `Authorization: Bearer <apiKey>`. The classic
+ *    path: the key itself scopes the request to its project.
+ *  - `serviceSecret` + `projectId` — the trusted service path used under OAuth, where the MCP has
+ *    resolved a project but has no API key. Sends the shared secret as Bearer plus `X-Project-Id`;
+ *    the backend's ProjectAuth loads that project (see server middleware).
+ */
+export type LelemonClientOptions = (
+  | { apiKey: string; serviceSecret?: undefined; projectId?: undefined }
+  | { serviceSecret: string; projectId: string; apiKey?: undefined }
+) & {
   /** API base URL. Defaults to LELEMON_ENDPOINT env or https://api.lelemon.dev. */
   baseUrl?: string;
-}
+};
 
 /** Error thrown when the Lelemon API returns a non-2xx response. */
 export class LelemonApiError extends Error {
@@ -244,11 +253,18 @@ function normalizeSession(r: RawSession): SessionSummary {
  * its API key. All paths are relative to `${baseUrl}/api/v1`.
  */
 export class LelemonClient {
-  private readonly apiKey: string;
+  private readonly authHeaders: Record<string, string>;
   private readonly baseUrl: string;
 
   constructor(options: LelemonClientOptions) {
-    this.apiKey = options.apiKey;
+    if (options.apiKey !== undefined) {
+      this.authHeaders = { Authorization: `Bearer ${options.apiKey}` };
+    } else {
+      this.authHeaders = {
+        Authorization: `Bearer ${options.serviceSecret}`,
+        'X-Project-Id': options.projectId,
+      };
+    }
     const base = options.baseUrl ?? process.env['LELEMON_ENDPOINT'] ?? DEFAULT_BASE_URL;
     this.baseUrl = base.replace(/\/+$/, '');
   }
@@ -318,7 +334,7 @@ export class LelemonClient {
     const res = await fetch(url, {
       method,
       headers: {
-        Authorization: `Bearer ${this.apiKey}`,
+        ...this.authHeaders,
         Accept: 'application/json',
       },
     });
