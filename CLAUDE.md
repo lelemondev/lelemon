@@ -91,7 +91,12 @@ lelemon/
 │   │   │       └── project-context.tsx
 │   │   └── package.json
 │   │
-│   └── playground/                # SDK testing app (port 3001)
+│   ├── playground/                # SDK testing app (port 3001)
+│   │
+│   └── mcp/                        # MCP server (@lelemondev/mcp) — read-only query tools
+│       ├── mcify.config.ts        # Tools + bearer auth (bearer = project API key)
+│       ├── src/client.ts          # LelemonClient (fetch wrapper)
+│       └── src/tools/             # get-project, list-traces, get-trace, list-sessions, analytics
 │
 ├── ee/                            # ENTERPRISE (proprietary license)
 │   ├── LICENSE                    # Enterprise license
@@ -150,6 +155,20 @@ pnpm build            # Production build
 cd apps/playground
 pnpm install
 pnpm dev              # Dev server (port 3001)
+```
+
+### MCP Server (apps/mcp)
+```bash
+cd apps/mcp
+pnpm install
+pnpm dev              # MCP at :8888/mcp + inspector at :3001
+pnpm typecheck && pnpm test
+
+# Built with mcify (@mcify/core). Read-only query tools over the API-key endpoints.
+# Auth: the bearer token a client presents IS its Lelemon project API key (le_xxx),
+# validated per request against GET /projects/me — multi-tenant for free.
+# Tools: lelemon_get_project, _list_traces, _get_trace (with costBreakdown),
+#        _list_sessions, _analytics (consolidated metrics). See apps/mcp/README.md.
 ```
 
 ### Monorepo Root

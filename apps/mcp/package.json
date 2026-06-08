@@ -1,0 +1,36 @@
+{
+  "name": "@lelemondev/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lelemon MCP server — query traces, cost breakdowns, sessions and analytics from your agent. Built with mcify.",
+  "license": "AGPL-3.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "mcify dev",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@mcify/core": "1.0.0-alpha.2",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@mcify/cli": "1.0.0-alpha.2",
+    "@mcify/inspector": "0.1.0-alpha.2",
+    "@mcify/runtime": "1.0.0-alpha.2",
+    "@types/node": "^24.10.0",
+    "eslint": "^9.39.0",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.60.0",
+    "vitest": "^4.1.0"
+  }
+}
