@@ -5,7 +5,11 @@ import (
 	"sort"
 
 	"github.com/lelemon/server/pkg/domain/entity"
+	"github.com/lelemon/server/pkg/domain/service"
 )
+
+// pricingCalc is stateless; share one instance for breakdown computation.
+var pricingCalc = service.NewPricingCalculator()
 
 // ProcessTraceDetail transforms a TraceWithSpans into an optimized TraceDetailResponse
 // The heavy extraction (SubType, ToolUses) is done at ingest time for efficiency.
@@ -126,6 +130,10 @@ func spanToProcessed(span entity.Span, toolResults map[string]toolResultData) Pr
 		SubType:          span.SubType, // Pre-computed at ingest
 	}
 
+	// Decompose cost by token type for LLM spans (computed on-the-fly from the
+	// stored token counts + pricing table — no extra persistence).
+	processed.CostBreakdown = computeSpanCostBreakdown(span)
+
 	// Match tool uses with their results (results come from subsequent LLM requests)
 	if len(span.ToolUses) > 0 {
 		toolUses := make([]ToolUse, len(span.ToolUses))
@@ -151,6 +159,56 @@ func spanToProcessed(span entity.Span, toolResults map[string]toolResultData) Pr
 	}
 
 	return processed
+}
+
+// computeSpanCostBreakdown decomposes an LLM span's cost by token type. Returns
+// nil for non-LLM spans or spans without a model. Uses the same disjoint-bucket
+// normalization as ingest, so the components always sum to the stored CostUSD.
+func computeSpanCostBreakdown(span entity.Span) *SpanCostBreakdown {
+	if span.Type != entity.SpanTypeLLM || span.Model == nil {
+		return nil
+	}
+
+	provider := ""
+	if span.Provider != nil {
+		provider = *span.Provider
+	}
+
+	usage := service.NormalizeTokenUsage(
+		provider,
+		intOrZero(span.InputTokens),
+		intOrZero(span.OutputTokens),
+		intOrZero(span.CacheReadTokens),
+		intOrZero(span.CacheWriteTokens),
+		intOrZero(span.ReasoningTokens),
+	)
+
+	bd := pricingCalc.CalculateCostBreakdown(*span.Model, usage)
+
+	// Cache savings: cached reads billed at CacheRead rate instead of full Input.
+	mp := pricingCalc.GetModelPricing(*span.Model)
+	savings := 0.0
+	if mp.Input > mp.CacheRead {
+		savings = math.Round(float64(usage.CacheRead)/1000*(mp.Input-mp.CacheRead)*1000000) / 1000000
+	}
+
+	return &SpanCostBreakdown{
+		Input:        bd.Input,
+		Output:       bd.Output,
+		CacheRead:    bd.CacheRead,
+		CacheWrite:   bd.CacheWrite,
+		Reasoning:    bd.Reasoning,
+		Total:        bd.Total,
+		CacheSavings: savings,
+	}
+}
+
+// intOrZero dereferences a *int, returning 0 for nil.
+func intOrZero(p *int) int {
+	if p == nil {
+		return 0
+	}
+	return *p
 }
 
 // extractUserMessage extracts the first user message text from LLM input

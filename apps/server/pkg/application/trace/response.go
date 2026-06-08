@@ -69,11 +69,24 @@ type ProcessedSpan struct {
 	Thinking         *string `json:"thinking"`
 
 	// Computed fields (calculated by backend)
-	SubType     *string   `json:"subType,omitempty"`     // "planning" | "response" for LLM spans
-	ToolUses    []ToolUse `json:"toolUses,omitempty"`    // Extracted tool calls from output
-	UserInput   *string   `json:"userInput,omitempty"`   // Extracted user message for agent spans
-	IsToolUse   bool      `json:"isToolUse,omitempty"`   // True if this is a synthetic tool use node
-	ToolUseData *ToolUse  `json:"toolUseData,omitempty"` // Tool use data if IsToolUse is true
+	SubType       *string            `json:"subType,omitempty"`       // "planning" | "response" for LLM spans
+	ToolUses      []ToolUse          `json:"toolUses,omitempty"`      // Extracted tool calls from output
+	UserInput     *string            `json:"userInput,omitempty"`     // Extracted user message for agent spans
+	IsToolUse     bool               `json:"isToolUse,omitempty"`     // True if this is a synthetic tool use node
+	ToolUseData   *ToolUse           `json:"toolUseData,omitempty"`   // Tool use data if IsToolUse is true
+	CostBreakdown *SpanCostBreakdown `json:"costBreakdown,omitempty"` // Per-token-type cost decomposition (LLM spans)
+}
+
+// SpanCostBreakdown decomposes an LLM span's cost (USD) by token type, plus the
+// savings achieved by paying the cache-read rate instead of full input price.
+type SpanCostBreakdown struct {
+	Input        float64 `json:"input"`
+	Output       float64 `json:"output"`
+	CacheRead    float64 `json:"cacheRead"`
+	CacheWrite   float64 `json:"cacheWrite"`
+	Reasoning    float64 `json:"reasoning"`
+	Total        float64 `json:"total"`
+	CacheSavings float64 `json:"cacheSavings"` // saved vs paying full input price on cached reads
 }
 
 // ToolUse represents a tool call extracted from LLM output

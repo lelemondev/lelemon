@@ -200,6 +200,84 @@ func TestPricingCalculation(t *testing.T) {
 		}
 	})
 
+	t.Run("anthropic cache tokens priced separately", func(t *testing.T) {
+		// claude-3-5-sonnet: Input=0.003, Output=0.015 per 1K.
+		// Derived cache: read=0.0003, write=0.00375 per 1K. Anthropic input is
+		// already disjoint from cache, so all four buckets are priced and summed:
+		//   1000 in   -> 0.003
+		//    500 out  -> 0.0075
+		//   2000 read -> 0.0006
+		//   1000 write-> 0.00375   total = 0.01485
+		traceID := "pricing-cache-001"
+
+		ts.Request("POST", "/api/v1/ingest", map[string]any{
+			"events": []map[string]any{{
+				"traceId":          traceID,
+				"spanId":           "pricing-cache-span-001",
+				"spanType":         "llm",
+				"provider":         "anthropic",
+				"model":            "claude-3-5-sonnet-20241022",
+				"inputTokens":      1000,
+				"outputTokens":     500,
+				"cacheReadTokens":  2000,
+				"cacheWriteTokens": 1000,
+				"status":           "success",
+			}},
+		}, apiKeyHeaders)
+
+		traceResp := ts.Request("GET", "/api/v1/traces/"+traceID, nil, apiKeyHeaders)
+		var trace map[string]any
+		ParseJSON(t, traceResp, &trace)
+
+		spans := trace["Spans"].([]any)
+		span := spans[0].(map[string]any)
+
+		cost := span["CostUSD"].(float64)
+		expectedCost := 0.01485
+
+		if !almostEqual(cost, expectedCost, 0.000001) {
+			t.Errorf("anthropic cache cost: expected %.6f, got %.6f", expectedCost, cost)
+		}
+	})
+
+	t.Run("openai reasoning is not double-counted", func(t *testing.T) {
+		// o1-preview: Input=0.015, Output=0.06 per 1K. completion_tokens (500)
+		// INCLUDES reasoning (200), so output is split 300 + 200 reasoning, both
+		// at 0.06 -> same total as before, NOT inflated:
+		//   1000 in        -> 0.015
+		//    300 out       -> 0.018
+		//    200 reasoning -> 0.012   total = 0.045  (not 0.057)
+		traceID := "pricing-reasoning-001"
+
+		ts.Request("POST", "/api/v1/ingest", map[string]any{
+			"events": []map[string]any{{
+				"traceId":         traceID,
+				"spanId":          "pricing-reasoning-span-001",
+				"spanType":        "llm",
+				"provider":        "openai",
+				"model":           "o1-preview",
+				"inputTokens":     1000,
+				"outputTokens":    500,
+				"reasoningTokens": 200,
+				"status":          "success",
+			}},
+		}, apiKeyHeaders)
+
+		traceResp := ts.Request("GET", "/api/v1/traces/"+traceID, nil, apiKeyHeaders)
+		var trace map[string]any
+		ParseJSON(t, traceResp, &trace)
+
+		spans := trace["Spans"].([]any)
+		span := spans[0].(map[string]any)
+
+		cost := span["CostUSD"].(float64)
+		expectedCost := 0.045
+
+		if !almostEqual(cost, expectedCost, 0.000001) {
+			t.Errorf("openai reasoning cost: expected %.6f (no double-count), got %.6f", expectedCost, cost)
+		}
+	})
+
 	t.Run("zero tokens = zero cost", func(t *testing.T) {
 		traceID := "pricing-zero-001"
 

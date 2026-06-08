@@ -315,9 +315,18 @@ func (p *EventProcessor) processRawResponse(span *entity.Span, event IngestEvent
 	span.SubType = parsed.SubType
 	span.ToolUses = parsed.ToolUses
 
-	// Calculate cost
+	// Calculate cost from disjoint token buckets so cache/reasoning are priced
+	// at their own rates (and never double-counted against input/output).
 	if spanType == entity.SpanTypeLLM && event.Model != "" {
-		cost := p.pricing.CalculateCost(event.Model, parsed.InputTokens, parsed.OutputTokens)
+		usage := service.NormalizeTokenUsage(
+			event.Provider,
+			parsed.InputTokens,
+			parsed.OutputTokens,
+			derefInt(parsed.CacheReadTokens),
+			derefInt(parsed.CacheWriteTokens),
+			derefInt(parsed.ReasoningTokens),
+		)
+		cost := p.pricing.CalculateCostBreakdown(event.Model, usage).Total
 		span.CostUSD = &cost
 	}
 }
@@ -338,11 +347,17 @@ func (p *EventProcessor) processLegacyFields(span *entity.Span, event IngestEven
 		span.Thinking = &event.Thinking
 	}
 
-	// Calculate cost
+	// Calculate cost from disjoint token buckets (see processRawResponse).
 	if spanType == entity.SpanTypeLLM && event.Model != "" {
-		inputTokens := derefInt(event.InputTokens)
-		outputTokens := derefInt(event.OutputTokens)
-		cost := p.pricing.CalculateCost(event.Model, inputTokens, outputTokens)
+		usage := service.NormalizeTokenUsage(
+			event.Provider,
+			derefInt(event.InputTokens),
+			derefInt(event.OutputTokens),
+			derefInt(event.CacheReadTokens),
+			derefInt(event.CacheWriteTokens),
+			derefInt(event.ReasoningTokens),
+		)
+		cost := p.pricing.CalculateCostBreakdown(event.Model, usage).Total
 		span.CostUSD = &cost
 	}
 

@@ -243,6 +243,15 @@ function calculateCacheHitRate(cacheReadTokens: number | null, inputTokens: numb
 }
 
 /**
+ * Format a USD cost with enough precision for tiny per-token-type amounts.
+ */
+function formatCostPrecise(cost: number): string {
+  if (cost === 0) return '$0';
+  if (cost < 0.0001) return `$${cost.toFixed(6)}`;
+  return `$${cost.toFixed(4)}`;
+}
+
+/**
  * Format character count
  */
 function formatChars(chars: number): string {
@@ -806,6 +815,49 @@ export function SpanDetail({ span, allSpans, onClose }: SpanDetailProps) {
           )}
         </div>
       </div>
+      )}
+
+      {/* Cost breakdown by token type — see the real money behind cache & reasoning 💰 */}
+      {!aggregatedMetrics && span.type === 'llm' && span.costBreakdown && span.costBreakdown.total > 0 && (
+        <div className="px-6 py-3 border-b border-zinc-200 dark:border-zinc-700">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              💰 Cost breakdown
+            </span>
+            <span className="font-mono text-sm font-medium text-zinc-700 dark:text-zinc-300 tabular-nums">
+              {formatCostPrecise(span.costBreakdown.total)}
+            </span>
+            {span.costBreakdown.cacheSavings > 0 && (
+              <Badge className="border-0 bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400 text-xs">
+                🎉 saved {formatCostPrecise(span.costBreakdown.cacheSavings)} with cache
+              </Badge>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {(
+              [
+                { key: 'input', emoji: '📥', label: 'Input', value: span.costBreakdown.input },
+                { key: 'output', emoji: '📤', label: 'Output', value: span.costBreakdown.output },
+                { key: 'cacheWrite', emoji: '📝', label: 'Cache write', value: span.costBreakdown.cacheWrite },
+                { key: 'cacheRead', emoji: '⚡', label: 'Cache read', value: span.costBreakdown.cacheRead },
+                { key: 'reasoning', emoji: '🧠', label: 'Reasoning', value: span.costBreakdown.reasoning },
+              ] as const
+            )
+              .filter((c) => c.value > 0)
+              .map((c) => (
+                <div
+                  key={c.key}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800 text-xs"
+                >
+                  <span aria-hidden>{c.emoji}</span>
+                  <span className="text-zinc-500 dark:text-zinc-400">{c.label}</span>
+                  <span className="font-mono font-medium text-zinc-700 dark:text-zinc-300 tabular-nums">
+                    {formatCostPrecise(c.value)}
+                  </span>
+                </div>
+              ))}
+          </div>
+        </div>
       )}
 
       {/* Model Parameters & Context Stats - only show when we have real data */}
