@@ -240,18 +240,21 @@ func deriveRates(model string, mp ModelPricing) ModelPricing {
 
 // findPricing looks up pricing by exact match first, then by prefix match
 // This handles versioned model names like "anthropic.claude-opus-4-5-20251101-v1:0"
-// matching the base "anthropic.claude-opus-4-5". The returned pricing has its
-// cache/reasoning rates resolved via deriveRates.
+// matching the base "anthropic.claude-opus-4-5". It resolves against the effective
+// table (external source overlaid on the local map; see pricing_source.go), and
+// the returned pricing has its cache/reasoning rates resolved via deriveRates.
 func findPricing(model string) (ModelPricing, bool) {
+	table := currentPricingTable()
+
 	// Try exact match first
-	if mp, ok := pricing[model]; ok {
+	if mp, ok := table[model]; ok {
 		return deriveRates(model, mp), true
 	}
 
 	// Try prefix match (longest match wins)
 	var bestMatch string
 	var bestPricing ModelPricing
-	for key, mp := range pricing {
+	for key, mp := range table {
 		if strings.HasPrefix(model, key) && len(key) > len(bestMatch) {
 			bestMatch = key
 			bestPricing = mp
@@ -262,6 +265,8 @@ func findPricing(model string) (ModelPricing, bool) {
 		return deriveRates(model, bestPricing), true
 	}
 
+	// No pricing found — track it for observability (logs once + on threshold).
+	recordUnknownModel(model)
 	return defaultPricing, false
 }
 
