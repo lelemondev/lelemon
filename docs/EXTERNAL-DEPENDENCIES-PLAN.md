@@ -111,6 +111,12 @@ Implementar un sistema de **configuración dinámica** con:
 
 ## Problema 1: Pricing de Modelos
 
+> **✅ RESUELTO (2026-06-08).** Implementado el Pricing Service: auto-sync desde LiteLLM (primaria) +
+> OpenRouter (secundaria) con fallback al map local, refresh async offline-safe y observabilidad de
+> modelos sin pricing. Ver `apps/server/pkg/domain/service/pricing_{source,litellm,openrouter,metrics}.go`.
+> Config por env: `PRICING_AUTOSYNC`, `PRICING_SOURCE_URL`, `PRICING_OPENROUTER[_URL]`. Redis se
+> descartó a propósito (archivo upstream estático y pequeño → in-memory por instancia basta).
+
 ### Estado Actual
 
 ```go
