@@ -27,7 +27,7 @@ export const createListTracesTool = () =>
       'session, user, or time range. Returns per-trace totals (spans, tokens, cost, duration). ' +
       'Use lelemon_get_trace with an id to drill into one trace and its cost breakdown.',
     middlewares: [
-      requireAuth({ message: 'lelemon_list_traces requires your project API key.' }),
+      requireAuth({ message: 'lelemon_list_traces requires an authorized connection.' }),
       rateLimit({ max: 120, windowMs: 60_000 }),
       withTimeout({ ms: 8_000 }),
     ],

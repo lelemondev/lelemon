@@ -2,6 +2,7 @@ package http
 
 import (
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -98,9 +99,10 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Post("/ingest", ingestHandler.Handle)
 		})
 
-		// API Key authenticated routes (rate limited)
+		// API Key authenticated routes (rate limited). Also reachable by the MCP
+		// authorization server acting for a project via the service path (see ProjectAuth).
 		r.Group(func(r chi.Router) {
-			r.Use(middleware.APIKeyAuth(cfg.PrimaryStore))
+			r.Use(middleware.ProjectAuth(cfg.PrimaryStore, os.Getenv("MCP_STORE_SECRET")))
 			r.Use(middleware.RateLimit(rateLimiter))
 
 			// Traces
@@ -162,6 +164,29 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			r.Get("/dashboard/projects/{id}/analytics/latency/distribution", dashboardHandler.GetLatencyDistribution)
 			r.Get("/dashboard/projects/{id}/analytics/latency/timeseries", dashboardHandler.GetLatencyTimeSeries)
 		})
+
+		// MCP OAuth 2.1 authorization server support. The MCP (mcify, out-of-process) is the
+		// authorization server; the backend only persists its state and bridges the dashboard
+		// session. Mounted only when the primary store can persist OAuth data and the secrets are
+		// configured (env). See handler/oauth_store.go and handler/mcp_consent.go.
+		if oauthStore, ok := cfg.PrimaryStore.(repository.OAuthStore); ok {
+			// Internal store RPC — service-to-service, shared-secret auth (not a user endpoint).
+			if storeSecret := os.Getenv("MCP_STORE_SECRET"); storeSecret != "" {
+				oauthStoreHandler := handler.NewOAuthStoreHandler(oauthStore)
+				r.Group(func(r chi.Router) {
+					r.Use(middleware.ServiceAuth(storeSecret))
+					r.Post("/internal/oauth", oauthStoreHandler.Handle)
+				})
+			}
+			// Consent token mint — dashboard session auth; the logged-in user approves a project.
+			if consentSecret := os.Getenv("MCP_CONSENT_SECRET"); consentSecret != "" {
+				consentHandler := handler.NewMCPConsentHandler(cfg.PrimaryStore, consentSecret)
+				r.Group(func(r chi.Router) {
+					r.Use(middleware.SessionAuth(cfg.JWTService))
+					r.Post("/dashboard/mcp/consent", consentHandler.Mint)
+				})
+			}
+		}
 	})
 
 	// Mount extensions (e.g., enterprise routes)

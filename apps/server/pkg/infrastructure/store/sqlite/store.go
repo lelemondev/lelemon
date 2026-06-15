@@ -136,6 +136,11 @@ func (s *Store) Migrate(ctx context.Context) error {
 		}
 	}
 
+	// OAuth 2.1 authorization-server tables (for the MCP) — see oauth.go.
+	if err := s.migrateOAuth(ctx); err != nil {
+		return err
+	}
+
 	return nil
 }
 

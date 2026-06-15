@@ -21,7 +21,7 @@ export const createGetTraceTool = () =>
       'exactly where the money went and how much prompt caching saved. By default the large span ' +
       'input/output/thinking payloads are omitted to save tokens — pass detail:true to include them.',
     middlewares: [
-      requireAuth({ message: 'lelemon_get_trace requires your project API key.' }),
+      requireAuth({ message: 'lelemon_get_trace requires an authorized connection.' }),
       rateLimit({ max: 120, windowMs: 60_000 }),
       withTimeout({ ms: 10_000 }),
     ],

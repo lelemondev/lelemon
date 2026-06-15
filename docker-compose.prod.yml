@@ -25,6 +25,10 @@ services:
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
       - GOOGLE_REDIRECT_URL=${GOOGLE_REDIRECT_URL:-}
+      # MCP OAuth authorization server (shared secrets with the MCP on Railway).
+      # When empty, the internal OAuth store RPC + consent endpoints are not registered.
+      - MCP_STORE_SECRET=${MCP_STORE_SECRET:-}
+      - MCP_CONSENT_SECRET=${MCP_CONSENT_SECRET:-}
     depends_on:
       postgres:
         condition: service_healthy
