@@ -32,10 +32,10 @@ importers:
         version: 9.39.2
       '@mcify/cli':
         specifier: ^1.0.0-alpha.3
-        version: 1.0.0-alpha.3(@hono/node-server@1.19.14(hono@4.12.23))(@mcify/inspector@0.1.0-alpha.2(@hono/node-server@1.19.14(hono@4.12.23))(ws@8.19.0)(zod@3.25.76))(ws@8.19.0)(zod@3.25.76)
+        version: 1.0.0-alpha.3(@hono/node-server@1.19.14(hono@4.12.23))(@mcify/inspector@0.1.0-alpha.3(@hono/node-server@1.19.14(hono@4.12.23))(ws@8.19.0)(zod@3.25.76))(ws@8.19.0)(zod@3.25.76)
       '@mcify/inspector':
-        specifier: 0.1.0-alpha.2
-        version: 0.1.0-alpha.2(@hono/node-server@1.19.14(hono@4.12.23))(ws@8.19.0)(zod@3.25.76)
+        specifier: ^0.1.0-alpha.3
+        version: 0.1.0-alpha.3(@hono/node-server@1.19.14(hono@4.12.23))(ws@8.19.0)(zod@3.25.76)
       '@mcify/runtime':
         specifier: ^1.0.0-alpha.3
         version: 1.0.0-alpha.3(@hono/node-server@1.19.14(hono@4.12.23))(ws@8.19.0)(zod@3.25.76)
@@ -1243,29 +1243,13 @@ packages:
       '@mcify/inspector':
         optional: true
 
-  '@mcify/core@1.0.0-alpha.2':
-    resolution: {integrity: sha512-txfjlAcjfjEKRsVMCx/zyGHUQh2U5EAKO98Shc+ng6LSwS1IqMw8knkBTMHhZYUPUb3tbolcHGRI66GoX6GMeg==}
-    engines: {node: '>=20'}
-
   '@mcify/core@1.0.0-alpha.3':
     resolution: {integrity: sha512-uCQoYsK5UIIpP9jaCXBREhVrlP2bbXZgHuH0YLQWcQPBRR3aLMardWCxqucYVJWaxtfeJ1/fBZ2XGh2O3FHGjg==}
     engines: {node: '>=20'}
 
-  '@mcify/inspector@0.1.0-alpha.2':
-    resolution: {integrity: sha512-gxxfe8tVQs3BiUmLs4npO5ZMC7Gi+PIYwd8u1S2iulJJyPaq3Xv5iy9X5YVMQ9WVFxLNOwfwRGjFS7wWGX0otw==}
+  '@mcify/inspector@0.1.0-alpha.3':
+    resolution: {integrity: sha512-kvO26p/ypSHs3evqGShTlow2O0xyqpRdl8nGlYPrUJxWehQwOYSnz7P++sXD67nNTD/4TcivfDxjpPxZunZl7A==}
     engines: {node: '>=20'}
-
-  '@mcify/runtime@1.0.0-alpha.2':
-    resolution: {integrity: sha512-o4wE1WFAcWDeWH6ZwSs2Uwb0IrAjW/gyKotmp7gKpygjIWK+rVw1J1gZcPyfNp6OLDw06Edx7HG20/TDxGyz9w==}
-    engines: {node: '>=20'}
-    peerDependencies:
-      '@hono/node-server': ^1.13.0
-      ws: ^8.18.0
-    peerDependenciesMeta:
-      '@hono/node-server':
-        optional: true
-      ws:
-        optional: true
 
   '@mcify/runtime@1.0.0-alpha.3':
     resolution: {integrity: sha512-S+TSddtr6/cgrzQ9IcyqhuLU51vosEl4HjL47mZ390hYN3jLgu/83V4HLWxtfbb66NdWw7bw06QZWdFSBqYkPg==}
@@ -5823,7 +5807,7 @@ snapshots:
 
   '@lelemondev/sdk@0.9.3': {}
 
-  '@mcify/cli@1.0.0-alpha.3(@hono/node-server@1.19.14(hono@4.12.23))(@mcify/inspector@0.1.0-alpha.2(@hono/node-server@1.19.14(hono@4.12.23))(ws@8.19.0)(zod@3.25.76))(ws@8.19.0)(zod@3.25.76)':
+  '@mcify/cli@1.0.0-alpha.3(@hono/node-server@1.19.14(hono@4.12.23))(@mcify/inspector@0.1.0-alpha.3(@hono/node-server@1.19.14(hono@4.12.23))(ws@8.19.0)(zod@3.25.76))(ws@8.19.0)(zod@3.25.76)':
     dependencies:
       '@mcify/core': 1.0.0-alpha.3
       '@mcify/runtime': 1.0.0-alpha.3(@hono/node-server@1.19.14(hono@4.12.23))(ws@8.19.0)(zod@3.25.76)
@@ -5832,7 +5816,7 @@ snapshots:
       tsx: 4.22.4
       yaml: 2.8.2
     optionalDependencies:
-      '@mcify/inspector': 0.1.0-alpha.2(@hono/node-server@1.19.14(hono@4.12.23))(ws@8.19.0)(zod@3.25.76)
+      '@mcify/inspector': 0.1.0-alpha.3(@hono/node-server@1.19.14(hono@4.12.23))(ws@8.19.0)(zod@3.25.76)
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - '@hono/node-server'
@@ -5840,19 +5824,14 @@ snapshots:
       - ws
       - zod
 
-  '@mcify/core@1.0.0-alpha.2':
-    dependencies:
-      zod: 3.25.76
-      zod-to-json-schema: 3.25.1(zod@3.25.76)
-
   '@mcify/core@1.0.0-alpha.3':
     dependencies:
       zod: 3.25.76
       zod-to-json-schema: 3.25.1(zod@3.25.76)
 
-  '@mcify/inspector@0.1.0-alpha.2(@hono/node-server@1.19.14(hono@4.12.23))(ws@8.19.0)(zod@3.25.76)':
+  '@mcify/inspector@0.1.0-alpha.3(@hono/node-server@1.19.14(hono@4.12.23))(ws@8.19.0)(zod@3.25.76)':
     dependencies:
-      '@mcify/runtime': 1.0.0-alpha.2(@hono/node-server@1.19.14(hono@4.12.23))(ws@8.19.0)(zod@3.25.76)
+      '@mcify/runtime': 1.0.0-alpha.3(@hono/node-server@1.19.14(hono@4.12.23))(ws@8.19.0)(zod@3.25.76)
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
     transitivePeerDependencies:
@@ -5860,20 +5839,6 @@ snapshots:
       - '@hono/node-server'
       - supports-color
       - ws
-      - zod
-
-  '@mcify/runtime@1.0.0-alpha.2(@hono/node-server@1.19.14(hono@4.12.23))(ws@8.19.0)(zod@3.25.76)':
-    dependencies:
-      '@mcify/core': 1.0.0-alpha.2
-      '@modelcontextprotocol/sdk': 1.29.0(zod@3.25.76)
-      hono: 4.12.23
-      pino: 9.14.0
-    optionalDependencies:
-      '@hono/node-server': 1.19.14(hono@4.12.23)
-      ws: 8.19.0
-    transitivePeerDependencies:
-      - '@cfworker/json-schema'
-      - supports-color
       - zod
 
   '@mcify/runtime@1.0.0-alpha.3(@hono/node-server@1.19.14(hono@4.12.23))(ws@8.19.0)(zod@3.25.76)':

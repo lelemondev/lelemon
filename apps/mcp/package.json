@@ -27,7 +27,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.0",
     "@mcify/cli": "^1.0.0-alpha.3",
-    "@mcify/inspector": "0.1.0-alpha.2",
+    "@mcify/inspector": "^0.1.0-alpha.3",
     "@mcify/runtime": "^1.0.0-alpha.3",
     "@types/node": "^24.10.0",
     "eslint": "^9.39.0",
