@@ -51,13 +51,20 @@ export default defineConfig({
     resourceName: 'Lelemon MCP',
     store: new HttpOAuthStore({ secret: process.env['MCP_STORE_SECRET'] ?? '' }),
     authorize: async (request): Promise<AuthorizeDecision> => {
-      const consent = new URL(request.url).searchParams.get('consent');
+      // Railway terminates TLS, so request.url arrives as http://. Honor X-Forwarded-Proto
+      // (as the Go API already does) so the return URL's origin is https and matches the
+      // dashboard's allow-list (safeReturnUrl) instead of being rejected as invalid.
+      const reqUrl = new URL(request.url);
+      const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim();
+      if (forwardedProto) reqUrl.protocol = `${forwardedProto}:`;
+
+      const consent = reqUrl.searchParams.get('consent');
       if (consent) {
         const subject = await verifyConsent(consent);
         if (subject) return { status: 'authenticated', subject };
       }
       // No (valid) consent yet → send the user to the dashboard to sign in + pick a project.
-      const ret = encodeURIComponent(request.url);
+      const ret = encodeURIComponent(reqUrl.toString());
       return { status: 'redirect', url: `${DASHBOARD_URL}/dashboard/mcp/authorize?return=${ret}` };
     },
   }),
