@@ -9,8 +9,10 @@ import { conciseMetadata, conciseSpanTree } from '../summarize.js';
  * for every LLM span, a per-token-type cost breakdown (input / output /
  * cacheRead / cacheWrite / reasoning) and the cache savings.
  *
- * Concise by default (span input/output/thinking stripped) so the response stays
- * small; pass detail:true to include the full prompts and completions.
+ * Concise by default: the dialogue (input.messages) and completion are KEPT so
+ * the trace is readable, while the static system prompt + tool schemas (and the
+ * redundant metadata.input request copy) are replaced with size placeholders.
+ * Pass detail:true for the raw request verbatim.
  */
 export const createGetTraceTool = () =>
   defineTool({
@@ -18,10 +20,11 @@ export const createGetTraceTool = () =>
     description:
       'Get one trace by id with its full span tree. Each LLM span includes a costBreakdown ' +
       '(input, output, cacheRead, cacheWrite, reasoning, total, cacheSavings) so you can explain ' +
-      'exactly where the money went and how much prompt caching saved. By default the large ' +
-      'input/output/thinking payloads (on spans and in metadata, e.g. the full LLM request under ' +
-      'metadata.input) are replaced with a size placeholder to save tokens — pass detail:true to ' +
-      'include them.',
+      'exactly where the money went and how much prompt caching saved. By default the view is ' +
+      'READABLE-CONCISE: the conversation (input.messages) and the completion are kept, but the ' +
+      'huge static parts repeated on every span — the system prompt, the tool schemas, and the ' +
+      'redundant full-request copy under metadata.input — are replaced with a size placeholder ' +
+      '(a real agent trace drops from ~150k to a few k chars). Pass detail:true for the raw request.',
     middlewares: [
       requireAuth({ message: 'lelemon_get_trace requires an authorized connection.' }),
       rateLimit({ max: 120, windowMs: 60_000 }),
