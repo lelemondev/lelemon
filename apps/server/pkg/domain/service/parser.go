@@ -268,6 +268,18 @@ func parseOpenAIResponse(raw any) *ParsedResponse {
 				result.ReasoningTokens = &val
 			}
 		}
+		// Cached prompt tokens (OpenAI-compatible: OpenAI, DeepInfra, OpenRouter, …).
+		// OpenAI standard puts cache-hit tokens under prompt_tokens_details.cached_tokens.
+		if details, ok := usage["prompt_tokens_details"].(map[string]any); ok {
+			if v, ok := details["cached_tokens"].(float64); ok {
+				val := int(v)
+				result.CacheReadTokens = &val
+			}
+			if v, ok := details["cache_write_tokens"].(float64); ok {
+				val := int(v)
+				result.CacheWriteTokens = &val
+			}
+		}
 	}
 
 	// Extract from first choice

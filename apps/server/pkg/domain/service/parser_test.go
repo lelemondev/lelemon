@@ -71,6 +71,51 @@ func TestOpenAIScenarios(t *testing.T) {
 
 		t.Logf("✓ tokens: %d→%d, reasoning: %d", result.InputTokens, result.OutputTokens, *result.ReasoningTokens)
 	})
+
+	t.Run("cache_read", func(t *testing.T) {
+		// OpenAI-compatible providers (DeepInfra, OpenRouter, OpenAI) report prompt
+		// cache hits under usage.prompt_tokens_details.cached_tokens.
+		fixture := loadFixture(t, "openai_with_cache.json")
+		result := ParseProviderResponse("openai", fixture["response"])
+
+		assertNotNil(t, result)
+		assertTokensPositive(t, result)
+
+		if result.CacheReadTokens == nil {
+			t.Fatal("expected cache read tokens to be extracted from prompt_tokens_details.cached_tokens")
+		}
+		if *result.CacheReadTokens != 10560 {
+			t.Errorf("expected cache read tokens 10560, got %d", *result.CacheReadTokens)
+		}
+		// cache_write_tokens is null in the fixture, so it must stay nil.
+		if result.CacheWriteTokens != nil {
+			t.Errorf("expected cache write tokens nil, got %d", *result.CacheWriteTokens)
+		}
+
+		t.Logf("✓ tokens: %d→%d, cacheRead: %d", result.InputTokens, result.OutputTokens, *result.CacheReadTokens)
+	})
+
+	t.Run("no_cache_details_leaves_nil", func(t *testing.T) {
+		// A response without prompt_tokens_details must not set CacheReadTokens (no regression).
+		resp := map[string]any{
+			"choices": []any{
+				map[string]any{
+					"message":       map[string]any{"content": "hi"},
+					"finish_reason": "stop",
+				},
+			},
+			"usage": map[string]any{
+				"prompt_tokens":     float64(10),
+				"completion_tokens": float64(5),
+			},
+		}
+		result := ParseProviderResponse("openai", resp)
+
+		assertNotNil(t, result)
+		if result.CacheReadTokens != nil {
+			t.Errorf("expected cache read tokens nil when field absent, got %d", *result.CacheReadTokens)
+		}
+	})
 }
 
 // TestGeminiScenarios tests all Gemini API scenarios

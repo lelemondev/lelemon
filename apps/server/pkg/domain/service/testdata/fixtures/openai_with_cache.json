@@ -1,0 +1,31 @@
+{
+  "_captured": "2026-07-06T12:00:00-03:00",
+  "_description": "OpenAI-compatible (DeepInfra) - prompt caching hit reported under usage.prompt_tokens_details.cached_tokens",
+  "_model": "Qwen/Qwen3-235B-A22B",
+  "_scenario": "cache_read",
+  "response": {
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "Sí, tengo ese vehículo disponible.",
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1751817600,
+    "id": "chatcmpl-deepinfra-cachehit",
+    "model": "Qwen/Qwen3-235B-A22B",
+    "object": "chat.completion",
+    "usage": {
+      "completion_tokens": 8,
+      "prompt_tokens": 12223,
+      "prompt_tokens_details": {
+        "cached_tokens": 10560,
+        "cache_write_tokens": null
+      },
+      "total_tokens": 12231
+    }
+  }
+}
