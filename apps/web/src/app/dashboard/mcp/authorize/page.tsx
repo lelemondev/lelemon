@@ -9,11 +9,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 // The MCP we are allowed to hand a consent token back to (anti open-redirect).
-const MCP_URL = process.env.NEXT_PUBLIC_MCP_URL || 'https://lelemon-mcp-production.up.railway.app/mcp';
+//
+// Baked into the bundle at build time (see the ARG in apps/web/Dockerfile). Empty by default on
+// purpose: a hardcoded host outlives the deployment it was written for, and a stale one rejects
+// every legitimate consent request while the page blames the client for it.
+const MCP_URL = process.env.NEXT_PUBLIC_MCP_URL || '';
 
 /** Only allow returning to the configured MCP origin — never an attacker-supplied host. */
 function safeReturnUrl(raw: string | null): URL | null {
-  if (!raw) return null;
+  if (!raw || !MCP_URL) return null;
   try {
     const url = new URL(raw);
     const allowed = new URL(MCP_URL);
@@ -75,6 +79,22 @@ function AuthorizeContent() {
             <a href={`/login?redirect=${next}`}>Sign in</a>
           </Button>
         </CardContent>
+      </Card>
+    );
+  }
+
+  // Distinto de un `return` invalido: no hay nada configurado contra que compararlo, asi que
+  // es un problema del despliegue y ningun cambio del cliente lo arregla.
+  if (!MCP_URL) {
+    return (
+      <Card className="max-w-md mx-auto border-destructive/40">
+        <CardHeader>
+          <CardTitle>MCP server not configured</CardTitle>
+          <CardDescription>
+            This deployment was built without <code>NEXT_PUBLIC_MCP_URL</code>, so it cannot tell
+            which MCP server may receive a consent token. Nothing is wrong with your client.
+          </CardDescription>
+        </CardHeader>
       </Card>
     );
   }

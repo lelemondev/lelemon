@@ -9,8 +9,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-// Public MCP server endpoint. Override with NEXT_PUBLIC_MCP_URL.
-const MCP_URL = process.env.NEXT_PUBLIC_MCP_URL || 'https://lelemon-mcp-production.up.railway.app/mcp';
+// Public MCP server endpoint, baked into the bundle at build time (see the ARG in
+// apps/web/Dockerfile). Empty by default on purpose: this page hands the address to the user
+// to paste into their client, so a hardcoded host that outlives its deployment does not fail
+// here -- it fails later, in their terminal, looking like their mistake.
+const MCP_URL = process.env.NEXT_PUBLIC_MCP_URL || '';
 
 type McpClient = 'claude-code' | 'claude-desktop' | 'cursor';
 
@@ -699,15 +702,25 @@ await flush();`} />
                 ))}
               </div>
 
-              <CodeBlock code={mcpSnippet(mcpClient)} />
+              {MCP_URL ? (
+                <>
+                  <CodeBlock code={mcpSnippet(mcpClient)} />
 
-              <p className="text-xs text-zinc-400 dark:text-zinc-500">
-                {mcpClient === 'claude-code'
-                  ? 'Run this, then `/mcp` in Claude Code → Authenticate. Sign in and pick a project.'
-                  : mcpClient === 'claude-desktop'
-                    ? 'Paste into claude_desktop_config.json, restart, then authorize in the browser when prompted.'
-                    : 'Paste into ~/.cursor/mcp.json, reload Cursor, then authorize in the browser when prompted.'}
-              </p>
+                  <p className="text-xs text-zinc-400 dark:text-zinc-500">
+                    {mcpClient === 'claude-code'
+                      ? 'Run this, then `/mcp` in Claude Code → Authenticate. Sign in and pick a project.'
+                      : mcpClient === 'claude-desktop'
+                        ? 'Paste into claude_desktop_config.json, restart, then authorize in the browser when prompted.'
+                        : 'Paste into ~/.cursor/mcp.json, reload Cursor, then authorize in the browser when prompted.'}
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-amber-600 dark:text-amber-400">
+                  This deployment was built without <code>NEXT_PUBLIC_MCP_URL</code>, so there is no
+                  server address to hand you. Whoever runs this instance has to set that build
+                  variable -- there is nothing to copy until then.
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>
